@@ -4,15 +4,16 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "tsc",
-    "typecheck": "tsc --noEmit",
+    "build": "npm run build --workspace=@b2b-portal/config && tsc",
+    "typecheck": "npm run build --workspace=@b2b-portal/config && tsc --noEmit",
     "lint": "eslint src --max-warnings=0",
     "lint:fix": "npm run lint -- --fix",
     "format": "prettier . --ignore-path ../../.prettierignore --write",
     "format:check": "prettier . --ignore-path ../../.prettierignore --check",
-    "start": "node dist/index.js"
+    "start": "node --env-file-if-exists=../../.env dist/index.js"
   },
   "dependencies": {
+    "@b2b-portal/config": "0.0.0",
     "express": "5.3.0"
   },
   "devDependencies": {

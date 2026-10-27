@@ -7,6 +7,10 @@
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
+    },
+    "./server": {
+      "types": "./dist/server.d.ts",
+      "import": "./dist/server.js"
     }
   },
   "scripts": {
@@ -16,5 +20,8 @@
     "lint:fix": "npm run lint -- --fix",
     "format": "prettier . --ignore-path ../../.prettierignore --write",
     "format:check": "prettier . --ignore-path ../../.prettierignore --check"
+  },
+  "devDependencies": {
+    "@types/node": "24.19.2"
   }
 }
