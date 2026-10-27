@@ -24,11 +24,11 @@ and are ignored by Git.
 | `apps/web`            | `@b2b-portal/web`        | Minimal React/TypeScript browser entry point    |
 | `apps/api`            | `@b2b-portal/api`        | Minimal Express/TypeScript API entry point      |
 | `apps/mock-erp`       | `@b2b-portal/mock-erp`   | Minimal Express/TypeScript Mock ERP entry point |
-| `packages/contracts`  | `@b2b-portal/contracts`  | Reserved shared contract module                 |
+| `packages/contracts`  | `@b2b-portal/contracts`  | Shared API response types                       |
 | `packages/validation` | `@b2b-portal/validation` | Reserved shared validation module               |
 | `packages/config`     | `@b2b-portal/config`     | Shared server environment validation            |
 
-The contracts and validation packages are placeholders. The config package
+The validation package is a placeholder. The config package
 exposes server environment validation through `@b2b-portal/config/server`;
 keep that Node-only entry point out of browser code.
 
@@ -78,6 +78,47 @@ Database, authentication, and ERP connection variables will be introduced with
 their consuming features. Keep real `.env` files untracked; only `.env.example`
 is committed.
 
+## API response conventions
+
+The portal API returns JSON success responses with a `success` discriminator,
+the route's `data`, and a server-generated `requestId`:
+
+```json
+{
+  "success": true,
+  "data": { "service": "b2b-portal-api" },
+  "requestId": "e15a9830-a8f1-466c-9542-8560faec73c4"
+}
+```
+
+Errors use the same discriminator and request ID with a public code/message:
+
+```json
+{
+  "success": false,
+  "error": { "code": "NOT_FOUND", "message": "Route not found." },
+  "requestId": "e15a9830-a8f1-466c-9542-8560faec73c4"
+}
+```
+
+HTTP status codes remain meaningful (for example 200, 400, 404, or 500). Every
+request gets a new UUID in the `X-Request-Id` response header, matching the JSON
+body. Incoming request-ID headers are ignored. HEAD responses have no body;
+their request ID remains available in the header. Streaming responses that
+have already started cannot be replaced with a JSON envelope.
+
+Shared `ApiSuccess<T>`, `ApiFailure`, and `ApiResponse<T>` types are exported
+from `@b2b-portal/contracts`. Routes use `sendSuccess` from `apps/api/src/http.ts`.
+They can throw `HttpError(statusCode, code, publicMessage)` for intentionally
+public HTTP errors; never pass an internal error message into that constructor.
+Unexpected server failures return a generic 500 without stacks or internal fields.
+JSON parsing errors and unmatched routes use the standard error envelope too.
+
+`createApp` installs request IDs before the JSON parser, then routes, a JSON
+404 handler, and the final error handler. Express 5 forwards rejected route
+promises to that handler. The separate Mock ERP retains its external response
+format. Logging and health endpoints remain with B2B-005.
+
 ## Shared tooling
 
 Run these commands from the repository root:
@@ -90,7 +131,7 @@ Run these commands from the repository root:
 | `npm run lint:fix`     | Apply available ESLint fixes                                                |
 | `npm run format:check` | Check formatting with Prettier                                              |
 | `npm run format`       | Apply Prettier formatting                                                   |
-| `npm test`             | Build all workspaces and run environment validation/startup tests           |
+| `npm test`             | Build all workspaces and run environment and API response tests             |
 | `npm run check`        | Run formatting, linting, type checks, builds, and tests in sequence         |
 
 Every workspace also exposes `build`, `typecheck`, `lint`, `lint:fix`, `format`,
@@ -100,6 +141,7 @@ and `format:check`. Target any of them with `--workspace`, for example:
 npm run typecheck --workspace=@b2b-portal/web
 npm run lint --workspace=@b2b-portal/api
 npm run format:check --workspace=@b2b-portal/contracts
+npm test --workspace=@b2b-portal/api
 ```
 
 All workspace TypeScript configurations extend `tsconfig.base.json`. It owns
@@ -107,8 +149,8 @@ the strict compiler defaults, ES2022 target, and NodeNext module settings.
 Workspaces retain their own input/output paths. The web app overrides the
 module settings for Vite and includes DOM libraries; services opt into Node
 types, as does the server config package. Contracts and validation have no
-ambient platform types. Service build/typecheck commands build their config
-dependency first, so they also work from a clean checkout.
+ambient platform types. Service build/typecheck commands build their shared
+dependencies first, so they also work from a clean checkout.
 
 ESLint uses the recommended JavaScript and TypeScript rules, Node/browser
 globals in their respective apps, and React Hooks rules in the web app.
@@ -122,5 +164,5 @@ TypeScript is pinned to 6.0.3 to stay within the supported range of
 `typescript-eslint` 8.72.1 (`>=4.8.4 <6.1.0`). Keep those dependencies compatible
 when upgrading; use `npm ci` to install the committed lockfile.
 
-API conventions, health checks, ERP scenarios, application workflows, and the
+Health checks, ERP scenarios, application workflows, and the
 designed frontend shell belong to later issues.
