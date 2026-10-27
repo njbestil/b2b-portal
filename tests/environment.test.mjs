@@ -257,7 +257,16 @@ for (const service of services) {
       }
       assert.ok(response, "The service must listen on the configured port");
       assert.equal(response.status, 200);
-      assert.deepEqual(await response.json(), { service: service.response });
+      const body = await response.json();
+      if (service.name === "api") {
+        assert.deepEqual(body, {
+          success: true,
+          data: { service: service.response },
+          requestId: response.headers.get("x-request-id"),
+        });
+      } else {
+        assert.deepEqual(body, { service: service.response });
+      }
     });
   }
 }
