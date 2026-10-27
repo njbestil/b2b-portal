@@ -26,10 +26,11 @@ and are ignored by Git.
 | `apps/mock-erp`       | `@b2b-portal/mock-erp`   | Minimal Express/TypeScript Mock ERP entry point |
 | `packages/contracts`  | `@b2b-portal/contracts`  | Reserved shared contract module                 |
 | `packages/validation` | `@b2b-portal/validation` | Reserved shared validation module               |
-| `packages/config`     | `@b2b-portal/config`     | Reserved shared configuration module            |
+| `packages/config`     | `@b2b-portal/config`     | Shared server environment validation            |
 
-The shared modules intentionally export no application behavior yet. Each has a
-real compiler build so package initialization is verifiable.
+The contracts and validation packages are placeholders. The config package
+exposes server environment validation through `@b2b-portal/config/server`;
+keep that Node-only entry point out of browser code.
 
 To build an individual workspace, use its package name:
 
@@ -37,7 +38,8 @@ To build an individual workspace, use its package name:
 npm run build --workspace=@b2b-portal/api
 ```
 
-After building, run the services in separate terminals:
+After building, copy `.env.example` to `.env` at the repository root. Then run
+the services in separate terminals:
 
 ```sh
 npm start --workspace=@b2b-portal/api
@@ -51,19 +53,45 @@ Their placeholder root responses are available at `http://127.0.0.1:3000/` and
 npm run preview --workspace=@b2b-portal/web
 ```
 
+## Environment configuration
+
+Both service start commands use Node 24's built-in `.env` loader to read the
+root `.env` file. Shell/deployment variables take precedence. The file is
+optional when the required variables are already supplied by the environment.
+
+| Variable        | Required by   | Accepted values                        | Example       |
+| --------------- | ------------- | -------------------------------------- | ------------- |
+| `NODE_ENV`      | Both services | `development`, `test`, or `production` | `development` |
+| `API_HOST`      | API           | IP address or `localhost`              | `127.0.0.1`   |
+| `API_PORT`      | API           | Integer from 1 to 65535                | `3000`        |
+| `MOCK_ERP_HOST` | Mock ERP      | IP address or `localhost`              | `127.0.0.1`   |
+| `MOCK_ERP_PORT` | Mock ERP      | Integer from 1 to 65535                | `3001`        |
+
+Each service validates its own required settings before opening a listener.
+Missing, blank, or invalid settings cause exit code 1 with variable names and
+validation rules, never the supplied values. There are no implicit defaults.
+The example preserves the original loopback listeners; use an explicit bind
+address such as `0.0.0.0` when the deployment requires it.
+
+The web placeholder currently consumes no custom environment variables.
+Database, authentication, and ERP connection variables will be introduced with
+their consuming features. Keep real `.env` files untracked; only `.env.example`
+is committed.
+
 ## Shared tooling
 
 Run these commands from the repository root:
 
-| Command                | Purpose                                                              |
-| ---------------------- | -------------------------------------------------------------------- |
-| `npm run build`        | Build all six workspaces                                             |
-| `npm run typecheck`    | Type-check all six workspaces without emitting files                 |
-| `npm run lint`         | Check JavaScript and TypeScript with ESLint; warnings fail the check |
-| `npm run lint:fix`     | Apply available ESLint fixes                                         |
-| `npm run format:check` | Check formatting with Prettier                                       |
-| `npm run format`       | Apply Prettier formatting                                            |
-| `npm run check`        | Run formatting, linting, type checks, and builds in sequence         |
+| Command                | Purpose                                                                     |
+| ---------------------- | --------------------------------------------------------------------------- |
+| `npm run build`        | Build all six workspaces                                                    |
+| `npm run typecheck`    | Type-check all six workspaces; services first build their config dependency |
+| `npm run lint`         | Check JavaScript and TypeScript with ESLint; warnings fail the check        |
+| `npm run lint:fix`     | Apply available ESLint fixes                                                |
+| `npm run format:check` | Check formatting with Prettier                                              |
+| `npm run format`       | Apply Prettier formatting                                                   |
+| `npm test`             | Build all workspaces and run environment validation/startup tests           |
+| `npm run check`        | Run formatting, linting, type checks, builds, and tests in sequence         |
 
 Every workspace also exposes `build`, `typecheck`, `lint`, `lint:fix`, `format`,
 and `format:check`. Target any of them with `--workspace`, for example:
@@ -78,7 +106,9 @@ All workspace TypeScript configurations extend `tsconfig.base.json`. It owns
 the strict compiler defaults, ES2022 target, and NodeNext module settings.
 Workspaces retain their own input/output paths. The web app overrides the
 module settings for Vite and includes DOM libraries; services opt into Node
-types, while shared packages have no ambient platform types.
+types, as does the server config package. Contracts and validation have no
+ambient platform types. Service build/typecheck commands build their config
+dependency first, so they also work from a clean checkout.
 
 ESLint uses the recommended JavaScript and TypeScript rules, Node/browser
 globals in their respective apps, and React Hooks rules in the web app.
