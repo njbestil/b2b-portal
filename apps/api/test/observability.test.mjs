@@ -362,7 +362,14 @@ test("actual entry point logs listen failures safely instead of raw network erro
   t.after(() => child.kill());
   const [code] = await closed;
   assert.equal(code, 1);
-  assert.equal(stdout, "");
+  assert.deepEqual(
+    stdout
+      .trim()
+      .split("\n")
+      .map(JSON.parse)
+      .map((entry) => entry.event),
+    ["api.stopping", "api.stopped"],
+  );
   const record = JSON.parse(stderr);
   assert.equal(record.event, "api.start_failed");
   assert.equal(record.reason, "listen_failed");

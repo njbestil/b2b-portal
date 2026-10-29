@@ -83,10 +83,11 @@ validation rules, never the supplied values. There are no implicit defaults.
 The example preserves the original loopback listeners; use an explicit bind
 address such as `0.0.0.0` when the deployment requires it.
 
-The web placeholder currently consumes no custom environment variables.
-Database, authentication, and ERP connection variables will be introduced with
-their consuming features. Keep real `.env` files untracked; only `.env.example`
-is committed.
+The API optionally consumes `DATABASE_URL` and bounded pool settings described in
+[PostgreSQL infrastructure](docs/postgresql.md). Without a URL, database-free
+startup remains supported. The web shell consumes no custom connection variables.
+Authentication and ERP settings belong to their consuming features. Keep real
+`.env` files untracked; only `.env.example` is committed.
 
 ## API response conventions
 
@@ -170,11 +171,18 @@ For example, the current default response is:
 }
 ```
 
-Storage/ERP statuses are `up`, `down`, `timeout`, or `unconfigured`. The current
-entry point has no storage adapter or ERP gateway, so both are intentionally
-`unconfigured` and readiness is 503 even if the separate Mock ERP is running.
-This issue does not add those integrations or silently switch storage providers.
-Do not configure `/health` as a restart/liveness trigger while they are absent.
+Storage/ERP statuses are `up`, `down`, `timeout`, or `unconfigured`. Without
+`DATABASE_URL`, storage is `unconfigured`. With a URL, the API probes its shared
+PostgreSQL pool with `SELECT 1`; `up` means connection availability, not completed
+migrations or business repositories. ERP remains `unconfigured`, so overall
+readiness is still 503 even when PostgreSQL and the separate Mock ERP are running.
+No JSON fallback or provider selection is implemented here. Do not configure
+`/health` as a restart/liveness trigger while required integrations are absent.
+
+`SIGINT`/`SIGTERM` stop the HTTP listener, drain active requests, then close the
+PostgreSQL pool. Repeated shutdown requests reuse the same cleanup. The 10-second
+deadline forces connection closure and exit code 1 if cleanup hangs; errors produce
+redacted structured events. See [pool lifecycle and verification](docs/postgresql.md).
 
 Future adapters can supply read-only `healthChecks.storage` and
 `healthChecks.erp` probes to `createApp`. A probe receives an `AbortSignal` and
