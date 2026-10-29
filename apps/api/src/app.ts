@@ -1,5 +1,5 @@
 import express from "express";
-import type { HealthResponse } from "@b2b-portal/contracts";
+import type { HealthResponse, StorageProvider } from "@b2b-portal/contracts";
 import { createHealthReporter, type HealthChecks } from "./health.js";
 import { createLogger, type Logger, requestLogging } from "./logging.js";
 import {
@@ -14,6 +14,7 @@ interface AppOptions {
   logger?: Logger;
   healthChecks?: HealthChecks;
   healthTimeoutMs?: number;
+  storageProvider?: StorageProvider;
 }
 
 export function createApp(options: AppOptions = {}) {
@@ -21,6 +22,7 @@ export function createApp(options: AppOptions = {}) {
   const reportHealth = createHealthReporter(
     options.healthChecks,
     options.healthTimeoutMs,
+    options.storageProvider,
   );
   const app = express();
   app.use(requestIdMiddleware);

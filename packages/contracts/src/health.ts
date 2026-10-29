@@ -1,11 +1,12 @@
 import type { ApiFailure, ApiSuccess } from "./api.js";
 
 export type DependencyHealth = "up" | "down" | "unconfigured" | "timeout";
+export type StorageProvider = "postgresql" | "json";
 
 export interface HealthReport {
   status: "up" | "degraded";
   api: { status: "up" };
-  storage: { status: DependencyHealth };
+  storage: { status: DependencyHealth; provider?: StorageProvider };
   erp: { status: DependencyHealth };
 }
 

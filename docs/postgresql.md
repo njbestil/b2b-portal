@@ -1,13 +1,13 @@
 # PostgreSQL connection infrastructure
 
 B2B-008 provides one lazy `pg.Pool` per API process, a read-only health probe, and
-graceful shutdown. It does not implement migrations, SQL repository adapters, JSON
-storage or startup provider selection. Business services must not import this
-infrastructure directly. Future SQL adapters may receive the pool at composition.
+graceful shutdown. B2B-012 adds [startup selection](adr/002-startup-storage-selection.md)
+and minimal SQL implementations of the current read ports using this same pool.
+Business services depend on those ports, not this infrastructure directly.
 
 The separate [B2B-009 migration command](migrations.md) owns a dedicated connection
 and records ordered SQL in `schema_migrations`. It never runs as part of API startup
-and does not yet supply the MVP business schema.
+and includes the initial MVP business schema from B2B-010.
 
 ## Configuration
 
@@ -45,13 +45,16 @@ events, discarding broken connections instead of allowing unhandled socket error
 
 The existing `/health` reporter bounds each dependency to 1000 ms. Deadline expiry
 reports `timeout` and aborts the probe; connection/query failures report `down`.
-Subsequent checks probe afresh. With no URL, storage is `unconfigured`.
+Subsequent checks probe afresh. This low-level connectivity probe still uses
+`SELECT 1`; B2B-012 uses the same cancellation-safe probe lifecycle with a selected-
+repository schema check for API storage readiness. With no URL, API startup
+selects JSON and reports its provider/readiness, rather than unconfigured storage.
 The separate [ERP gateway](erp-gateway.md) must also be configured and available
 for overall readiness to be 200; otherwise the API remains degraded/503.
 `SELECT 1` does not establish schema, migration or repository readiness.
 
-Runtime failures never switch to JSON, and this work does not select a persistence
-provider at startup. That behavior belongs to B2B-012 after the JSON adapter exists.
+Runtime failures never switch to JSON. B2B-012 selects JSON only when PostgreSQL is
+absent/unreachable at startup, then retains that choice until process restart.
 
 ## Shutdown
 

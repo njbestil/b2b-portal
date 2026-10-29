@@ -381,10 +381,15 @@ test(
       `http://127.0.0.1:${apiPort}/health`,
       api,
     );
-    assert.equal(healthy.status, 503, "storage is intentionally unconfigured");
+    assert.equal(
+      healthy.status,
+      503,
+      "selected JSON storage is intentionally unseeded",
+    );
     const report = (await healthy.json()).error.details;
     assert.equal(report.erp.status, "up");
-    assert.equal(report.storage.status, "unconfigured");
+    assert.equal(report.storage.status, "down");
+    assert.equal(report.storage.provider, "json");
     mock.child.kill();
     await mock.closed;
     const down = await fetch(`http://127.0.0.1:${apiPort}/health`);

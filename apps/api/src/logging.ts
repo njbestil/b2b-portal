@@ -1,4 +1,4 @@
-import type { HealthReport } from "@b2b-portal/contracts";
+import type { HealthReport, StorageProvider } from "@b2b-portal/contracts";
 import type { RequestHandler } from "express";
 import { requestIdFor } from "./http.js";
 
@@ -12,7 +12,14 @@ type LogEvent =
       outcome: "completed" | "aborted";
     }
   | { event: "health.checked"; requestId: string; health: HealthReport }
-  | { event: "api.started"; api: "up" }
+  | { event: "api.started"; api: "up"; storageProvider?: StorageProvider }
+  | {
+      event: "storage.selected";
+      provider: StorageProvider;
+      reason:
+        "postgres_reachable" | "postgres_unavailable" | "postgres_unconfigured";
+    }
+  | { event: "storage.cleanup_failed" }
   | { event: "postgres.pool_error" }
   | { event: "migrations.completed"; applied: number; skipped: number }
   | {
@@ -24,7 +31,10 @@ type LogEvent =
   | { event: "api.shutdown_failed"; reason: "timeout" | "cleanup_failed" }
   | {
       event: "api.start_failed";
-      reason: "invalid_environment" | "listen_failed";
+      reason:
+        | "invalid_environment"
+        | "listen_failed"
+        | "storage_initialization_failed";
       diagnostic?: string;
     };
 
