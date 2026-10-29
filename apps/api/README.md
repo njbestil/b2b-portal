@@ -46,3 +46,9 @@ does not implement those workflows, ERP calls, migrations or persistence adapter
 Run `npm test --workspace=@b2b-portal/api` for application query tests and TypeScript
 contract fixtures. Test doubles are test-only: no production JSON/SQL adapter or
 provider health probe is introduced by these contracts.
+
+B2B-011 now supplies [JSON implementations](../../docs/json-storage.md) of these
+read ports using real entity/cache files, explicit validated collection replacement
+and tenant-scoped reads. They are not automatically selected or exposed through HTTP.
+SQL adapters, complete entity/business writes, provider selection and seed/reset
+remain separate work; the initial projections above are still the contract boundary.

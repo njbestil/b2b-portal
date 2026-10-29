@@ -254,3 +254,7 @@ They are backend-only read ports, not concrete storage adapters or new HTTP rout
 PostgreSQL schema changes use the explicit [migration runner](docs/migrations.md):
 `npm run migrate --workspace=@b2b-portal/api`. Nothing migrates during API startup.
 The runner is available; MVP business-schema migrations remain separate work.
+
+The API's [JSON storage engine](docs/json-storage.md) implements its existing read
+repository ports using separate validated entity/cache files. Startup provider
+selection and demo seed/reset remain separate; API startup behavior is unchanged.
