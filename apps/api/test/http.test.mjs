@@ -79,7 +79,7 @@ function errorApp(mode) {
 }
 
 test("the production app returns a standard success envelope and a matching request-ID header", async (t) => {
-  const base = await serve(t, createApp());
+  const base = await serve(t, createApp({ logger: () => {} }));
   const response = await fetch(`${base}/`);
   assert.equal(response.status, 200);
   const body = await readEnvelope(response);
@@ -91,7 +91,7 @@ test("the production app returns a standard success envelope and a matching requ
 });
 
 test("unmatched paths and methods return JSON 404s without reflecting input", async (t) => {
-  const base = await serve(t, createApp());
+  const base = await serve(t, createApp({ logger: () => {} }));
   for (const [path, method] of [
     ["/missing?secret=DO_NOT_ECHO", "GET"],
     ["/", "DELETE"],
@@ -107,7 +107,7 @@ test("unmatched paths and methods return JSON 404s without reflecting input", as
 });
 
 test("request IDs are server-generated, distinct across concurrent requests, and independent of client headers", async (t) => {
-  const base = await serve(t, createApp());
+  const base = await serve(t, createApp({ logger: () => {} }));
   const supplied = "00000000-0000-4000-8000-000000000000";
   const bodies = await Promise.all(
     Array.from({ length: 10 }, async () => {
@@ -123,7 +123,7 @@ test("request IDs are server-generated, distinct across concurrent requests, and
 });
 
 test("HEAD responses preserve HTTP semantics and carry the request ID in their header", async (t) => {
-  const base = await serve(t, createApp());
+  const base = await serve(t, createApp({ logger: () => {} }));
   const response = await fetch(`${base}/`, { method: "HEAD" });
   assert.equal(response.status, 200);
   assert.match(response.headers.get("x-request-id"), uuid);
@@ -131,7 +131,7 @@ test("HEAD responses preserve HTTP semantics and carry the request ID in their h
 });
 
 test("JSON parser failures use safe standard envelopes and request IDs", async (t) => {
-  const base = await serve(t, createApp());
+  const base = await serve(t, createApp({ logger: () => {} }));
   const cases = [
     {
       body: '{"secret":"DO_NOT_ECHO"',

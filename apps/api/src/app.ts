@@ -1,18 +1,59 @@
 import express from "express";
+import type { HealthResponse } from "@b2b-portal/contracts";
+import { createHealthReporter, type HealthChecks } from "./health.js";
+import { createLogger, type Logger, requestLogging } from "./logging.js";
 import {
   errorHandler,
   notFoundHandler,
+  requestIdFor,
   requestIdMiddleware,
   sendSuccess,
 } from "./http.js";
 
-export function createApp() {
+interface AppOptions {
+  logger?: Logger;
+  healthChecks?: HealthChecks;
+  healthTimeoutMs?: number;
+}
+
+export function createApp(options: AppOptions = {}) {
+  const logger = options.logger ?? createLogger();
+  const reportHealth = createHealthReporter(
+    options.healthChecks,
+    options.healthTimeoutMs,
+  );
   const app = express();
   app.use(requestIdMiddleware);
+  app.use(requestLogging(logger));
   app.use(express.json());
 
   app.get("/", (_request, response) => {
     sendSuccess(response, { service: "b2b-portal-api" });
+  });
+
+  app.get("/health", async (_request, response) => {
+    response.setHeader("Cache-Control", "no-store");
+    const health = await reportHealth();
+    const requestId = requestIdFor(response);
+    logger(health.status === "up" ? "info" : "warn", {
+      event: "health.checked",
+      requestId,
+      health,
+    });
+    if (health.status === "up") {
+      sendSuccess(response, health);
+      return;
+    }
+    const body: HealthResponse = {
+      success: false,
+      error: {
+        code: "SERVICE_NOT_READY",
+        message: "Required dependencies are not ready.",
+        details: health,
+      },
+      requestId,
+    };
+    response.status(503).json(body);
   });
 
   app.use(notFoundHandler);

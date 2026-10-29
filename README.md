@@ -114,25 +114,84 @@ public HTTP errors; never pass an internal error message into that constructor.
 Unexpected server failures return a generic 500 without stacks or internal fields.
 JSON parsing errors and unmatched routes use the standard error envelope too.
 
-`createApp` installs request IDs before the JSON parser, then routes, a JSON
+`createApp` installs request IDs and request logging before the JSON parser, then routes, a JSON
 404 handler, and the final error handler. Express 5 forwards rejected route
 promises to that handler. The separate Mock ERP retains its external response
-format. Logging and health endpoints remain with B2B-005.
+format.
+
+## API logging and health
+
+The portal API writes one JSON object per line: info/warn records to stdout,
+error records to stderr. Records include an ISO timestamp, level, event, and
+service. Startup success and configuration/listener failures are logged;
+invalid configuration diagnostics contain only variable names and rules.
+
+Each completed HTTP request logs its server-generated request ID, method,
+status code, and elapsed milliseconds. 4xx responses are warnings; 5xx responses
+are errors. A disconnected response logs a warning with `outcome: "aborted"`
+and no misleading status code. It is logged only once. URLs (including path
+parameters and queries), headers, bodies, raw error messages, and stacks are
+not logged. There are no transactions yet; transaction correlation belongs
+with the future transaction workflows, not a client-supplied header.
+
+`GET /health` (also `HEAD`) reports API, storage, and ERP state. It is a
+readiness diagnostic, not just a process-liveness check:
+
+- HTTP 200: `success: true`, with the health report in `data`; all components are up.
+- HTTP 503: `success: false`, error code `SERVICE_NOT_READY`, with the report in
+  `error.details`. The API is up, but at least one dependency is not ready.
+
+For example, the current default response is:
+
+```json
+{
+  "success": false,
+  "error": {
+    "code": "SERVICE_NOT_READY",
+    "message": "Required dependencies are not ready.",
+    "details": {
+      "status": "degraded",
+      "api": { "status": "up" },
+      "storage": { "status": "unconfigured" },
+      "erp": { "status": "unconfigured" }
+    }
+  },
+  "requestId": "e15a9830-a8f1-466c-9542-8560faec73c4"
+}
+```
+
+Storage/ERP statuses are `up`, `down`, `timeout`, or `unconfigured`. The current
+entry point has no storage adapter or ERP gateway, so both are intentionally
+`unconfigured` and readiness is 503 even if the separate Mock ERP is running.
+This issue does not add those integrations or silently switch storage providers.
+Do not configure `/health` as a restart/liveness trigger while they are absent.
+
+Future adapters can supply read-only `healthChecks.storage` and
+`healthChecks.erp` probes to `createApp`. A probe receives an `AbortSignal` and
+resolves `true` only when usable. Checks run concurrently on every health
+request, with a 1000 ms deadline per dependency (overridable through
+`healthTimeoutMs` in the app factory). Missing probes are unconfigured;
+false/invalid results and thrown/rejected errors are down. A deadline reports
+timeout and aborts the probe; adapters must honor the signal to stop their
+underlying I/O. No provider details or exception text are returned or logged.
+Health reports are not cached (`Cache-Control: no-store`) and produce a
+`health.checked` JSON log with the same request ID. Shared `HealthReport` and
+`HealthResponse` types are exported from `@b2b-portal/contracts`.
 
 ## Shared tooling
 
 Run these commands from the repository root:
 
-| Command                | Purpose                                                                     |
-| ---------------------- | --------------------------------------------------------------------------- |
-| `npm run build`        | Build all six workspaces                                                    |
-| `npm run typecheck`    | Type-check all six workspaces; services first build their config dependency |
-| `npm run lint`         | Check JavaScript and TypeScript with ESLint; warnings fail the check        |
-| `npm run lint:fix`     | Apply available ESLint fixes                                                |
-| `npm run format:check` | Check formatting with Prettier                                              |
-| `npm run format`       | Apply Prettier formatting                                                   |
-| `npm test`             | Build all workspaces and run environment and API response tests             |
-| `npm run check`        | Run formatting, linting, type checks, builds, and tests in sequence         |
+| Command                | Purpose                                                                           |
+| ---------------------- | --------------------------------------------------------------------------------- |
+| `npm run build`        | Build all six workspaces                                                          |
+| `npm run typecheck`    | Type-check all six workspaces; services first build their config dependency       |
+| `npm run lint`         | Check JavaScript and TypeScript with ESLint; warnings fail the check              |
+| `npm run lint:fix`     | Apply available ESLint fixes                                                      |
+| `npm run format:check` | Check formatting with Prettier                                                    |
+| `npm run format`       | Apply Prettier formatting                                                         |
+| `npm test`             | Build all workspaces and run environment, API response, logging, and health tests |
+| `npm run check`        | Run formatting, linting, type checks, builds, and tests in sequence               |
 
 Every workspace also exposes `build`, `typecheck`, `lint`, `lint:fix`, `format`,
 and `format:check`. Target any of them with `--workspace`, for example:
@@ -164,5 +223,5 @@ TypeScript is pinned to 6.0.3 to stay within the supported range of
 `typescript-eslint` 8.72.1 (`>=4.8.4 <6.1.0`). Keep those dependencies compatible
 when upgrading; use `npm ci` to install the committed lockfile.
 
-Health checks, ERP scenarios, application workflows, and the
+ERP scenarios, application workflows, and the
 designed frontend shell belong to later issues.
