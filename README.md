@@ -234,3 +234,7 @@ TypeScript is pinned to 6.0.3 to stay within the supported range of
 when upgrading; use `npm ci` to install the committed lockfile.
 
 ERP scenarios and application workflows belong to later issues.
+
+The API's initial company/user/catalog/order repository contracts and injected
+application query services are documented in [the API README](apps/api/README.md).
+They are backend-only read ports, not concrete storage adapters or new HTTP routes.
