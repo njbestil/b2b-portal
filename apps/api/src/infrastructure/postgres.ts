@@ -14,7 +14,7 @@ export function createPostgres(
   pool.on("error", () => logger("error", { event: "postgres.pool_error" }));
   let closing: Promise<void> | undefined;
 
-  const health: HealthProbe = async (signal) => {
+  const probe = async (signal: AbortSignal, sql: string): Promise<boolean> => {
     if (closing || signal.aborted) return false;
     let client: PoolClient | undefined;
     let released = false;
@@ -41,7 +41,7 @@ export function createPostgres(
         release(true);
         return false;
       }
-      await client.query("SELECT 1");
+      await client.query(sql);
       return !signal.aborted && !closing && !connectionFailed;
     } catch {
       release(true);
@@ -53,9 +53,12 @@ export function createPostgres(
     }
   };
 
+  const health: HealthProbe = (signal) => probe(signal, "SELECT 1");
   return {
     pool,
     health,
+    /** Infrastructure-owned read-only SQL only; never HTTP caller input. */
+    probe,
     close(): Promise<void> {
       closing ??= pool.end();
       return closing;

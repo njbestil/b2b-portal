@@ -362,14 +362,13 @@ test("actual entry point logs listen failures safely instead of raw network erro
   t.after(() => child.kill());
   const [code] = await closed;
   assert.equal(code, 1);
+  const records = stdout.trim().split("\n").map(JSON.parse);
   assert.deepEqual(
-    stdout
-      .trim()
-      .split("\n")
-      .map(JSON.parse)
-      .map((entry) => entry.event),
-    ["api.stopping", "api.stopped"],
+    records.map((entry) => entry.event),
+    ["storage.selected", "api.stopping", "api.stopped"],
   );
+  assert.equal(records[0].provider, "json");
+  assert.equal(records[0].reason, "postgres_unconfigured");
   const record = JSON.parse(stderr);
   assert.equal(record.event, "api.start_failed");
   assert.equal(record.reason, "listen_failed");

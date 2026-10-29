@@ -1,4 +1,8 @@
-import type { DependencyHealth, HealthReport } from "@b2b-portal/contracts";
+import type {
+  DependencyHealth,
+  HealthReport,
+  StorageProvider,
+} from "@b2b-portal/contracts";
 
 // Adapters supply read-only probes once implemented; absence is not success.
 export type HealthProbe = (signal: AbortSignal) => Promise<boolean>;
@@ -39,6 +43,7 @@ async function checkDependency(
 export function createHealthReporter(
   checks: HealthChecks = {},
   timeoutMs = 1000,
+  storageProvider?: StorageProvider,
 ): () => Promise<HealthReport> {
   if (!Number.isInteger(timeoutMs) || timeoutMs < 1 || timeoutMs > 60_000) {
     throw new RangeError(
@@ -53,7 +58,10 @@ export function createHealthReporter(
     return {
       status: storage === "up" && erp === "up" ? "up" : "degraded",
       api: { status: "up" },
-      storage: { status: storage },
+      storage: {
+        status: storage,
+        ...(storageProvider ? { provider: storageProvider } : {}),
+      },
       erp: { status: erp },
     };
   };

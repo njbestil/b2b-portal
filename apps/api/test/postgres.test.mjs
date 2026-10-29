@@ -326,7 +326,7 @@ test("actual entry point rejects invalid PostgreSQL configuration safely", () =>
   assert.ok(!child.stderr.includes("DO_NOT_LEAK"));
 });
 
-test("actual entry point wires failed pool health without JSON fallback or secrets", async (t) => {
+test("actual entry point selects JSON for unavailable PostgreSQL without exposing secrets", async (t) => {
   const databasePort = await tcpServer(t, (socket) => socket.destroy());
   const portServer = createServer();
   portServer.listen(0, "127.0.0.1");
@@ -366,6 +366,7 @@ test("actual entry point wires failed pool health without JSON fallback or secre
   assert.equal(response.status, 503);
   const body = await response.json();
   assert.equal(body.error.details.storage.status, "down");
+  assert.equal(body.error.details.storage.provider, "json");
   assert.equal(body.error.details.erp.status, "unconfigured");
   assert.ok(!JSON.stringify({ body, output }).includes("DO_NOT_LEAK"));
 });

@@ -219,6 +219,7 @@ for (const service of services) {
         : validEnvironment(service, {
             [`${service.prefix}_PORT`]: String(port),
           });
+      environment.JSON_DATA_DIR = join(directory, "missing-json-data");
       const child = spawn(
         process.execPath,
         [`--env-file-if-exists=${envPath}`, entryPoint(service)],
@@ -274,7 +275,8 @@ for (const service of services) {
         assert.equal(healthResponse.status, 503);
         const healthBody = await healthResponse.json();
         assert.equal(healthBody.error.details.api.status, "up");
-        assert.equal(healthBody.error.details.storage.status, "unconfigured");
+        assert.equal(healthBody.error.details.storage.status, "down");
+        assert.equal(healthBody.error.details.storage.provider, "json");
         assert.equal(healthBody.error.details.erp.status, "unconfigured");
         let logs = [];
         for (let attempt = 0; attempt < 100; attempt++) {
@@ -294,7 +296,8 @@ for (const service of services) {
             (entry) =>
               entry.event === "health.checked" &&
               entry.requestId === healthBody.requestId &&
-              entry.health.storage.status === "unconfigured" &&
+              entry.health.storage.status === "down" &&
+              entry.health.storage.provider === "json" &&
               entry.health.erp.status === "unconfigured",
           ),
         );

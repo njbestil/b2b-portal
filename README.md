@@ -154,7 +154,7 @@ readiness diagnostic, not just a process-liveness check:
 - HTTP 503: `success: false`, error code `SERVICE_NOT_READY`, with the report in
   `error.details`. The API is up, but at least one dependency is not ready.
 
-For example, the current default response is:
+For example, an unseeded JSON store with ERP unconfigured returns:
 
 ```json
 {
@@ -165,7 +165,7 @@ For example, the current default response is:
     "details": {
       "status": "degraded",
       "api": { "status": "up" },
-      "storage": { "status": "unconfigured" },
+      "storage": { "status": "down", "provider": "json" },
       "erp": { "status": "unconfigured" }
     }
   },
@@ -174,28 +174,33 @@ For example, the current default response is:
 ```
 
 Storage/ERP statuses are `up`, `down`, `timeout`, or `unconfigured`. Without
-`DATABASE_URL`, storage is `unconfigured`. With a URL, the API probes its shared
-PostgreSQL pool with `SELECT 1`; `up` means connection availability, not completed
-migrations or business repositories. Without `ERP_BASE_URL`, ERP is `unconfigured`.
+`DATABASE_URL`, startup selects JSON. Configured/reachable PostgreSQL is preferred;
+otherwise JSON is selected once for the process. `storage.provider` exposes that
+choice. Selected SQL readiness checks current repository schema; JSON readiness
+validates the six existing files. Missing/corrupt data or a missing schema reports
+down, without changing provider. Without `ERP_BASE_URL`, ERP is `unconfigured`.
 With a URL, the gateway checks the Mock ERP's `/mock-erp/v1/health` endpoint. Both
 dependencies must be configured and available for overall readiness to be 200;
 otherwise it remains 503. Availability does not establish business-data readiness.
-No JSON fallback or provider selection is implemented here. Do not configure
+See [startup storage selection](docs/adr/002-startup-storage-selection.md) for
+`JSON_DATA_DIR`, startup deadlines and the no-runtime-failover policy. Startup
+does not seed JSON data or run migrations. Do not configure
 `/health` as a restart/liveness trigger while required integrations are absent.
 
 `SIGINT`/`SIGTERM` stop the HTTP listener, drain active requests, then close the
-PostgreSQL pool. Repeated shutdown requests reuse the same cleanup. The 10-second
+selected or retiring storage. Repeated shutdown requests reuse the same cleanup. The 10-second
 deadline forces connection closure and exit code 1 if cleanup hangs; errors produce
 redacted structured events. See [pool lifecycle and verification](docs/postgresql.md).
 
-Future adapters can supply read-only `healthChecks.storage` and
+Adapters supply read-only `healthChecks.storage` and
 `healthChecks.erp` probes to `createApp`. A probe receives an `AbortSignal` and
 resolves `true` only when usable. Checks run concurrently on every health
 request, with a 1000 ms deadline per dependency (overridable through
 `healthTimeoutMs` in the app factory). Missing probes are unconfigured;
 false/invalid results and thrown/rejected errors are down. A deadline reports
 timeout and aborts the probe; adapters must honor the signal to stop their
-underlying I/O. No provider details or exception text are returned or logged.
+underlying I/O. Only the selected provider name is exposed, never database URLs,
+JSON paths or exception text.
 Health reports are not cached (`Cache-Control: no-store`) and produce a
 `health.checked` JSON log with the same request ID. Shared `HealthReport` and
 `HealthResponse` types are exported from `@b2b-portal/contracts`.
@@ -253,8 +258,10 @@ They are backend-only read ports, not concrete storage adapters or new HTTP rout
 
 PostgreSQL schema changes use the explicit [migration runner](docs/migrations.md):
 `npm run migrate --workspace=@b2b-portal/api`. Nothing migrates during API startup.
-The runner is available; MVP business-schema migrations remain separate work.
+The initial MVP schema is included; applying it still requires an explicitly
+reviewed and authorized database target.
 
 The API's [JSON storage engine](docs/json-storage.md) implements its existing read
-repository ports using separate validated entity/cache files. Startup provider
-selection and demo seed/reset remain separate; API startup behavior is unchanged.
+repository ports using separate validated entity/cache files. B2B-012 composes
+those ports or their PostgreSQL counterparts once during startup; demo seed/reset
+remains separate. A new JSON directory is intentionally unready until populated.

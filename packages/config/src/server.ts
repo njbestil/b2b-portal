@@ -73,6 +73,40 @@ export interface PostgresEnvironment {
   readonly statement_timeout: number;
 }
 
+/** API-only storage selection settings, with diagnostics limited to names/rules. */
+export function parseStorageEnvironment(
+  environment: Readonly<Record<string, string | undefined>>,
+) {
+  const text = environment.JSON_DATA_DIR;
+  const jsonDataDir =
+    text === undefined || text.trim() === "" ? undefined : text;
+  const timeout = environment.STORAGE_STARTUP_TIMEOUT_MS ?? "1000";
+  const startupTimeoutMs = Number(timeout);
+  const problems: string[] = [];
+  if (
+    jsonDataDir &&
+    (jsonDataDir !== jsonDataDir.trim() ||
+      [...jsonDataDir].some(
+        (character) =>
+          character.charCodeAt(0) < 32 || character.charCodeAt(0) === 127,
+      ))
+  )
+    problems.push(
+      "JSON_DATA_DIR must be a path without surrounding whitespace or control characters",
+    );
+  if (
+    !/^\d+$/.test(timeout) ||
+    !Number.isInteger(startupTimeoutMs) ||
+    startupTimeoutMs < 1 ||
+    startupTimeoutMs > 60_000
+  )
+    problems.push(
+      "STORAGE_STARTUP_TIMEOUT_MS must be an integer between 1 and 60000",
+    );
+  if (problems.length) throw new EnvironmentConfigurationError(problems);
+  return { jsonDataDir, startupTimeoutMs };
+}
+
 export interface ErpEnvironment {
   readonly baseUrl: string;
   readonly timeoutMs: number;

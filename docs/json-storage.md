@@ -104,9 +104,12 @@ real isolated temporary directories for persistence/reopen, all seven port metho
 injected application consumers, company isolation, pricing boundaries, validation,
 exact decimals, detached values, concurrent publication and filesystem failures.
 A compile-only fixture verifies compatibility with current repository interfaces.
-No PostgreSQL parity result is claimed: SQL repository adapters do not yet exist.
+The B2B-012 selection tests now compare the current read ports against real
+PostgreSQL when the disposable-database opt-in is supplied; this is not coverage
+of future full-entity/business write implementations.
 
-Startup provider selection (B2B-012), demo seed/reset (B2B-013), ERP catalog sync
+Startup selection is implemented separately by [B2B-012](adr/002-startup-storage-selection.md).
+Demo seed/reset (B2B-013), ERP catalog sync
 (B2B-034), authentication and later business write ports remain separate issues.
 The tests use fixtures; no demo dataset or populated application data is shipped.
 
