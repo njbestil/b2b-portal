@@ -14,6 +14,11 @@ type LogEvent =
   | { event: "health.checked"; requestId: string; health: HealthReport }
   | { event: "api.started"; api: "up" }
   | { event: "postgres.pool_error" }
+  | { event: "migrations.completed"; applied: number; skipped: number }
+  | {
+      event: "migrations.failed";
+      reason: "invalid_environment" | "migration_failed";
+    }
   | { event: "api.stopping"; reason: "SIGINT" | "SIGTERM" | "listen_failed" }
   | { event: "api.stopped" }
   | { event: "api.shutdown_failed"; reason: "timeout" | "cleanup_failed" }
