@@ -48,8 +48,9 @@ it, or call it directly from the frontend. CORS is not enabled and is not an
 authentication mechanism. ERP remains the commercial source of truth.
 
 The Portal API's current `ErpGateway` still supports health only; no business method
-or portal persistence is added here. Catalog synchronization (B2B-034), order
-submission (B2B-049), scenario controls and demo portal seed/reset are separate.
+or portal persistence is added here. [Mock order creation](mock-erp-orders.md) is
+implemented separately by B2B-049. Catalog synchronization (B2B-034), portal order
+submission (B2B-050), scenario controls and demo portal seed/reset remain separate.
 
 Run `npm test --workspace=@b2b-portal/mock-erp` for fixture/reference integrity,
 boundary scenarios, detached snapshots and real HTTP read-only behavior. Root

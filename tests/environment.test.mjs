@@ -317,6 +317,27 @@ for (const service of services) {
         const { createMasterData } =
           await import("../apps/mock-erp/dist/master-data.js");
         assert.deepEqual(await masterData.json(), createMasterData());
+        const orderUrl = `http://127.0.0.1:${port}/mock-erp/v1/orders`;
+        const orderRequest = {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Idempotency-Key": "startup-test",
+          },
+          body: JSON.stringify({
+            portalOrderId: "12345678-1234-1234-1234-123456789abc",
+            customerId: "DEMO-C001",
+            items: [{ productId: "DEMO-P001", quantity: "2" }],
+          }),
+        };
+        const created = await fetch(orderUrl, orderRequest);
+        assert.equal(created.status, 201);
+        const createdOrder = await created.json();
+        assert.equal(createdOrder.status, "created");
+        assert.match(createdOrder.erpOrderId, /^[\da-f-]{36}$/);
+        const replay = await fetch(orderUrl, orderRequest);
+        assert.equal(replay.status, 200);
+        assert.deepEqual(await replay.json(), createdOrder);
       }
     });
   }
