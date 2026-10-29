@@ -2,7 +2,7 @@ import type { ApiFailure, ApiSuccess } from "@b2b-portal/contracts";
 import { randomUUID } from "node:crypto";
 import type { ErrorRequestHandler, RequestHandler, Response } from "express";
 
-function requestIdFor(response: Response): string {
+export function requestIdFor(response: Response): string {
   const existing: unknown = response.locals.requestId;
   if (typeof existing === "string") {
     return existing;

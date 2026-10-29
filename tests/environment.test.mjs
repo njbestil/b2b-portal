@@ -225,18 +225,22 @@ for (const service of services) {
         {
           cwd: join(repository, "apps", service.name),
           env: processEnvironment(environment),
-          stdio: ["ignore", "ignore", "pipe"],
+          stdio: ["ignore", "pipe", "pipe"],
           windowsHide: true,
         },
       );
       const closed = new Promise((resolve) => child.once("close", resolve));
       let childError;
       let stderr = "";
+      let stdout = "";
       child.on("error", (error) => {
         childError = error;
       });
       child.stderr.on("data", (chunk) => {
         stderr += chunk;
+      });
+      child.stdout.on("data", (chunk) => {
+        stdout += chunk;
       });
       t.after(async () => {
         child.kill();
@@ -264,6 +268,37 @@ for (const service of services) {
           data: { service: service.response },
           requestId: response.headers.get("x-request-id"),
         });
+        const healthResponse = await fetch(`http://127.0.0.1:${port}/health`, {
+          signal: AbortSignal.timeout(1000),
+        });
+        assert.equal(healthResponse.status, 503);
+        const healthBody = await healthResponse.json();
+        assert.equal(healthBody.error.details.api.status, "up");
+        assert.equal(healthBody.error.details.storage.status, "unconfigured");
+        assert.equal(healthBody.error.details.erp.status, "unconfigured");
+        let logs = [];
+        for (let attempt = 0; attempt < 100; attempt++) {
+          logs = stdout
+            .slice(0, stdout.lastIndexOf("\n") + 1)
+            .trim()
+            .split("\n")
+            .filter(Boolean)
+            .map(JSON.parse);
+          if (logs.some((entry) => entry.requestId === healthBody.requestId))
+            break;
+          await setTimeout(10);
+        }
+        assert.ok(logs.some((entry) => entry.event === "api.started"));
+        assert.ok(
+          logs.some(
+            (entry) =>
+              entry.event === "health.checked" &&
+              entry.requestId === healthBody.requestId &&
+              entry.health.storage.status === "unconfigured" &&
+              entry.health.erp.status === "unconfigured",
+          ),
+        );
+        assert.ok(logs.every((entry) => entry.service === "b2b-portal-api"));
       } else {
         assert.deepEqual(body, { service: service.response });
       }
