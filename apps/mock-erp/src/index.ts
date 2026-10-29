@@ -12,6 +12,11 @@ try {
     response.json({ service: "b2b-portal-mock-erp" });
   });
 
+  app.get("/mock-erp/v1/health", (_request, response) => {
+    response.setHeader("Cache-Control", "no-store");
+    response.json({ status: "up" });
+  });
+
   app.listen(config.port, config.host);
 } catch (error) {
   if (!(error instanceof EnvironmentConfigurationError)) {

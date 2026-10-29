@@ -86,8 +86,10 @@ address such as `0.0.0.0` when the deployment requires it.
 The API optionally consumes `DATABASE_URL` and bounded pool settings described in
 [PostgreSQL infrastructure](docs/postgresql.md). Without a URL, database-free
 startup remains supported. The web shell consumes no custom connection variables.
-Authentication and ERP settings belong to their consuming features. Keep real
-`.env` files untracked; only `.env.example` is committed.
+The optional backend-only `ERP_BASE_URL` connects the ERP gateway to the Mock ERP;
+see [ERP gateway configuration and scope](docs/erp-gateway.md). Authentication
+settings belong to their consuming feature. Keep real `.env` files untracked;
+only `.env.example` is committed.
 
 ## API response conventions
 
@@ -174,8 +176,10 @@ For example, the current default response is:
 Storage/ERP statuses are `up`, `down`, `timeout`, or `unconfigured`. Without
 `DATABASE_URL`, storage is `unconfigured`. With a URL, the API probes its shared
 PostgreSQL pool with `SELECT 1`; `up` means connection availability, not completed
-migrations or business repositories. ERP remains `unconfigured`, so overall
-readiness is still 503 even when PostgreSQL and the separate Mock ERP are running.
+migrations or business repositories. Without `ERP_BASE_URL`, ERP is `unconfigured`.
+With a URL, the gateway checks the Mock ERP's `/mock-erp/v1/health` endpoint. Both
+dependencies must be configured and available for overall readiness to be 200;
+otherwise it remains 503. Availability does not establish business-data readiness.
 No JSON fallback or provider selection is implemented here. Do not configure
 `/health` as a restart/liveness trigger while required integrations are absent.
 

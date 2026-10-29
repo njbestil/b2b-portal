@@ -41,8 +41,9 @@ events, discarding broken connections instead of allowing unhandled socket error
 
 The existing `/health` reporter bounds each dependency to 1000 ms. Deadline expiry
 reports `timeout` and aborts the probe; connection/query failures report `down`.
-Subsequent checks probe afresh. With no URL, storage is `unconfigured`. ERP is still
-unconfigured, so the production entry point remains overall degraded/503.
+Subsequent checks probe afresh. With no URL, storage is `unconfigured`.
+The separate [ERP gateway](erp-gateway.md) must also be configured and available
+for overall readiness to be 200; otherwise the API remains degraded/503.
 `SELECT 1` does not establish schema, migration or repository readiness.
 
 Runtime failures never switch to JSON, and this work does not select a persistence

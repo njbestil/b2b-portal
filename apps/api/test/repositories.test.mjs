@@ -331,7 +331,13 @@ test("repository ports and application queries have no infrastructure imports", 
       for (const declaration of imports) {
         const target = declaration.moduleSpecifier.text;
         assert.ok(
-          target.startsWith("./") || target.startsWith("../repositories/"),
+          target.startsWith("./") ||
+            target.startsWith("../repositories/") ||
+            (directory === "services" &&
+              ["../integrations/erp-gateway.js", "../health.js"].includes(
+                target,
+              ) &&
+              declaration.importClause?.isTypeOnly),
           `${name}: unexpected dependency ${target}`,
         );
         if (directory === "repositories")

@@ -301,6 +301,13 @@ for (const service of services) {
         assert.ok(logs.every((entry) => entry.service === "b2b-portal-api"));
       } else {
         assert.deepEqual(body, { service: service.response });
+        const erpHealth = await fetch(
+          `http://127.0.0.1:${port}/mock-erp/v1/health`,
+          { signal: AbortSignal.timeout(1000) },
+        );
+        assert.equal(erpHealth.status, 200);
+        assert.equal(erpHealth.headers.get("cache-control"), "no-store");
+        assert.deepEqual(await erpHealth.json(), { status: "up" });
       }
     });
   }
