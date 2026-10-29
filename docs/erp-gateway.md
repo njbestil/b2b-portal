@@ -11,7 +11,8 @@ adapter. A future real ERP adapter can implement the same interface.
 ## Deliberate scope
 
 This is an availability foundation, not a completed commercial ERP API. Mock
-master data (B2B-032), catalog synchronization (B2B-034), order submission,
+master data is now seeded separately by [B2B-032](mock-erp-master-data.md).
+Catalog synchronization (B2B-034), order submission,
 idempotency, retries, cancellations and invoices remain separate issues. Extend
 the port with typed business operations as their endpoints/workflows are built.
 There are no fake successes, empty master-data responses or invented order methods
@@ -77,5 +78,6 @@ Tests cover structural alternate gateways, compile-time rejection of provider
 payloads, configuration/redaction, URL prefix handling, response validation/size,
 redirect refusal, stalled headers/body, caller cancellation, safe API envelopes
 and real Mock ERP/API processes. Existing environment tests also verify the Mock
-health route while retaining its standalone root response. No business endpoints,
-mock master data, real ERP access, migrations or deployment are introduced here.
+health route while retaining its standalone root response. The gateway remains
+health-only; the separate Mock master-data snapshot does not add real ERP access,
+business gateway methods, migrations or deployment.

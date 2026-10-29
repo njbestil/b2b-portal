@@ -6,11 +6,12 @@
   "scripts": {
     "build": "npm run build --workspace=@b2b-portal/config && tsc",
     "typecheck": "npm run build --workspace=@b2b-portal/config && tsc --noEmit",
-    "lint": "eslint src --max-warnings=0",
+    "lint": "eslint src test --max-warnings=0",
     "lint:fix": "npm run lint -- --fix",
     "format": "prettier . --ignore-path ../../.prettierignore --write",
     "format:check": "prettier . --ignore-path ../../.prettierignore --check",
-    "start": "node --env-file-if-exists=../../.env dist/index.js"
+    "start": "node --env-file-if-exists=../../.env dist/index.js",
+    "test": "npm run build && node --test test/*.test.mjs"
   },
   "dependencies": {
     "@b2b-portal/config": "0.0.0",
