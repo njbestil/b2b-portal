@@ -19,14 +19,14 @@ and are ignored by Git.
 
 ## Workspaces
 
-| Directory             | Package                  | Purpose                                         |
-| --------------------- | ------------------------ | ----------------------------------------------- |
-| `apps/web`            | `@b2b-portal/web`        | Minimal React/TypeScript browser entry point    |
-| `apps/api`            | `@b2b-portal/api`        | Minimal Express/TypeScript API entry point      |
-| `apps/mock-erp`       | `@b2b-portal/mock-erp`   | Minimal Express/TypeScript Mock ERP entry point |
-| `packages/contracts`  | `@b2b-portal/contracts`  | Shared API response types                       |
-| `packages/validation` | `@b2b-portal/validation` | Reserved shared validation module               |
-| `packages/config`     | `@b2b-portal/config`     | Shared server environment validation            |
+| Directory             | Package                  | Purpose                                            |
+| --------------------- | ------------------------ | -------------------------------------------------- |
+| `apps/web`            | `@b2b-portal/web`        | React/TypeScript shell, routing, and design system |
+| `apps/api`            | `@b2b-portal/api`        | Minimal Express/TypeScript API entry point         |
+| `apps/mock-erp`       | `@b2b-portal/mock-erp`   | Minimal Express/TypeScript Mock ERP entry point    |
+| `packages/contracts`  | `@b2b-portal/contracts`  | Shared API response types                          |
+| `packages/validation` | `@b2b-portal/validation` | Reserved shared validation module                  |
+| `packages/config`     | `@b2b-portal/config`     | Shared server environment validation               |
 
 The validation package is a placeholder. The config package
 exposes server environment validation through `@b2b-portal/config/server`;
@@ -46,12 +46,22 @@ npm start --workspace=@b2b-portal/api
 npm start --workspace=@b2b-portal/mock-erp
 ```
 
-Their placeholder root responses are available at `http://127.0.0.1:3000/` and
-`http://127.0.0.1:3001/`. Preview the built web app with:
+Their root responses are available at `http://127.0.0.1:3000/` and
+`http://127.0.0.1:3001/`. Run the web shell locally with:
+
+```sh
+npm run dev --workspace=@b2b-portal/web
+```
+
+Or preview the built web app with:
 
 ```sh
 npm run preview --workspace=@b2b-portal/web
 ```
+
+See [the web README](apps/web/README.md) for shell routes, role previews,
+design-reference scope, and static-host routing requirements. The shell has no
+live authentication or business data; its role selector is not authorization.
 
 ## Environment configuration
 
@@ -182,16 +192,16 @@ Health reports are not cached (`Cache-Control: no-store`) and produce a
 
 Run these commands from the repository root:
 
-| Command                | Purpose                                                                           |
-| ---------------------- | --------------------------------------------------------------------------------- |
-| `npm run build`        | Build all six workspaces                                                          |
-| `npm run typecheck`    | Type-check all six workspaces; services first build their config dependency       |
-| `npm run lint`         | Check JavaScript and TypeScript with ESLint; warnings fail the check              |
-| `npm run lint:fix`     | Apply available ESLint fixes                                                      |
-| `npm run format:check` | Check formatting with Prettier                                                    |
-| `npm run format`       | Apply Prettier formatting                                                         |
-| `npm test`             | Build all workspaces and run environment, API response, logging, and health tests |
-| `npm run check`        | Run formatting, linting, type checks, builds, and tests in sequence               |
+| Command                | Purpose                                                                     |
+| ---------------------- | --------------------------------------------------------------------------- |
+| `npm run build`        | Build all six workspaces                                                    |
+| `npm run typecheck`    | Type-check all six workspaces; services first build their config dependency |
+| `npm run lint`         | Check JavaScript and TypeScript with ESLint; warnings fail the check        |
+| `npm run lint:fix`     | Apply available ESLint fixes                                                |
+| `npm run format:check` | Check formatting with Prettier                                              |
+| `npm run format`       | Apply Prettier formatting                                                   |
+| `npm test`             | Build all workspaces and run environment, API, and web shell tests          |
+| `npm run check`        | Run formatting, linting, type checks, builds, and tests in sequence         |
 
 Every workspace also exposes `build`, `typecheck`, `lint`, `lint:fix`, `format`,
 and `format:check`. Target any of them with `--workspace`, for example:
@@ -223,5 +233,4 @@ TypeScript is pinned to 6.0.3 to stay within the supported range of
 `typescript-eslint` 8.72.1 (`>=4.8.4 <6.1.0`). Keep those dependencies compatible
 when upgrading; use `npm ci` to install the committed lockfile.
 
-ERP scenarios, application workflows, and the
-designed frontend shell belong to later issues.
+ERP scenarios and application workflows belong to later issues.

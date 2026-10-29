@@ -1,5 +1,8 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
+import { BrowserRouter } from "react-router";
+import { App } from "./app";
+import "./styles.css";
 
 const root = document.getElementById("root");
 
@@ -9,9 +12,8 @@ if (!root) {
 
 createRoot(root).render(
   <StrictMode>
-    <main>
-      <h1>B2B Portal</h1>
-      <p>Welcome to the B2B Portal.</p>
-    </main>
+    <BrowserRouter>
+      <App />
+    </BrowserRouter>
   </StrictMode>,
 );
