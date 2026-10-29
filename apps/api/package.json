@@ -15,11 +15,13 @@
   },
   "dependencies": {
     "@b2b-portal/config": "0.0.0",
-    "express": "5.3.0"
+    "express": "5.3.0",
+    "pg": "8.23.1"
   },
   "devDependencies": {
     "@b2b-portal/contracts": "0.0.0",
     "@types/express": "5.0.6",
-    "@types/node": "24.19.2"
+    "@types/node": "24.19.2",
+    "@types/pg": "8.23.1"
   }
 }

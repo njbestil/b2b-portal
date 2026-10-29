@@ -13,6 +13,10 @@ type LogEvent =
     }
   | { event: "health.checked"; requestId: string; health: HealthReport }
   | { event: "api.started"; api: "up" }
+  | { event: "postgres.pool_error" }
+  | { event: "api.stopping"; reason: "SIGINT" | "SIGTERM" | "listen_failed" }
+  | { event: "api.stopped" }
+  | { event: "api.shutdown_failed"; reason: "timeout" | "cleanup_failed" }
   | {
       event: "api.start_failed";
       reason: "invalid_environment" | "listen_failed";
