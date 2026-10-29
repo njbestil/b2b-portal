@@ -1,11 +1,14 @@
 import {
   EnvironmentConfigurationError,
+  parseErpEnvironment,
   parsePostgresEnvironment,
   parseServerEnvironment,
 } from "@b2b-portal/config/server";
 import { createApp } from "./app.js";
 import { createLogger } from "./logging.js";
 import { createPostgres } from "./infrastructure/postgres.js";
+import { MockErpAdapter } from "./infrastructure/mock-erp-adapter.js";
+import { createErpHealthProbe } from "./services/erp-health.js";
 import { createShutdown, type ShutdownReason } from "./shutdown.js";
 
 const logger = createLogger();
@@ -13,12 +16,18 @@ const logger = createLogger();
 try {
   const config = parseServerEnvironment("api", process.env);
   const postgresConfig = parsePostgresEnvironment(process.env);
+  const erpConfig = parseErpEnvironment(process.env);
   const postgres = postgresConfig
     ? createPostgres(postgresConfig, logger)
     : undefined;
   const app = createApp({
     logger,
-    healthChecks: { storage: postgres?.health },
+    healthChecks: {
+      storage: postgres?.health,
+      erp: erpConfig
+        ? createErpHealthProbe(new MockErpAdapter(erpConfig))
+        : undefined,
+    },
   });
   const server = app.listen(config.port, config.host);
   const shutdown = createShutdown(

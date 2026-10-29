@@ -73,6 +73,52 @@ export interface PostgresEnvironment {
   readonly statement_timeout: number;
 }
 
+export interface ErpEnvironment {
+  readonly baseUrl: string;
+  readonly timeoutMs: number;
+}
+
+/** Backend-only outbound adapter settings; never accepted from HTTP callers. */
+export function parseErpEnvironment(
+  environment: Readonly<Record<string, string | undefined>>,
+): ErpEnvironment | undefined {
+  const text = environment.ERP_BASE_URL;
+  if (text === undefined || text.trim() === "") return undefined;
+  const problems: string[] = [];
+  let baseUrl = "";
+  try {
+    const url = new URL(text);
+    if (
+      !["http:", "https:"].includes(url.protocol) ||
+      !url.hostname ||
+      url.username ||
+      url.password ||
+      url.search ||
+      url.hash ||
+      text !== text.trim()
+    )
+      throw new Error();
+    url.pathname = `${url.pathname.replace(/\/+$/, "")}/`;
+    baseUrl = url.toString();
+  } catch {
+    problems.push(
+      "ERP_BASE_URL must be an HTTP(S) base URL without credentials, query or fragment",
+    );
+  }
+  const timeoutText = environment.ERP_TIMEOUT_MS ?? "1000";
+  const timeoutMs = Number(timeoutText);
+  if (
+    !/^\d+$/.test(timeoutText) ||
+    !Number.isInteger(timeoutMs) ||
+    timeoutMs < 1 ||
+    timeoutMs > 60_000
+  ) {
+    problems.push("ERP_TIMEOUT_MS must be an integer between 1 and 60000");
+  }
+  if (problems.length) throw new EnvironmentConfigurationError(problems);
+  return { baseUrl, timeoutMs };
+}
+
 /** API-only optional configuration. Diagnostics never contain setting values. */
 export function parsePostgresEnvironment(
   environment: Readonly<Record<string, string | undefined>>,
