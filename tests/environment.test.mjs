@@ -308,6 +308,15 @@ for (const service of services) {
         assert.equal(erpHealth.status, 200);
         assert.equal(erpHealth.headers.get("cache-control"), "no-store");
         assert.deepEqual(await erpHealth.json(), { status: "up" });
+        const masterData = await fetch(
+          `http://127.0.0.1:${port}/mock-erp/v1/master-data`,
+          { signal: AbortSignal.timeout(1000) },
+        );
+        assert.equal(masterData.status, 200);
+        assert.equal(masterData.headers.get("cache-control"), "no-store");
+        const { createMasterData } =
+          await import("../apps/mock-erp/dist/master-data.js");
+        assert.deepEqual(await masterData.json(), createMasterData());
       }
     });
   }
