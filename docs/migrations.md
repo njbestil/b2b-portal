@@ -1,7 +1,8 @@
 # PostgreSQL migration runner
 
 B2B-009 adds an explicit migration command and runner history, not the MVP
-business schema (B2B-010). API startup, health, JSON storage and provider selection
+business schema. B2B-010 adds the [initial MVP schema](adr/001-mvp-postgresql-schema.md).
+API startup, health, JSON storage and provider selection
 are unchanged. There is no automatic migration, rollback/down or reset command.
 
 ## Run explicitly
@@ -42,8 +43,9 @@ Use positive four-digit versions and lowercase descriptive names, e.g.
 `0001_initial.sql`. SQL must be trusted, reviewed UTF-8; see the
 [authoring constraints](../apps/api/migrations/README.md). Files are sorted by
 numeric version. Duplicate/invalid versions and empty SQL are rejected before
-any database changes. The shipped directory intentionally has no business SQL;
-an explicit run currently creates an empty history table and reports zero applied.
+any database changes. The shipped `0001_mvp_schema.sql` creates the 17 approved core
+tables and their constraints/indexes. A first successful run applies one version;
+reruns skip it after verifying its checksum. It contains no seed or reset operations.
 
 The runner begins one READ COMMITTED transaction on one connection, acquires a
 transaction-scoped advisory lock **before** creating/reading `schema_migrations`,
@@ -81,6 +83,14 @@ database's `public.schema_migrations` or application tables. The role needs sche
 creation privileges. Tests verify DDL/history timestamps, repeat execution,
 rollback after failed SQL, drift rejection and two concurrent clients. Without
 this variable they are explicitly skipped. No production verification is implied.
+
+The B2B-010 schema tests additionally exercise the shipped initial migration,
+its constraints/indexes and exact numeric values under the same schema-only opt-in.
+The actual CLI test has a **separate** `B2B_TEST_MIGRATIONS_CLI_DATABASE_URL` opt-in:
+it creates/drops one uniquely named temporary database and requires `CREATEDB` on
+that disposable test role. It does not migrate the supplied database's public
+schema. The original opt-in does not acquire a new privilege requirement. Use a
+disposable local test cluster/role, never production access.
 
 References: [node-postgres transactions](https://node-postgres.com/features/transactions),
 [PostgreSQL transactions](https://www.postgresql.org/docs/current/sql-begin.html),

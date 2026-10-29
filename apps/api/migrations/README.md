@@ -1,7 +1,9 @@
 # PostgreSQL migration files
 
 B2B-009 provides the runner and its `schema_migrations` history table only.
-MVP business-schema migrations belong to B2B-010; no placeholder SQL is shipped.
+B2B-010 supplies `0001_mvp_schema.sql` for the 17 approved core entities. See the
+[physical mapping ADR](../../../docs/adr/001-mvp-postgresql-schema.md) for constraints,
+indexes, service-owned invariants and scope exclusions. There is no seed/reset SQL.
 
 Add reviewed UTF-8 files named `0001_description.sql`, `0002_description.sql`,
 and so on. Versions must be positive, unique four-digit numbers. Gaps are allowed;
