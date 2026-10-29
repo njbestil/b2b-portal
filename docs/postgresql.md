@@ -5,6 +5,10 @@ graceful shutdown. It does not implement migrations, SQL repository adapters, JS
 storage or startup provider selection. Business services must not import this
 infrastructure directly. Future SQL adapters may receive the pool at composition.
 
+The separate [B2B-009 migration command](migrations.md) owns a dedicated connection
+and records ordered SQL in `schema_migrations`. It never runs as part of API startup
+and does not yet supply the MVP business schema.
+
 ## Configuration
 
 Set `DATABASE_URL` through local or deployment secrets to a PostgreSQL URL with a

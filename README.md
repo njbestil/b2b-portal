@@ -250,3 +250,7 @@ ERP scenarios and application workflows belong to later issues.
 The API's initial company/user/catalog/order repository contracts and injected
 application query services are documented in [the API README](apps/api/README.md).
 They are backend-only read ports, not concrete storage adapters or new HTTP routes.
+
+PostgreSQL schema changes use the explicit [migration runner](docs/migrations.md):
+`npm run migrate --workspace=@b2b-portal/api`. Nothing migrates during API startup.
+The runner is available; MVP business-schema migrations remain separate work.
