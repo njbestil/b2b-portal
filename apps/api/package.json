@@ -12,6 +12,7 @@
     "format:check": "prettier . --ignore-path ../../.prettierignore --check",
     "start": "node --env-file-if-exists=../../.env dist/index.js",
     "migrate": "npm run build && node --env-file-if-exists=../../.env dist/migrate.js",
+    "demo": "npm run build && node --env-file-if-exists=../../.env dist/demo.js",
     "test": "npm run build && npm run build --workspace=@b2b-portal/mock-erp && node --test test/*.test.mjs"
   },
   "dependencies": {
