@@ -75,10 +75,45 @@ This remains an unauthenticated, trusted development/test Mock with synthetic
 data, not a public or tenant-authorized portal endpoint. No CORS access is added.
 The frontend must not call it directly. The Portal API's `ErpGateway` is still
 health-only: B2B-050 owns portal submission/integration transactions; B2B-052 owns
-automatic retry; B2B-053 owns configurable timeout/503/business-failure scenarios.
+automatic retry. B2B-053 adds the synthetic scenarios below.
 No portal storage, schema, authorization, order workflow or deployment changes.
 
 Run `npm test --workspace=@b2b-portal/mock-erp` for creation, exact normalization,
 sequential/concurrent replay and conflicts, request/response isolation, capacity
 without eviction, parser limits and redaction. Root `npm run check` also verifies
 creation/replay through actual entry-point processes in both environment modes.
+
+## Reproducible failure scenarios (B2B-053)
+
+On the same order endpoint, optionally send `X-Mock-ERP-Scenario` with one exact
+allowlisted value. Missing or `success` retains normal behavior. Unknown, blank,
+duplicate/comma-joined or differently cased values return 400 `INVALID_SCENARIO`.
+This control exists only on the already trusted development/test Mock, not the
+Portal API. It never changes master data or implements real commercial rules.
+
+| Value                | Outcome                                                                                   |
+| -------------------- | ----------------------------------------------------------------------------------------- |
+| `timeout`            | Wait 1500 ms, then 504 `ERP_TIMEOUT`; a client with a shorter deadline observes a timeout |
+| `unavailable`        | 503 `ERP_UNAVAILABLE`                                                                     |
+| `validation`         | 422 `ERP_VALIDATION_FAILED`                                                               |
+| `credit-hold`        | 422 `CREDIT_HOLD`                                                                         |
+| `insufficient-stock` | 409 `INSUFFICIENT_STOCK`                                                                  |
+
+For example, POST the request above with `Idempotency-Key: demo-recovery` and
+`X-Mock-ERP-Scenario: unavailable`; repeat to reproduce 503. Remove the scenario
+header and retry the **same key/body** for a single 201. Repeating success gives
+200 with the original order. Change a valid body with the retained key for 409
+`IDEMPOTENCY_CONFLICT`, or use a new key for the same portal order UUID for 409
+`ORDER_ALREADY_EXISTS`. Restarting the Mock clears all process-local demo state.
+
+Body/key validation and retained replay/conflicts run before injecting a known
+failure. An already successful order still replays even if a failure scenario is
+selected later. Failures before publication do not reserve a key/order reference;
+recovery is an explicit switch back to success, not an automatic retry policy or
+per-key hidden failure counter. The finite timeout timer is cancelled on client
+disconnect; it never creates a delayed order after the caller has timed out.
+Health remains up during order-only downtime simulation. No failure scenario
+changes portal business/integration status or starts a portal retry worker.
+
+`scenarios.test.mjs` verifies all outcomes, validation/redaction, bounded timeout
+and cancellation, concurrent recovery, retained replay and actual-process startup.
