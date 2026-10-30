@@ -94,47 +94,64 @@ export function createOrderService() {
   const byKey = new Map<string, { fingerprint: string; order: MockErpOrder }>();
   const portalOrderIds = new Set<string>();
 
+  function inspect(key: unknown, input: unknown) {
+    if (
+      typeof key !== "string" ||
+      !/^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/.test(key)
+    )
+      throw new OrderError(
+        400,
+        "INVALID_IDEMPOTENCY_KEY",
+        "A valid Idempotency-Key is required.",
+      );
+    const parsed = parseOrder(input);
+    const fingerprint = createHash("sha256")
+      .update(JSON.stringify(parsed))
+      .digest("hex");
+    const existing = byKey.get(key);
+    if (existing) {
+      if (existing.fingerprint !== fingerprint)
+        throw new OrderError(
+          409,
+          "IDEMPOTENCY_CONFLICT",
+          "Idempotency key is already used for a different order request.",
+        );
+      return { key, parsed, fingerprint, existing: existing.order };
+    }
+    if (portalOrderIds.has(parsed.portalOrderId))
+      throw new OrderError(
+        409,
+        "ORDER_ALREADY_EXISTS",
+        "Portal order already has a Mock ERP order.",
+      );
+    if (byKey.size >= 1000)
+      throw new OrderError(
+        503,
+        "ORDER_CAPACITY_REACHED",
+        "Mock ERP order capacity reached.",
+      );
+
+    return { key, parsed, fingerprint, existing: undefined };
+  }
+
   return {
+    /** Validate and inspect without reserving anything; delayed scenarios must
+     * still call create again before publication. Never bypass retained replay. */
+    replay(key: unknown, input: unknown): MockErpOrder | null {
+      const { existing } = inspect(key, input);
+      return existing ? structuredClone(existing) : null;
+    },
     create(
       key: unknown,
       input: unknown,
     ): { created: boolean; order: MockErpOrder } {
-      if (
-        typeof key !== "string" ||
-        !/^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/.test(key)
-      )
-        throw new OrderError(
-          400,
-          "INVALID_IDEMPOTENCY_KEY",
-          "A valid Idempotency-Key is required.",
-        );
-      const parsed = parseOrder(input);
-      const fingerprint = createHash("sha256")
-        .update(JSON.stringify(parsed))
-        .digest("hex");
-      const existing = byKey.get(key);
-      if (existing) {
-        if (existing.fingerprint !== fingerprint)
-          throw new OrderError(
-            409,
-            "IDEMPOTENCY_CONFLICT",
-            "Idempotency key is already used for a different order request.",
-          );
-        return { created: false, order: structuredClone(existing.order) };
-      }
-      if (portalOrderIds.has(parsed.portalOrderId))
-        throw new OrderError(
-          409,
-          "ORDER_ALREADY_EXISTS",
-          "Portal order already has a Mock ERP order.",
-        );
-      if (byKey.size >= 1000)
-        throw new OrderError(
-          503,
-          "ORDER_CAPACITY_REACHED",
-          "Mock ERP order capacity reached.",
-        );
-
+      const {
+        key: validKey,
+        parsed,
+        fingerprint,
+        existing,
+      } = inspect(key, input);
+      if (existing) return { created: false, order: structuredClone(existing) };
       // No await between lookup and publication: concurrent requests cannot race
       // on this single-process ledger. Do not reuse for distributed persistence.
       const order: MockErpOrder = {
@@ -143,7 +160,7 @@ export function createOrderService() {
         createdAt: new Date().toISOString(),
         status: "created",
       };
-      byKey.set(key, { fingerprint, order });
+      byKey.set(validKey, { fingerprint, order });
       portalOrderIds.add(parsed.portalOrderId);
       return { created: true, order: structuredClone(order) };
     },
