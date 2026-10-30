@@ -18,6 +18,7 @@ import { JsonFileStore } from "../dist/infrastructure/json/store.js";
 import { createJsonRepositories } from "../dist/infrastructure/json/repositories.js";
 import { createPostgresRepositories } from "../dist/infrastructure/postgres-repositories.js";
 import { collectionFiles } from "../dist/infrastructure/json/schema.js";
+import { loadMigrations } from "../dist/infrastructure/migrations.js";
 
 async function fixture(t) {
   const parent = await mkdtemp(join(tmpdir(), "b2b-seed-"));
@@ -269,7 +270,7 @@ test(
     assert.equal(
       (await client.query("SELECT count(*)::int AS n FROM schema_migrations"))
         .rows[0].n,
-      1,
+      (await loadMigrations(new URL("../migrations/", import.meta.url))).length,
     );
     assert.equal(
       (

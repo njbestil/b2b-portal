@@ -37,7 +37,9 @@ npm run demo --workspace=@b2b-portal/api -- reset --provider json --directory D:
 
 Seed refuses any existing target. Reset requires the ownership marker `.b2b-demo`,
 the exact confirmation and only known regular files. Unknown files, links or
-noncanonical parent ancestry refuse mutation. The command takes an exclusive
+noncanonical parent ancestry refuse mutation. The known B2B-014
+`order_internal_notes.json` file is also owned disposable demo state:
+reset explicitly clears it, if present, so the next note read is empty. The command takes an exclusive
 sibling lock, stages a full new snapshot, moves the old directory to a uniquely
 named backup, then publishes by rename. A failed publication attempts restoration.
 Only known owned files are removed, never recursive unknown data deletion. A
@@ -62,7 +64,8 @@ npm run demo --workspace=@b2b-portal/api -- reset --provider postgresql --confir
 ```
 
 The last command is destructive **only inside the confirmed, marked dedicated
-demo database**: it replaces all 17 current business tables, preserving migration
+demo database**: it replaces the 17 core business tables and the known B2B-014
+`order_internal_notes` extension when present, preserving migration
 history. Seed requires all known business tables empty. Reset requires the schema
 ownership comment written by a successful seed. Unknown public tables refuse
 operation; no CASCADE, schema/database drops, migration edits or production targets.

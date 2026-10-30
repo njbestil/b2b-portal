@@ -21,6 +21,7 @@ import { createDemoData, demoId, demoTimestamp } from "./dataset.js";
 const marker = "b2b-portal-demo:v1";
 const markerFile = ".b2b-demo";
 const files = [...Object.values(collectionFiles), markerFile];
+const privateNoteFile = "order_internal_notes.json";
 export class DemoSeedError extends Error {
   constructor() {
     super(
@@ -46,8 +47,12 @@ async function checkedDirectory(directory: string) {
   if (!stat.isDirectory() || stat.isSymbolicLink()) throw new DemoSeedError();
   const names = await readdir(directory);
   if (
-    names.length !== files.length ||
-    names.some((name) => !files.includes(name as (typeof files)[number]))
+    files.some((name) => !names.includes(name)) ||
+    names.some(
+      (name) =>
+        name !== privateNoteFile &&
+        !files.includes(name as (typeof files)[number]),
+    )
   )
     throw new DemoSeedError();
   for (const name of names) {
@@ -56,10 +61,11 @@ async function checkedDirectory(directory: string) {
   }
   if ((await readFile(join(directory, markerFile), "utf8")) !== marker)
     throw new DemoSeedError();
+  return names;
 }
 async function removeOwnedDirectory(directory: string) {
-  await checkedDirectory(directory);
-  for (const file of files) await unlink(join(directory, file));
+  const names = await checkedDirectory(directory);
+  for (const file of names) await unlink(join(directory, file));
   await rmdir(directory);
 }
 /** Offline only. Stage a complete snapshot; preserve the old target until swap. */
@@ -181,13 +187,21 @@ export async function seedPostgres(
     const { rows } = await client.query<{ name: string }>(
       "SELECT tablename AS name FROM pg_tables WHERE schemaname='public' ORDER BY tablename",
     );
+    const managedTables = [
+      ...tables,
+      ...(rows.some((row) => row.name === "order_internal_notes")
+        ? ["order_internal_notes"]
+        : []),
+    ];
     if (
-      rows.length !== tables.length + 1 ||
-      rows.some((row) => ![...tables, "schema_migrations"].includes(row.name))
+      rows.length !== managedTables.length + 1 ||
+      rows.some(
+        (row) => ![...managedTables, "schema_migrations"].includes(row.name),
+      )
     )
       throw new DemoSeedError();
     await client.query(
-      `LOCK TABLE ${tables.map((table) => `public.${table}`).join(",")} IN ACCESS EXCLUSIVE MODE`,
+      `LOCK TABLE ${managedTables.map((table) => `public.${table}`).join(",")} IN ACCESS EXCLUSIVE MODE`,
     );
     const {
       rows: [state],
@@ -197,7 +211,7 @@ export async function seedPostgres(
     if (options.mode === "seed") {
       if (state.marker !== null && state.marker !== "standard public schema")
         throw new DemoSeedError();
-      for (const table of tables) {
+      for (const table of managedTables) {
         if (
           (await client.query(`SELECT 1 FROM public.${table} LIMIT 1`))
             .rowCount !== 0
@@ -207,7 +221,7 @@ export async function seedPostgres(
     } else {
       if (state.marker !== marker) throw new DemoSeedError();
       await client.query(
-        `TRUNCATE ${tables.map((table) => `public.${table}`).join(",")}`,
+        `TRUNCATE ${managedTables.map((table) => `public.${table}`).join(",")}`,
       );
     }
     const data = createDemoData();
