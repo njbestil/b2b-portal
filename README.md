@@ -263,5 +263,6 @@ reviewed and authorized database target.
 
 The API's [JSON storage engine](docs/json-storage.md) implements its existing read
 repository ports using separate validated entity/cache files. B2B-012 composes
-those ports or their PostgreSQL counterparts once during startup; demo seed/reset
-remains separate. A new JSON directory is intentionally unready until populated.
+those ports or their PostgreSQL counterparts once during startup. Use the explicit
+[local demo seed/reset command](docs/demo-data.md) to populate a dedicated disposable
+target. A new JSON directory is intentionally unready until populated; startup never seeds it.

@@ -109,8 +109,8 @@ PostgreSQL when the disposable-database opt-in is supplied; this is not coverage
 of future full-entity/business write implementations.
 
 Startup selection is implemented separately by [B2B-012](adr/002-startup-storage-selection.md).
-Demo seed/reset (B2B-013), ERP catalog sync
-(B2B-034), authentication and later business write ports remain separate issues.
-The tests use fixtures; no demo dataset or populated application data is shipped.
+[Explicit local demo seed/reset](demo-data.md) is available in B2B-013; no populated
+runtime data is committed or created during startup. ERP catalog sync (B2B-034),
+authentication and later business write ports remain separate issues.
 
 Filesystem API reference: [Node.js file operations](https://nodejs.org/docs/latest-v24.x/api/fs.html).

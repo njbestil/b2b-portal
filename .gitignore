@@ -6,3 +6,5 @@ dist/
 !.env.example
 *.log
 /apps/api/data/runtime/
+/apps/api/data/b2b_demo_*/
+/apps/api/data/.b2b_demo_*
