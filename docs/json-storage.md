@@ -113,4 +113,9 @@ Startup selection is implemented separately by [B2B-012](adr/002-startup-storage
 runtime data is committed or created during startup. ERP catalog sync (B2B-034),
 authentication and later business write ports remain separate issues.
 
+[B2B-034 catalog synchronization](catalog-sync.md) can explicitly refresh a confirmed
+offline demo directory while preserving the other entity/private files. Product
+cache records may retain an internal `erpProductReference` for stable mapping;
+the existing customer catalog read projection does not expose it.
+
 Filesystem API reference: [Node.js file operations](https://nodejs.org/docs/latest-v24.x/api/fs.html).

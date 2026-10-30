@@ -117,6 +117,9 @@ const parsers: {
   products(value) {
     const row = object(value);
     return {
+      ...(row.erpProductReference === undefined
+        ? {}
+        : { erpProductReference: text(row.erpProductReference) }),
       id: id(row.id),
       sku: text(row.sku),
       name: text(row.name),

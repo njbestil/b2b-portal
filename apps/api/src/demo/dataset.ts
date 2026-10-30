@@ -51,6 +51,7 @@ export function createDemoData(): {
       ]),
     ],
     products: [1, 2, 3].map((n) => ({
+      erpProductReference: `DEMO-P00${n}`,
       id: demoId(100 + n),
       sku: `DEMO-P00${n}`,
       name: `Demo Product ${n}`,

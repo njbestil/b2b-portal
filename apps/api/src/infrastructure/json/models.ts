@@ -11,6 +11,7 @@ export interface JsonPrice {
   readonly validTo: Timestamp | null;
 }
 export interface JsonProduct extends Omit<CatalogProduct, "price"> {
+  readonly erpProductReference?: string;
   readonly active: boolean;
   readonly defaultPrice: JsonPrice | null;
 }
