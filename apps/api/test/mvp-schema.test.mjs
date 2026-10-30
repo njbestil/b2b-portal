@@ -11,7 +11,7 @@ import {
 } from "../dist/infrastructure/migrations.js";
 
 const directory = new URL("../migrations/", import.meta.url);
-const tables = [
+const coreTables = [
   "companies",
   "users",
   "customer_sales_assignments",
@@ -30,6 +30,7 @@ const tables = [
   "user_sessions",
   "password_reset_tokens",
 ].sort();
+const tables = [...coreTables, "order_internal_notes"].sort();
 const options = {
   skip:
     !process.env.B2B_TEST_MIGRATIONS_DATABASE_URL &&
@@ -124,13 +125,13 @@ async function base(client) {
 test("shipped migration discovers exactly the approved core tables, without transaction control or internal notes", async () => {
   assert.throws(() => databaseConfig(" "));
   const migrations = await loadMigrations(directory);
-  assert.equal(migrations.length, 1);
+  assert.equal(migrations.length, 2);
   assert.equal(migrations[0].version, 1);
   assert.equal(migrations[0].name, "mvp_schema");
   const sql = migrations[0].sql;
   assert.deepEqual(
     [...sql.matchAll(/CREATE TABLE (\w+) \(/g)].map((m) => m[1]).sort(),
-    tables,
+    coreTables,
   );
   assert.doesNotMatch(
     sql,
@@ -144,12 +145,12 @@ test(
   async (t) => {
     const { client, schema, migrations } = await fixture(t, false);
     assert.deepEqual(await runMigrations(client, migrations), {
-      applied: 1,
+      applied: 2,
       skipped: 0,
     });
     assert.deepEqual(await runMigrations(client, migrations), {
       applied: 0,
-      skipped: 1,
+      skipped: 2,
     });
     const actual = await client.query(
       "SELECT table_name FROM information_schema.tables WHERE table_schema=$1 AND table_type='BASE TABLE' ORDER BY table_name",
@@ -174,7 +175,7 @@ test(
     WHERE n.nspname=$1 AND k.contype='p' AND c.relname <> 'schema_migrations'`,
       [schema],
     );
-    assert.equal(keys.rows.length, 17);
+    assert.equal(keys.rows.length, 18);
     assert.ok(keys.rows.every((r) => r.attname === "id" && r.type === "uuid"));
     const foreignKeys = await client.query(
       "SELECT convalidated FROM pg_constraint k JOIN pg_namespace n ON n.oid=k.connamespace WHERE n.nspname=$1 AND contype='f'",
@@ -211,7 +212,7 @@ test(
     );
     const history = (await client.query("SELECT * FROM schema_migrations"))
       .rows;
-    assert.equal(history.length, 1);
+    assert.equal(history.length, 2);
     assert.match(history[0].checksum, /^[a-f0-9]{64}$/);
     assert.ok(history[0].applied_at instanceof Date);
   },
@@ -271,7 +272,7 @@ test(
       "INSERT INTO password_reset_tokens (id,user_id,token_hash,expires_at) VALUES ($1,$2,'synthetic-reset-hash',CURRENT_TIMESTAMP + interval '1 hour')",
       [randomUUID(), i.customer],
     );
-    for (const table of tables)
+    for (const table of coreTables)
       assert.ok(
         (await client.query(`SELECT count(*)::int AS n FROM ${table}`)).rows[0]
           .n > 0,
@@ -562,7 +563,7 @@ test(
       runMigrations(client, [
         ...migrations,
         {
-          version: 2,
+          version: 3,
           name: "failure_probe",
           sql: "SELECT definitely_not_a_function();",
         },
@@ -589,8 +590,8 @@ test(
     assert.deepEqual(
       results.sort((a, b) => b.applied - a.applied),
       [
-        { applied: 1, skipped: 0 },
-        { applied: 0, skipped: 1 },
+        { applied: 2, skipped: 0 },
+        { applied: 0, skipped: 2 },
       ],
     );
   },
@@ -625,8 +626,8 @@ test(
     url.pathname = `/${name}`;
     const entry = fileURLToPath(new URL("../dist/migrate.js", import.meta.url));
     for (const expected of [
-      { applied: 1, skipped: 0 },
-      { applied: 0, skipped: 1 },
+      { applied: 2, skipped: 0 },
+      { applied: 0, skipped: 2 },
     ]) {
       const result = spawnSync(process.execPath, [entry], {
         env: {

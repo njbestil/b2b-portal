@@ -12,10 +12,14 @@ import { JsonFileStore } from "./json/store.js";
 import { createJsonRepositories } from "./json/repositories.js";
 import { collectionFiles } from "./json/schema.js";
 import type { JsonCollection } from "./json/models.js";
+import type { InternalNotesRepository } from "../repositories/internal-notes.js";
+import { createPostgresInternalNotes } from "./postgres-internal-notes.js";
+import { createJsonInternalNotes } from "./json/internal-notes.js";
 
 export interface StorageRuntime {
   readonly provider: StorageProvider;
   readonly repositories: RepositoryPorts;
+  readonly internalNotes: InternalNotesRepository;
   readonly health: HealthProbe;
   close(): Promise<void>;
 }
@@ -75,6 +79,7 @@ export async function selectStorage(
       return Object.freeze({
         provider: "postgresql",
         repositories: createPostgresRepositories(postgres.pool),
+        internalNotes: createPostgresInternalNotes(postgres.pool),
         health: (signal: AbortSignal) =>
           postgres.probe(signal, postgresReadinessSql),
         close: () => postgres.close(),
@@ -109,6 +114,7 @@ export async function selectStorage(
   return Object.freeze({
     provider: "json",
     repositories: createJsonRepositories(store),
+    internalNotes: createJsonInternalNotes(options.jsonDirectory),
     health,
     close: () => retirement,
   });
