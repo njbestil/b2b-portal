@@ -15,6 +15,10 @@ export interface JsonProduct extends Omit<CatalogProduct, "price"> {
   readonly defaultPrice: JsonPrice | null;
 }
 export interface JsonUser {
+  /** Optional private credential fields; legacy/demo projections stay unprovisioned. */
+  readonly email?: string;
+  readonly passwordHash?: string;
+  readonly mustChangePassword?: boolean;
   readonly id: string;
   readonly companyId: string | null;
   readonly displayName: string;

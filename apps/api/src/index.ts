@@ -6,6 +6,10 @@ import {
   parseStorageEnvironment,
 } from "@b2b-portal/config/server";
 import { createApp } from "./app.js";
+import { randomUUID } from "node:crypto";
+import { createAudit } from "./services/audit.js";
+import { createLogin } from "./services/login.js";
+import { verifyPassword } from "./infrastructure/passwords.js";
 import { createLogger } from "./logging.js";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -35,7 +39,13 @@ try {
     logger,
   });
   const selectedStorage = storage;
+  const audit = createAudit(selectedStorage.audit, randomUUID);
   const app = createApp({
+    login: createLogin(
+      selectedStorage.authentication,
+      verifyPassword,
+      (input) => audit.record(input),
+    ),
     logger,
     storageProvider: selectedStorage.provider,
     healthChecks: {
