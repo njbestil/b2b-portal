@@ -52,3 +52,7 @@ read ports using real entity/cache files, explicit validated collection replacem
 and tenant-scoped reads. They are not automatically selected or exposed through HTTP.
 SQL adapters, complete entity/business writes, provider selection and seed/reset
 remain separate work; the initial projections above are still the contract boundary.
+
+B2B-014 supplies a [separate internal-note persistence capability](../../docs/internal-notes.md),
+not a customer order DTO extension or a new HTTP route. Internal callers must use
+the note service with a real object/assignment authorizer; customer roles are denied.

@@ -4,6 +4,8 @@ B2B-009 provides the runner and its `schema_migrations` history table only.
 B2B-010 supplies `0001_mvp_schema.sql` for the 17 approved core entities. See the
 [physical mapping ADR](../../../docs/adr/001-mvp-postgresql-schema.md) for constraints,
 indexes, service-owned invariants and scope exclusions. There is no seed/reset SQL.
+B2B-014 adds the separate internal-note table through `0002_order_internal_notes.sql`;
+see [the private capability and authorization boundary](../../../docs/internal-notes.md).
 
 Add reviewed UTF-8 files named `0001_description.sql`, `0002_description.sql`,
 and so on. Versions must be positive, unique four-digit numbers. Gaps are allowed;
