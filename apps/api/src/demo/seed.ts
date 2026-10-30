@@ -22,6 +22,7 @@ const marker = "b2b-portal-demo:v1";
 const markerFile = ".b2b-demo";
 const files = [...Object.values(collectionFiles), markerFile];
 const privateNoteFile = "order_internal_notes.json";
+const privateAuditFile = "audit_logs.json";
 export class DemoSeedError extends Error {
   constructor() {
     super(
@@ -51,6 +52,7 @@ async function checkedDirectory(directory: string) {
     names.some(
       (name) =>
         name !== privateNoteFile &&
+        name !== privateAuditFile &&
         !files.includes(name as (typeof files)[number]),
     )
   )

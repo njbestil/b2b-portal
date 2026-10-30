@@ -15,11 +15,15 @@ import type { JsonCollection } from "./json/models.js";
 import type { InternalNotesRepository } from "../repositories/internal-notes.js";
 import { createPostgresInternalNotes } from "./postgres-internal-notes.js";
 import { createJsonInternalNotes } from "./json/internal-notes.js";
+import type { AuditRepository } from "../repositories/audit.js";
+import { createPostgresAudit } from "./postgres-audit.js";
+import { createJsonAudit } from "./json/audit.js";
 
 export interface StorageRuntime {
   readonly provider: StorageProvider;
   readonly repositories: RepositoryPorts;
   readonly internalNotes: InternalNotesRepository;
+  readonly audit: AuditRepository;
   readonly health: HealthProbe;
   close(): Promise<void>;
 }
@@ -80,6 +84,7 @@ export async function selectStorage(
         provider: "postgresql",
         repositories: createPostgresRepositories(postgres.pool),
         internalNotes: createPostgresInternalNotes(postgres.pool),
+        audit: createPostgresAudit(postgres.pool),
         health: (signal: AbortSignal) =>
           postgres.probe(signal, postgresReadinessSql),
         close: () => postgres.close(),
@@ -115,6 +120,7 @@ export async function selectStorage(
     provider: "json",
     repositories: createJsonRepositories(store),
     internalNotes: createJsonInternalNotes(options.jsonDirectory),
+    audit: createJsonAudit(options.jsonDirectory),
     health,
     close: () => retirement,
   });
