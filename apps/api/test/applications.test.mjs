@@ -356,6 +356,38 @@ test(
     const sql = createPostgresApplications(pool),
       f = await fixture(t),
       r = record();
+    for (const repo of [sql, f.repo]) {
+      let hashes = 0;
+      const apply = createApplications(
+        repo,
+        async () => {
+          hashes++;
+          return syntheticHash;
+        },
+        async () => {},
+        randomUUID,
+      );
+      for (const field of ["businessEmail", "administratorEmail"])
+        for (const email of unsafeEmails)
+          await assert.rejects(apply(input({ [field]: email }), randomUUID()), {
+            code: "invalid_input",
+          });
+      assert.equal(hashes, 0);
+    }
+    assert.equal(
+      (await admin.query("SELECT count(*)::int AS n FROM companies")).rows[0].n,
+      0,
+    );
+    assert.equal(
+      (await admin.query("SELECT count(*)::int AS n FROM users")).rows[0].n,
+      0,
+    );
+    assert.equal(
+      (await admin.query("SELECT count(*)::int AS n FROM delivery_addresses"))
+        .rows[0].n,
+      0,
+    );
+    assert.deepEqual(await readdir(f.directory), []);
     assert.deepEqual(await sql.submit(r), await f.repo.submit(r));
     assert.deepEqual(
       await sql.pending(r.companyId),
@@ -538,3 +570,84 @@ test(
     assert.ok(!output.includes("synthetic temporary password"));
   },
 );
+
+const unsafeEmails = [0, 1, 127, 0xd800, 0xdc00].map(
+  (n) => "unsafe" + String.fromCharCode(n) + "@example.test",
+);
+
+test("both email fields reject unsafe text before hashing or repository I/O", async () => {
+  let hashes = 0,
+    writes = 0,
+    audits = 0;
+  const apply = createApplications(
+    {
+      async submit() {
+        writes++;
+        throw Error("unexpected persistence");
+      },
+      async pending() {
+        return null;
+      },
+    },
+    async () => {
+      hashes++;
+      return syntheticHash;
+    },
+    async () => {
+      audits++;
+    },
+    randomUUID,
+  );
+  for (const field of ["businessEmail", "administratorEmail"])
+    for (const email of unsafeEmails)
+      await assert.rejects(apply(input({ [field]: email }), randomUUID()), {
+        code: "invalid_input",
+      });
+  assert.deepEqual(
+    { hashes, writes, audits },
+    { hashes: 0, writes: 0, audits: 0 },
+  );
+});
+
+test("HTTP rejects unsafe emails consistently without hash or JSON bundle/intent publication", async (t) => {
+  const f = await fixture(t);
+  let hashes = 0;
+  const apply = createApplications(
+    f.repo,
+    async () => {
+      hashes++;
+      return syntheticHash;
+    },
+    async () => {},
+    randomUUID,
+  );
+  const server = createApp({ applications: apply, logger: () => {} }).listen(
+    0,
+    "127.0.0.1",
+  );
+  await once(server, "listening");
+  t.after(
+    () =>
+      new Promise((resolve) => {
+        server.closeAllConnections();
+        server.close(resolve);
+      }),
+  );
+  const url =
+    "http://127.0.0.1:" +
+    server.address().port +
+    "/api/v1/customer-applications";
+  for (const field of ["businessEmail", "administratorEmail"])
+    for (const email of unsafeEmails) {
+      const response = await fetch(url, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(input({ [field]: email })),
+      });
+      assert.equal(response.status, 400);
+      assert.equal(response.headers.get("cache-control"), "no-store");
+      assert.equal((await response.json()).error.code, "INVALID_APPLICATION");
+    }
+  assert.equal(hashes, 0);
+  assert.deepEqual(await readdir(f.directory), []);
+});

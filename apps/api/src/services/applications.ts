@@ -42,7 +42,8 @@ export function applicationFields(input: unknown): ApplicationFields {
   if (!input || typeof input !== "object" || Array.isArray(input))
     return invalid();
   const b = input as Record<string, unknown>;
-  const email = (v: unknown) => normalizedEmail(v) ?? invalid();
+  const email = (v: unknown) =>
+    normalizedEmail(applicationText(v, 254)) ?? invalid();
   return {
     companyName: applicationText(b.companyName, 200),
     tradeLicenseReference: licenseKey(
