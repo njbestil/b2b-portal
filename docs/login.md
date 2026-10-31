@@ -1,5 +1,11 @@
 # Credential verification (B2B-015)
 
+This page describes the underlying accepted credential-verification capability.
+B2B-016 now [composes it with Bearer sessions](sessions.md) in the operational API.
+Configure the session keys explicitly: operational login is unavailable without
+them. The safe credential-only result below illustrates the private verifier's
+projection; configured HTTP login also returns the session fields in the runbook.
+
 `POST /api/v1/auth/login` accepts exactly `{ "email": "…", "password": "…" }`
 as application/json, at most 4 KiB uncompressed. Passwords retain whitespace and
 are limited to 1024 UTF-8 bytes; emails are trimmed/lowercased. Use TLS for any
@@ -21,8 +27,8 @@ non-local use. Success follows the standard API envelope:
 }
 ```
 
-This verifies credentials only. It issues no session/token/cookie and grants no
-business-resource access. B2B-016 adds Bearer sessions; first-login password change,
+The underlying verifier grants no business-resource access. B2B-016 adds the
+separate persisted Bearer session producer; first-login password change,
 reset, RBAC and login UI remain separate issues. Treat mustChangePassword as a
 requirement for that forthcoming flow, not permission to skip it.
 
