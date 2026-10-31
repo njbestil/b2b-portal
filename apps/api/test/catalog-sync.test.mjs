@@ -12,6 +12,7 @@ import { Client, Pool } from "pg";
 import { createApp as mockApp } from "../../mock-erp/dist/app.js";
 import { createMockCatalogSource } from "../dist/infrastructure/mock-catalog-adapter.js";
 import { createJsonCatalogCache } from "../dist/infrastructure/json/catalog-cache.js";
+import { createJsonNotifications } from "../dist/infrastructure/json/notifications.js";
 import { createPostgresCatalogCache } from "../dist/infrastructure/postgres-catalog-cache.js";
 import {
   createCatalogSync,
@@ -72,12 +73,24 @@ test("real Mock snapshot populates JSON catalog with tenant pricing, stable IDs 
     f = await fixture(t);
   await writeFile(join(f.directory, "order_internal_notes.json"), "[]\n");
   await writeFile(join(f.directory, "audit_logs.json"), "[]\n");
+  await createJsonNotifications(f.directory).append({
+    id: randomUUID(),
+    userId: demoId(31),
+    type: "order.submitted",
+    title: "Order submitted",
+    message: "Your order was submitted.",
+    targetType: "order",
+    targetId: demoId(201),
+    createdAt: "2026-10-31T12:00:00.000Z",
+    readAt: null,
+  });
   const preserved = [
       "companies.json",
       "users.json",
       "orders.json",
       "order_internal_notes.json",
       "audit_logs.json",
+      "notifications.json",
     ],
     before = await Promise.all(
       preserved.map((file) => readFile(join(f.directory, file), "utf8")),
@@ -128,6 +141,20 @@ test("real Mock snapshot populates JSON catalog with tenant pricing, stable IDs 
     before,
   );
   assert.deepEqual(await readdir(f.parent), ["b2b_demo_catalog"]);
+  await writeFile(join(f.directory, "unknown.json"), "preserve");
+  const beforeRefusal = await contents(f.directory);
+  await assert.rejects(sync.synchronize(signal()), CatalogSyncError);
+  assert.deepEqual(await contents(f.directory), beforeRefusal);
+  assert.equal(
+    await readFile(join(f.directory, "unknown.json"), "utf8"),
+    "preserve",
+  );
+  assert.deepEqual(
+    await Promise.all(
+      preserved.map((file) => readFile(join(f.directory, file), "utf8")),
+    ),
+    before,
+  );
 });
 test("removed products become inactive, unlinked customers are not created and inactive ERP customers lose eligibility", async (t) => {
   const source = createMockCatalogSource({

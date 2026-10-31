@@ -32,6 +32,7 @@ export function createJsonCatalogCache(
       ...required,
       "order_internal_notes.json",
       "audit_logs.json",
+      "notifications.json",
     ];
   return {
     async refresh(build) {
