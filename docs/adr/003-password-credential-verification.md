@@ -1,8 +1,9 @@
 # ADR-003: Password credential verification
 
-- Status: Proposed — implementation review pending
+- Status: Accepted — owner approval recorded 2026-10-31
 - Related issue: [B2B-015 / #27](https://github.com/njbestil/b2b-portal/issues/27)
 - Dependency: audit service [#125](https://github.com/njbestil/b2b-portal/pull/125)
+- Approval: [owner acceptance and PM closeout](https://github.com/njbestil/b2b-portal/issues/27#issuecomment-6543813994)
 
 The approved requirements call for active-user email/password authentication with
 securely hashed credentials, a single logical user model, JSON/PostgreSQL parity
@@ -58,5 +59,7 @@ context and an allowlisted reason/request ID, never supplied identifiers.
 
 Tests must exercise actual hashes, malformed/disabled credentials, inactive
 accounts/companies, private projections, required-audit failure, HTTP limits and
-real PostgreSQL/JSON parity. Human review of this proposal remains pending; this
-document does not record an approval or authorize production deployment.
+real PostgreSQL/JSON parity. The owner accepted the credential-verification review
+and this design on 2026-10-31, as recorded in the approval reference above. That
+acceptance excludes the separate B2B-016 session design and does not authorize
+merging this documentation update or production deployment.
