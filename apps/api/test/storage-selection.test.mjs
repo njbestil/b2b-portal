@@ -589,6 +589,7 @@ test(
         );
       for (const page of [
         { offset: 0, limit: 1 },
+        { offset: 0, limit: 100 },
         { offset: 1, limit: 2 },
         { offset: 100, limit: 2 },
       ]) {
@@ -610,6 +611,33 @@ test(
       await pg.orders.list(a, { offset: 0, limit: 20 }),
     );
     assert.ok(!text.includes("DO_NOT_LEAK"));
+    // A caller may mutate returned objects even though the TypeScript port is
+    // readonly. Neither adapter may retain those mutations in later reads.
+    for (const repos of [pg, json]) {
+      const reads = [
+        () => repos.companies.findById(a),
+        () => repos.users.findCustomerById(a, id(11)),
+        () => repos.catalog.findEligibleById(a, id(101)),
+        () => repos.orders.findById(a, id(201)),
+        () => repos.users.listCustomers(a, { offset: 0, limit: 100 }),
+        () => repos.catalog.listEligible(a, { offset: 0, limit: 100 }),
+        () => repos.orders.list(a, { offset: 0, limit: 100 }),
+      ];
+      for (const read of reads) {
+        const result = await read();
+        const expected = structuredClone(result);
+        const row = result.items ? result.items[0] : result;
+        row.id = id(999);
+        row.companyId = b.companyId;
+        if (row.price) row.price.amount = "0";
+        if (result.items) {
+          result.items.length = 0;
+          result.total = 0;
+        }
+        assert.deepEqual(await read(), expected);
+        assert.ok(!JSON.stringify(expected).includes("DO_NOT_LEAK"));
+      }
+    }
     for (const clock of [
       "2026-10-29T11:59:59.999Z",
       "2026-10-30T00:00:00.000Z",
