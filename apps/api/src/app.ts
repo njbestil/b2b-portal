@@ -1,4 +1,5 @@
 import express from "express";
+import { createLoginRouter, type LoginHandler } from "./login-route.js";
 import type { HealthResponse, StorageProvider } from "@b2b-portal/contracts";
 import { createHealthReporter, type HealthChecks } from "./health.js";
 import { createLogger, type Logger, requestLogging } from "./logging.js";
@@ -11,6 +12,7 @@ import {
 } from "./http.js";
 
 interface AppOptions {
+  login?: LoginHandler;
   logger?: Logger;
   healthChecks?: HealthChecks;
   healthTimeoutMs?: number;
@@ -27,6 +29,7 @@ export function createApp(options: AppOptions = {}) {
   const app = express();
   app.use(requestIdMiddleware);
   app.use(requestLogging(logger));
+  if (options.login) app.use(createLoginRouter(options.login));
   app.use(express.json());
 
   app.get("/", (_request, response) => {

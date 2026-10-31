@@ -15,11 +15,19 @@ import type { JsonCollection } from "./json/models.js";
 import type { InternalNotesRepository } from "../repositories/internal-notes.js";
 import { createPostgresInternalNotes } from "./postgres-internal-notes.js";
 import { createJsonInternalNotes } from "./json/internal-notes.js";
+import type { AuditRepository } from "../repositories/audit.js";
+import { createPostgresAudit } from "./postgres-audit.js";
+import { createJsonAudit } from "./json/audit.js";
+import type { AuthenticationRepository } from "../repositories/authentication.js";
+import { createJsonAuthentication } from "./json/authentication.js";
+import { createPostgresAuthentication } from "./postgres-authentication.js";
 
 export interface StorageRuntime {
+  readonly authentication: AuthenticationRepository;
   readonly provider: StorageProvider;
   readonly repositories: RepositoryPorts;
   readonly internalNotes: InternalNotesRepository;
+  readonly audit: AuditRepository;
   readonly health: HealthProbe;
   close(): Promise<void>;
 }
@@ -79,7 +87,9 @@ export async function selectStorage(
       return Object.freeze({
         provider: "postgresql",
         repositories: createPostgresRepositories(postgres.pool),
+        authentication: createPostgresAuthentication(postgres.pool),
         internalNotes: createPostgresInternalNotes(postgres.pool),
+        audit: createPostgresAudit(postgres.pool),
         health: (signal: AbortSignal) =>
           postgres.probe(signal, postgresReadinessSql),
         close: () => postgres.close(),
@@ -114,7 +124,9 @@ export async function selectStorage(
   return Object.freeze({
     provider: "json",
     repositories: createJsonRepositories(store),
+    authentication: createJsonAuthentication(store),
     internalNotes: createJsonInternalNotes(options.jsonDirectory),
+    audit: createJsonAudit(options.jsonDirectory),
     health,
     close: () => retirement,
   });

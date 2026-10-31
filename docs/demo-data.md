@@ -38,8 +38,8 @@ npm run demo --workspace=@b2b-portal/api -- reset --provider json --directory D:
 Seed refuses any existing target. Reset requires the ownership marker `.b2b-demo`,
 the exact confirmation and only known regular files. Unknown files, links or
 noncanonical parent ancestry refuse mutation. The known B2B-014
-`order_internal_notes.json` file is also owned disposable demo state:
-reset explicitly clears it, if present, so the next note read is empty. The command takes an exclusive
+`order_internal_notes.json` and `audit_logs.json` files are also owned disposable
+demo state: confirmed reset explicitly clears them when present. The command takes an exclusive
 sibling lock, stages a full new snapshot, moves the old directory to a uniquely
 named backup, then publishes by rename. A failed publication attempts restoration.
 Only known owned files are removed, never recursive unknown data deletion. A

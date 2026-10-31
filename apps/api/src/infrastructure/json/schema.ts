@@ -4,6 +4,7 @@ import {
   type JsonCollections,
   type JsonPrice,
 } from "./models.js";
+import { normalizedEmail } from "../../services/login.js";
 
 export const collectionFiles = Object.freeze({
   companies: "companies.json",
@@ -98,6 +99,9 @@ const parsers: {
   },
   users(value) {
     const row = object(value);
+    const email =
+      row.email === undefined ? undefined : normalizedEmail(row.email);
+    if (row.email !== undefined && !email) return invalid();
     const role = choice(row.role, [
       "CUSTOMER_ADMIN",
       "CUSTOMER_USER",
@@ -107,6 +111,13 @@ const parsers: {
     const customer = role === "CUSTOMER_ADMIN" || role === "CUSTOMER_USER";
     if (!customer && row.companyId !== null) return invalid();
     return {
+      ...(email === undefined
+        ? {}
+        : {
+            email,
+            passwordHash: text(row.passwordHash),
+            mustChangePassword: bool(row.mustChangePassword),
+          }),
       id: id(row.id),
       companyId: customer ? id(row.companyId) : null,
       displayName: text(row.displayName),
@@ -182,10 +193,15 @@ export function parseCollection<K extends JsonCollection>(
 ): JsonCollections[K][] {
   if (!Array.isArray(value)) return invalid();
   const seen = new Set<string>();
+  const emails = new Set<string>();
   // Array.from visits sparse slots too; map would persist holes as invalid nulls.
   return Array.from(value, (item) => {
     const row = parsers[collection](item);
     const raw = object(row);
+    if (collection === "users" && typeof raw.email === "string") {
+      if (emails.has(raw.email)) return invalid();
+      emails.add(raw.email);
+    }
     const key =
       collection === "customer_product_access" ||
       collection === "customer_product_prices"
