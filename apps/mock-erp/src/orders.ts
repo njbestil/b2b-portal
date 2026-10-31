@@ -13,6 +13,20 @@ export interface MockErpOrder extends OrderInput {
   status: "created";
 }
 
+export interface MockErpInvoice {
+  erpInvoiceReference: string;
+  erpOrderId: string;
+  portalOrderId: string;
+  customerId: string;
+  invoiceNumber: string;
+  status: "available";
+  amount: string;
+  currency: "AED";
+  issuedAt: string;
+  /** Opaque synthetic reference, never a download URL. */
+  documentReference: string;
+}
+
 export class OrderError extends Error {
   constructor(
     readonly statusCode: number,
@@ -93,6 +107,7 @@ function parseOrder(input: unknown): OrderInput {
 export function createOrderService() {
   const byKey = new Map<string, { fingerprint: string; order: MockErpOrder }>();
   const portalOrderIds = new Set<string>();
+  const invoices = new Map<string, MockErpInvoice | null>();
 
   function inspect(key: unknown, input: unknown) {
     if (
@@ -135,6 +150,18 @@ export function createOrderService() {
   }
 
   return {
+    invoice(erpOrderId: string): MockErpInvoice | null {
+      if (!/^[\da-f]{8}(?:-[\da-f]{4}){3}-[\da-f]{12}$/i.test(erpOrderId))
+        throw new OrderError(400, "INVALID_ORDER_ID", "Invalid ERP order ID.");
+      const id = erpOrderId.toLowerCase();
+      if (!invoices.has(id))
+        throw new OrderError(
+          404,
+          "ORDER_NOT_FOUND",
+          "Mock ERP order not found.",
+        );
+      return structuredClone(invoices.get(id)!);
+    },
     /** Validate and inspect without reserving anything; delayed scenarios must
      * still call create again before publication. Never bypass retained replay. */
     replay(key: unknown, input: unknown): MockErpOrder | null {
@@ -144,6 +171,7 @@ export function createOrderService() {
     create(
       key: unknown,
       input: unknown,
+      completed = false,
     ): { created: boolean; order: MockErpOrder } {
       const {
         key: validKey,
@@ -160,6 +188,25 @@ export function createOrderService() {
         createdAt: new Date().toISOString(),
         status: "created",
       };
+      // Explicit synthetic completed fixture only. No commercial calculation or
+      // automatic transition from an accepted order to real fulfillment.
+      invoices.set(
+        order.erpOrderId,
+        completed
+          ? {
+              erpInvoiceReference: `MOCK-INV-${order.erpOrderId}`,
+              erpOrderId: order.erpOrderId,
+              portalOrderId: order.portalOrderId,
+              customerId: order.customerId,
+              invoiceNumber: `DEMO-${order.erpOrderId}`,
+              status: "available",
+              amount: "100.00",
+              currency: "AED",
+              issuedAt: order.createdAt,
+              documentReference: `mock-invoice:${order.erpOrderId}`,
+            }
+          : null,
+      );
       byKey.set(validKey, { fingerprint, order });
       portalOrderIds.add(parsed.portalOrderId);
       return { created: true, order: structuredClone(order) };
