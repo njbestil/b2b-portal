@@ -22,7 +22,17 @@ export function createLogin(
   verify: (password: string, hash: string | null) => Promise<boolean>,
   record: (input: AuditInput) => Promise<unknown>,
 ) {
-  return async (input: unknown, requestId: string): Promise<LoginPrincipal> => {
+  const verifyCredentials = createVerifiedLogin(repository, verify, record);
+  return async (input: unknown, requestId: string): Promise<LoginPrincipal> =>
+    (await verifyCredentials(input, requestId)).user;
+}
+/** Private backend composition evidence. Never pass this result to HTTP. */
+export function createVerifiedLogin(
+  repository: AuthenticationRepository,
+  verify: (password: string, hash: string | null) => Promise<boolean>,
+  record: (input: AuditInput) => Promise<unknown>,
+) {
+  return async (input: unknown, requestId: string) => {
     if (!input || typeof input !== "object" || Array.isArray(input))
       throw new LoginError("invalid_input");
     const body = input as Record<string, unknown>;
@@ -72,12 +82,16 @@ export function createLogin(
         targetId: user.id,
         metadata: { requestId, outcome: "success" },
       });
-      return {
+      const principal: LoginPrincipal = {
         id: user.id,
         companyId: user.companyId,
         displayName: user.displayName,
         role: user.role,
         mustChangePassword: user.mustChangePassword,
+      };
+      return {
+        user: principal,
+        proof: { userId: user.id, passwordHash: user.passwordHash },
       };
     } catch (error) {
       if (error instanceof LoginError && error.code === "invalid_credentials")

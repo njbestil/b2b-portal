@@ -379,6 +379,12 @@ test("actual API entry point composes selected JSON credentials and persisted lo
         API_HOST: "127.0.0.1",
         API_PORT: String(port),
         JSON_DATA_DIR: f.directory,
+        AUTH_JWT_ISSUER: "b2b-test",
+        AUTH_JWT_AUDIENCE: "b2b-test",
+        AUTH_JWT_ACTIVE_KID: "synthetic",
+        AUTH_JWT_KEYS: JSON.stringify({
+          synthetic: Buffer.alloc(32, 7).toString("base64url"),
+        }),
       },
       stdio: ["ignore", "pipe", "pipe"],
       windowsHide: true,
@@ -416,7 +422,8 @@ test("actual API entry point composes selected JSON credentials and persisted lo
   const events = JSON.parse(
     await readFile(join(f.directory, "audit_logs.json"), "utf8"),
   );
-  assert.equal(events.at(-1).action, "login.succeeded");
+  assert.ok(events.some((event) => event.action === "login.succeeded"));
+  assert.equal(events.at(-1).action, "session.issued");
   assert.equal(events.at(-1).actorUserId, f.data.users[2].id);
   assert.ok(![output, errorOutput].join().includes(hash));
   assert.ok(![output, errorOutput].join().includes("example.test"));

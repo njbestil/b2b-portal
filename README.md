@@ -91,9 +91,10 @@ see [ERP gateway configuration and scope](docs/erp-gateway.md). Authentication
 settings belong to their consuming feature. Keep real `.env` files untracked;
 only `.env.example` is committed.
 
-The backend [credential login endpoint](docs/login.md) verifies active users with
-salted password hashes and private audit events. It issues no session yet;
-Bearer sessions and the login UI remain separate work. Seed accounts stay disabled.
+The backend [credential verifier](docs/login.md) checks active users with salted
+password hashes and private audit events. Explicitly configured
+[Bearer sessions](docs/sessions.md) compose login, refresh and current-user
+validation over the selected provider. Seed accounts stay disabled.
 
 ## API response conventions
 
