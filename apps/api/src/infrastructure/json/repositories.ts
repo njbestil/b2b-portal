@@ -97,10 +97,12 @@ export function createJsonRepositories(
     companies: {
       async findById(scope) {
         const companyId = companyScope(scope);
-        return (
-          (await store.read("companies")).find((row) => row.id === companyId) ??
-          null
+        const row = (await store.read("companies")).find(
+          (row) => row.id === companyId,
         );
+        if (!row) return null;
+        const { id, legalName, tradeName, status, erpCustomerReference } = row;
+        return { id, legalName, tradeName, status, erpCustomerReference };
       },
     },
     users: {

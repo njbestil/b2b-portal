@@ -4,6 +4,10 @@ import {
   type JsonCollections,
   type JsonPrice,
 } from "./models.js";
+import {
+  checkedPending,
+  applicationText,
+} from "../../services/applications.js";
 import { normalizedEmail } from "../../services/login.js";
 
 export const collectionFiles = Object.freeze({
@@ -86,8 +90,16 @@ const parsers: {
 } = {
   companies(value) {
     const row = object(value);
+    if (
+      row.application !== undefined &&
+      checkedPending(row.application).companyId !== id(row.id)
+    )
+      return invalid();
     return {
       id: id(row.id),
+      ...(row.application === undefined
+        ? {}
+        : { application: checkedPending(row.application) }),
       legalName: text(row.legalName),
       tradeName: text(row.tradeName),
       status: choice(row.status, statuses),
@@ -120,6 +132,9 @@ const parsers: {
           }),
       id: id(row.id),
       companyId: customer ? id(row.companyId) : null,
+      ...(row.mobile === undefined
+        ? {}
+        : { mobile: applicationText(row.mobile, 40) }),
       displayName: text(row.displayName),
       role,
       status: choice(row.status, statuses),
