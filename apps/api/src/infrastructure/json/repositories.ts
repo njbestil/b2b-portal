@@ -35,10 +35,18 @@ export function createJsonRepositories(
   orders: OrderRepository;
 } {
   const companyUsers = async (companyId: string) =>
-    (await store.read("users")).filter(
-      (row): row is CustomerUserProfile =>
-        customer(row) && row.companyId === companyId,
-    );
+    (await store.read("users"))
+      .filter(
+        (row): row is CustomerUserProfile =>
+          customer(row) && row.companyId === companyId,
+      )
+      .map(({ id, companyId, displayName, role, status }) => ({
+        id,
+        companyId,
+        displayName,
+        role,
+        status,
+      }));
   const companyOrders = async (companyId: string) =>
     (await store.read("orders")).filter((row) => row.companyId === companyId);
   const catalog = async (companyId: string): Promise<CatalogProduct[]> => {
