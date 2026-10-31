@@ -37,6 +37,8 @@ for local/demo storage and remains ephemeral on ephemeral hosting.
 Offline, explicitly confirmed disposable demo reset recognizes and clears the
 private notification file. Unknown files still refuse reset. SQL reset already
 includes the notifications table. Ordinary startup never clears notifications.
+Offline catalog refresh preserves notification bytes alongside other private data;
+unrelated unknown files still refuse mutation.
 
 `notifications.test.mjs` covers creation, recipient references, bounds, detachment,
 concurrent appends/reopen, safe failures, provider composition and reset behavior.
