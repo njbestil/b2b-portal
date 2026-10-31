@@ -22,7 +22,12 @@ import type { AuthenticationRepository } from "../repositories/authentication.js
 import { createJsonAuthentication } from "./json/authentication.js";
 import { createPostgresAuthentication } from "./postgres-authentication.js";
 
+import type { NotificationRepository } from "../repositories/notifications.js";
+import { createPostgresNotifications } from "./postgres-notifications.js";
+import { createJsonNotifications } from "./json/notifications.js";
+
 export interface StorageRuntime {
+  readonly notifications: NotificationRepository;
   readonly authentication: AuthenticationRepository;
   readonly provider: StorageProvider;
   readonly repositories: RepositoryPorts;
@@ -90,6 +95,7 @@ export async function selectStorage(
         authentication: createPostgresAuthentication(postgres.pool),
         internalNotes: createPostgresInternalNotes(postgres.pool),
         audit: createPostgresAudit(postgres.pool),
+        notifications: createPostgresNotifications(postgres.pool),
         health: (signal: AbortSignal) =>
           postgres.probe(signal, postgresReadinessSql),
         close: () => postgres.close(),
@@ -127,6 +133,7 @@ export async function selectStorage(
     authentication: createJsonAuthentication(store),
     internalNotes: createJsonInternalNotes(options.jsonDirectory),
     audit: createJsonAudit(options.jsonDirectory),
+    notifications: createJsonNotifications(options.jsonDirectory),
     health,
     close: () => retirement,
   });

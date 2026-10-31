@@ -4,6 +4,10 @@ The separate private `AuthenticationRepository` supports
 [credential verification](../../docs/login.md). It must never replace the
 company-scoped public user projection or expose password hashes over HTTP.
 
+The separate backend-only `NotificationRepository` and `createNotifications`
+service support [user-scoped notification creation](../../docs/notifications.md)
+through the selected provider, without exposing a public notification endpoint.
+
 The initial core read ports live in `src/repositories/`: `CompanyRepository`,
 `UserRepository`, `CatalogRepository` and `OrderRepository`. Internal application
 query services in `src/services/` consume these interfaces through constructor-like
