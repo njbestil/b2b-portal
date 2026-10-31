@@ -3,6 +3,7 @@ import { OrderError } from "./orders.js";
 
 const scenarios = [
   "success",
+  "completed",
   "timeout",
   "unavailable",
   "validation",
@@ -24,7 +25,7 @@ export async function runScenario(
   signal: AbortSignal,
   timeoutMs = 1500,
 ): Promise<void> {
-  if (scenario === "success") return;
+  if (scenario === "success" || scenario === "completed") return;
   if (scenario === "timeout") {
     await delay(timeoutMs, undefined, { signal });
     throw new OrderError(504, "ERP_TIMEOUT", "Simulated ERP timeout.");

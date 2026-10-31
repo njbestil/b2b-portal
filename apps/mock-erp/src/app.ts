@@ -41,7 +41,11 @@ export function createApp() {
       try {
         await runScenario(scenario, controller.signal);
         if (controller.signal.aborted) return;
-        const result = orders.create(key, request.body);
+        const result = orders.create(
+          key,
+          request.body,
+          scenario === "completed",
+        );
         response.status(result.created ? 201 : 200).json(result.order);
       } catch (error) {
         if (!controller.signal.aborted) throw error;
@@ -51,6 +55,10 @@ export function createApp() {
       }
     },
   );
+  app.get("/mock-erp/v1/orders/:erpOrderId/invoice", (request, response) => {
+    response.setHeader("Cache-Control", "no-store");
+    response.json({ invoice: orders.invoice(request.params.erpOrderId) });
+  });
   app.use(orderErrorHandler);
 
   return app;

@@ -117,3 +117,7 @@ changes portal business/integration status or starts a portal retry worker.
 
 `scenarios.test.mjs` verifies all outcomes, validation/redaction, bounded timeout
 and cancellation, concurrent recovery, retained replay and actual-process startup.
+
+B2B-067 adds an explicit [synthetic completed invoice fixture](mock-erp-invoices.md).
+Ordinary success remains unchanged; invoice availability never implies an automatic
+portal fulfillment transition.
