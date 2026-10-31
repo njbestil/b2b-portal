@@ -121,3 +121,5 @@ and cancellation, concurrent recovery, retained replay and actual-process startu
 B2B-067 adds an explicit [synthetic completed invoice fixture](mock-erp-invoices.md).
 Ordinary success remains unchanged; invoice availability never implies an automatic
 portal fulfillment transition.
+
+B2B-065 adds [synthetic cancellation decisions](mock-erp-cancellations.md) for retained orders; portal authorization and business cancellation remain separate.
