@@ -26,7 +26,12 @@ import type { NotificationRepository } from "../repositories/notifications.js";
 import { createPostgresNotifications } from "./postgres-notifications.js";
 import { createJsonNotifications } from "./json/notifications.js";
 
+import type { ApplicationRepository } from "../repositories/applications.js";
+import { createPostgresApplications } from "./postgres-applications.js";
+import { createJsonApplications } from "./json/applications.js";
+
 export interface StorageRuntime {
+  readonly applications: ApplicationRepository;
   readonly notifications: NotificationRepository;
   readonly authentication: AuthenticationRepository;
   readonly provider: StorageProvider;
@@ -96,6 +101,7 @@ export async function selectStorage(
         internalNotes: createPostgresInternalNotes(postgres.pool),
         audit: createPostgresAudit(postgres.pool),
         notifications: createPostgresNotifications(postgres.pool),
+        applications: createPostgresApplications(postgres.pool),
         health: (signal: AbortSignal) =>
           postgres.probe(signal, postgresReadinessSql),
         close: () => postgres.close(),
@@ -109,6 +115,12 @@ export async function selectStorage(
     );
   }
   const store = new JsonFileStore(options.jsonDirectory);
+  const applications = createJsonApplications(options.jsonDirectory, store);
+  await applications
+    .recover()
+    .catch(() =>
+      options.logger("error", { event: "applications.recovery_failed" }),
+    );
   const health: HealthProbe = async (signal) => {
     if (signal.aborted) return false;
     try {
@@ -134,6 +146,7 @@ export async function selectStorage(
     internalNotes: createJsonInternalNotes(options.jsonDirectory),
     audit: createJsonAudit(options.jsonDirectory),
     notifications: createJsonNotifications(options.jsonDirectory),
+    applications,
     health,
     close: () => retirement,
   });

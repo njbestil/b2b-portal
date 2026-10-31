@@ -125,7 +125,10 @@ async function base(client) {
 test("shipped migration discovers exactly the approved core tables, without transaction control or internal notes", async () => {
   assert.throws(() => databaseConfig(" "));
   const migrations = await loadMigrations(directory);
-  assert.equal(migrations.length, 2);
+  assert.deepEqual(
+    migrations.slice(0, 2).map((row) => row.version),
+    [1, 2],
+  );
   assert.equal(migrations[0].version, 1);
   assert.equal(migrations[0].name, "mvp_schema");
   const sql = migrations[0].sql;
@@ -145,12 +148,12 @@ test(
   async (t) => {
     const { client, schema, migrations } = await fixture(t, false);
     assert.deepEqual(await runMigrations(client, migrations), {
-      applied: 2,
+      applied: migrations.length,
       skipped: 0,
     });
     assert.deepEqual(await runMigrations(client, migrations), {
       applied: 0,
-      skipped: 2,
+      skipped: migrations.length,
     });
     const actual = await client.query(
       "SELECT table_name FROM information_schema.tables WHERE table_schema=$1 AND table_type='BASE TABLE' ORDER BY table_name",
@@ -212,7 +215,7 @@ test(
     );
     const history = (await client.query("SELECT * FROM schema_migrations"))
       .rows;
-    assert.equal(history.length, 2);
+    assert.equal(history.length, migrations.length);
     assert.match(history[0].checksum, /^[a-f0-9]{64}$/);
     assert.ok(history[0].applied_at instanceof Date);
   },
@@ -563,7 +566,7 @@ test(
       runMigrations(client, [
         ...migrations,
         {
-          version: 3,
+          version: migrations.at(-1).version + 1,
           name: "failure_probe",
           sql: "SELECT definitely_not_a_function();",
         },
@@ -590,8 +593,8 @@ test(
     assert.deepEqual(
       results.sort((a, b) => b.applied - a.applied),
       [
-        { applied: 2, skipped: 0 },
-        { applied: 0, skipped: 2 },
+        { applied: migrations.length, skipped: 0 },
+        { applied: 0, skipped: migrations.length },
       ],
     );
   },
@@ -625,9 +628,10 @@ test(
     const url = new URL(process.env.B2B_TEST_MIGRATIONS_CLI_DATABASE_URL);
     url.pathname = `/${name}`;
     const entry = fileURLToPath(new URL("../dist/migrate.js", import.meta.url));
+    const migrations = await loadMigrations(directory);
     for (const expected of [
-      { applied: 2, skipped: 0 },
-      { applied: 0, skipped: 2 },
+      { applied: migrations.length, skipped: 0 },
+      { applied: 0, skipped: migrations.length },
     ]) {
       const result = spawnSync(process.execPath, [entry], {
         env: {

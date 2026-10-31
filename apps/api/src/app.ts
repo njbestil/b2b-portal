@@ -11,7 +11,13 @@ import {
   sendSuccess,
 } from "./http.js";
 
+import {
+  createApplicationRouter,
+  type ApplicationHandler,
+} from "./application-route.js";
+
 interface AppOptions {
+  applications?: ApplicationHandler;
   login?: LoginHandler;
   logger?: Logger;
   healthChecks?: HealthChecks;
@@ -30,6 +36,8 @@ export function createApp(options: AppOptions = {}) {
   app.use(requestIdMiddleware);
   app.use(requestLogging(logger));
   if (options.login) app.use(createLoginRouter(options.login));
+  if (options.applications)
+    app.use(createApplicationRouter(options.applications));
   app.use(express.json());
 
   app.get("/", (_request, response) => {
