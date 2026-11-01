@@ -39,6 +39,8 @@ import {
 } from "./features/authentication/AuthContext";
 import { AuthPage } from "./features/authentication/AuthPages";
 import { SessionClient, type ApiRole } from "./features/authentication/session";
+import { CatalogEntry } from "./features/catalog/CatalogPage";
+import type { CatalogAdapter } from "./features/catalog/api";
 
 function PublicLayout({ application = false }: { application?: boolean }) {
   return (
@@ -68,14 +70,16 @@ export function App({
   initialRole,
   sessionClient,
   passwords,
+  catalog,
 }: {
   initialRole?: Role;
   sessionClient?: SessionClient;
   passwords?: PasswordFlows;
+  catalog?: CatalogAdapter;
 } = {}) {
   return (
     <AuthProvider client={sessionClient} passwords={passwords}>
-      <AppRoutes initialRole={initialRole} />
+      <AppRoutes initialRole={initialRole} catalog={catalog} />
     </AuthProvider>
   );
 }
@@ -85,7 +89,13 @@ const roleNames: Record<ApiRole, Role> = {
   INTERNAL_ADMIN: "Internal Admin",
   SALES_STAFF: "Sales Staff",
 };
-function AppRoutes({ initialRole }: { initialRole?: Role }) {
+function AppRoutes({
+  initialRole,
+  catalog,
+}: {
+  initialRole?: Role;
+  catalog?: CatalogAdapter;
+}) {
   const { user, client } = useAuth();
   const [previewRole, setRole] = useState<Role>(() => {
     const saved = readPreference("b2b-preview-role");
@@ -151,12 +161,18 @@ function AppRoutes({ initialRole }: { initialRole?: Role }) {
                 <UnavailablePage />
               ) : page.path === "/dashboard" ? (
                 <Dashboard role={role} preview={!user} />
+              ) : page.path === "/catalog" ? (
+                <CatalogEntry adapter={catalog} />
               ) : (
                 <FeaturePlaceholder page={page} />
               )
             }
           />
         ))}
+        <Route
+          path="catalog/:productId"
+          element={<CatalogEntry adapter={catalog} />}
+        />
         <Route path="design-system" element={<DesignSystem />} />
         <Route path="*" element={<UnavailablePage notFound />} />
       </Route>

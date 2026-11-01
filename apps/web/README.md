@@ -97,6 +97,54 @@ keyboard, responsive, focus and live API checks remain incomplete due to the
 local verification environment; Node transport/race and actual-route SSR tests
 are reproducible without running dev servers.
 
+## Staged company catalogue (#49)
+
+`/catalog` and `/catalog/:productId` implement the Figma catalogue grid and a
+matching product detail view. Only a normal customer session can mount the data
+screen; preview roles and missing/restricted identity cannot issue catalogue
+requests. Changing account remounts the screen and cancels its resource. API
+authorization, company eligibility and customer price resolution remain server
+responsibilities; the UI sends no company/role override.
+
+The feature owns `CatalogAdapter`, runtime-validating `CatalogClient`, query
+helpers and a cancellable screen resource. Inject an adapter through the app
+composition after the #47/#48 contract is confirmed. `createHttpCatalogAdapter`
+consumes a normal authenticated read function and explicitly supplied routes;
+it implements the proposed standard envelope with list `{items,total}` and
+detail `{product}`. It is **not enabled by default**. Production without a
+producer reports unavailable; no query flag, environment variable or browser
+storage enables fixture data. Synthetic products/prices exist only in tests.
+
+Search covers name/SKU; category/brand are free-text filter values because no
+authoritative option catalogue is delivered. Applying filters resets offset;
+query strings preserve filters on detail/back navigation. Pagination is bounded
+to safe offsets and 1–100 rows (default 20). Counts, matching and ordering come
+from the producer before paging; the browser does not filter an incomplete
+page or invent a Recommended sort. Draft HTTP/query proposals and unresolved
+producer questions are in #47/#48, including text-matching policy and bounds.
+
+Core product fields reuse the current repository projection: ID, SKU, name,
+selling UOM, exact decimal MOQ and nullable exact decimal price/currency.
+Category, brand and available quantity are proposed nullable metadata; absent
+values display unknown, never guessed stock or zero pricing. Cached quantity
+does not imply a Low stock threshold or submit-time availability. Product images
+have no delivered source, so a decorative placeholder requests no remote photo.
+Cards/detail preserve decimal strings without numeric rounding. Missing price
+requires account pricing before ordering. Cart/quantity mutations belong to #50;
+this feature exposes no fake Add to order action or success.
+
+Loading, safe errors/retry, no matches, beyond-end pages and inaccessible product
+states are implemented. Forms use native labels/submission, mounted status text,
+error focus and focusable unavailable pagination controls. Browser/keyboard/
+responsive verification is still environment-blocked/incomplete; transport,
+query, race and actual-view SSR tests are reproducible locally. No producer
+integration, tenant-isolation parity or stock freshness is claimed by fixtures.
+
+Transparent stack: #132 -> #137 (#37) -> #140 (#35) -> #49 PR. The catalogue
+child targets the #35 branch so its diff contains only catalogue work. It remains
+draft until confirmed #47/#48 routes/fields/matching, real authentication and
+catalogue integration, browser verification and required reviews are complete.
+
 Menus and direct-route preview restrictions use the same role policy. A hidden
 destination cannot be rendered simply by typing its URL. This is only UI
 scaffolding, **not security enforcement**: future API authentication and backend
