@@ -43,7 +43,7 @@ Routes are `/dashboard`, `/catalog`, `/orders`, `/invoices`, `/notifications`,
 `/company`, `/users`, `/profile`, `/customer-applications`, `/customers`,
 `/sales-staff`, `/erp-integrations`, `/audit-logs`, and `/configuration`.
 `/design-system` is a shared utility destination for all roles. The account-access
-layout has `/login` and `/forgot-password` placeholders. `/apply` submits the
+layout has login, first-login, recovery and reset forms. `/apply` submits the
 actual ten-field anonymous intake contract to `POST /api/v1/customer-applications`.
 Only a validated HTTP 202 receipt opens `/apply/received`; it grants no account
 access. The receipt is an attempt reference, with no public status lookup.
@@ -61,6 +61,41 @@ server-only `PORTAL_API_PROXY_TARGET` to use another local Portal API. Productio
 hosting must route `/api` to the real Portal API separately from the SPA fallback.
 There are no production fixtures or offline success paths. #36/PR #132 supplies
 the producer; its merge and real integration remain acceptance dependencies.
+
+## Staged authentication (#35)
+
+The authentication feature consumes the #28 handoff: exact email/password login,
+normal-access `/auth/me` confirmation, and serialized single-flight refresh.
+Only a complete validated token envelope is a session; credential-only profiles,
+SPA HTML and malformed success bodies fail safely. Restricted users go to
+`/first-login` and cannot render workspace routes or perform business reads.
+Connected workspace chrome uses the returned identity and removes the preview
+role selector. Anonymous shell previews remain explicitly labelled; they cannot
+supply credentials for data requests. API authorization remains authoritative.
+
+Tokens stay in memory for this loaded tab, with no Remember me persistence or
+session lifetime extension. Reload requires a new sign-in. Proofs are sent only
+as Bearer headers or the exact refresh JSON body, never URLs, logs or storage.
+Refresh is serialized; a lost/failed rotation clears memory and requires fresh
+login, with no replay of stale proof. Late responses cannot resurrect cleared
+sessions. This is browser behavior, not implementation of backend revocation.
+
+**Draft integration boundary:** first-login/recovery/reset forms own validation,
+busy/errors, protected-demo recovery copy, manual proof entry and fresh-login
+continuation. Their feature-level `PasswordFlows` port deliberately fails
+unavailable in production until #30/#31 provide their exact HTTP contracts. No
+route/body/success shape is guessed. Tests may supply clearly labelled ports;
+the browser bundle has no fixture success or query/environment switch enabling
+one. No email delivery, reset token issuance or password write is claimed.
+The form's replacement-password guidance follows Figma; final server-bound
+validation must be reconciled with the producer handoff. #29 logout remains a
+backend/integration dependency; Account access is a link, not a logout claim.
+
+#35 is transparently stacked on #37's public layout/proxy. Merge #36/#37 and
+the applicable auth producers before integrated acceptance of #35. Browser
+keyboard, responsive, focus and live API checks remain incomplete due to the
+local verification environment; Node transport/race and actual-route SSR tests
+are reproducible without running dev servers.
 
 Menus and direct-route preview restrictions use the same role policy. A hidden
 destination cannot be rendered simply by typing its URL. This is only UI

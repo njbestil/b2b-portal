@@ -161,15 +161,14 @@ test("unknown addresses produce a safe not-found page without reflecting URL inp
   }
 });
 
-test("public account routes use their own layout without pretending to authenticate or collect credentials", () => {
+test("public account forms use their own layout without workspace previews", () => {
   for (const path of ["/login", "/forgot-password"]) {
     const html = render(path);
     assert.match(html, /class="public-layout"/);
     assert.ok(!html.includes('aria-label="Workspace"'));
-    assert.match(html, /Sign-in and recovery are not available/);
-    assert.match(html, /Explore workspace preview/);
-    assert.ok(!html.includes("<form"));
-    assert.ok(!html.includes("<input"));
+    assert.ok(!html.includes("Explore workspace preview"));
+    assert.ok(html.includes("<form"));
+    assert.match(html, /name="email"/);
     assert.equal((html.match(/<h1[\s>]/g) ?? []).length, 1);
   }
 });

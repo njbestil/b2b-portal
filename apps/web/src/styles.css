@@ -746,6 +746,70 @@ select,
   inline-size: min(45rem, 100%);
   min-inline-size: 0;
 }
+
+.auth-page {
+  inline-size: min(28.125rem, 100%);
+}
+.auth-page h1 {
+  font-size: 1.875rem;
+  margin-block: 0.75rem 0.625rem;
+}
+.auth-intro {
+  color: var(--content-subtle);
+  line-height: 1.6;
+  margin-block-end: 1.75rem;
+}
+.auth-form {
+  display: grid;
+  gap: 1.125rem;
+}
+.auth-form fieldset {
+  padding: 0;
+  margin: 0;
+  border: 0;
+  display: grid;
+  gap: 1.125rem;
+  min-inline-size: 0;
+}
+.auth-form .button {
+  inline-size: 100%;
+}
+.auth-form-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+  font-size: 0.8125rem;
+}
+.auth-memory-note {
+  color: var(--content-subtle);
+}
+.auth-links {
+  display: grid;
+  gap: 1rem;
+  text-align: center;
+  margin-block-start: 1.5rem;
+}
+.auth-links p {
+  margin: 0;
+}
+.auth-page a {
+  color: var(--action);
+  font-weight: 700;
+}
+.auth-notice {
+  padding: 1rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface-muted);
+}
+.auth-form input[aria-invalid="true"] {
+  border-color: var(--status-danger);
+}
+.auth-form input[aria-invalid="true"] ~ small {
+  color: var(--status-danger);
+}
 .application-page h1 {
   font-size: 1.875rem;
   letter-spacing: -0.05rem;
