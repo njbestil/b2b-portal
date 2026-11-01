@@ -23,10 +23,79 @@ import { createSessions } from "../dist/services/sessions.js";
 import { createAccessTokens } from "../dist/infrastructure/access-tokens.js";
 import { sessionProofs } from "../dist/infrastructure/session-crypto.js";
 import { createApp } from "../dist/app.js";
+import { createJsonApplications } from "../dist/infrastructure/json/applications.js";
+import { checkedApplication } from "../dist/services/applications.js";
 
 const body = { currentPassword: oldPassword, newPassword };
 const invalid = (e) => e.code === "invalid_proof";
 const unavailable = (e) => e.code === "unavailable";
+test("JSON application publication and password change serialize without overwriting either account", async (t) => {
+  const f = await authFixture(t);
+  const login = await f.login();
+  const run = f.security.run.bind(f.security);
+  let active = 0,
+    maximum = 0;
+  f.security.run = (operation) =>
+    run(async () => {
+      active++;
+      maximum = Math.max(maximum, active);
+      try {
+        return await operation();
+      } finally {
+        active--;
+      }
+    });
+  const paused = barrier(),
+    release = barrier();
+  const applications = createJsonApplications(
+    f.directory,
+    f.security.store,
+    async (stage) => {
+      if (stage === "companies") {
+        paused.resolve();
+        await release.promise;
+      }
+    },
+    f.security,
+  );
+  const record = checkedApplication({
+    companyName: "Concurrent Synthetic Company",
+    tradeLicenseReference: "Concurrent-1",
+    businessEmail: "concurrent-business@example.test",
+    phone: "555",
+    billingAddress: "Billing",
+    deliveryAddress: "Delivery",
+    administratorName: "Concurrent Admin",
+    administratorEmail: "concurrent-admin@example.test",
+    administratorMobile: "556",
+    companyId: randomUUID(),
+    administratorUserId: randomUUID(),
+    deliveryAddressId: randomUUID(),
+    passwordHash: f.passwordHash,
+    createdAt: new Date(f.now()).toISOString(),
+  });
+  const submission = applications.submit(record);
+  await paused.promise;
+  assert.equal(
+    active,
+    1,
+    "application publication holds the shared coordinator",
+  );
+  const change = f.change()(login.accessToken, body, randomUUID());
+  release.resolve();
+  await Promise.all([submission, change]);
+  assert.equal(maximum, 1);
+  const users = await f.security.store.read("users");
+  assert.equal(users.length, f.data.users.length + 1);
+  assert.equal(
+    users.find((u) => u.id === record.administratorUserId).status,
+    "PENDING",
+  );
+  const changed = users.find((u) => u.id === f.data.users[0].id);
+  assert.equal(changed.mustChangePassword, false);
+  assert.equal(await verifyPassword(newPassword, changed.passwordHash), true);
+  await assert.rejects(f.auth.authenticateAccess(login.accessToken), invalid);
+});
 async function serve(t, app) {
   const server = app.listen(0, "127.0.0.1");
   await once(server, "listening");

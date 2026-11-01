@@ -32,8 +32,13 @@ import type { NotificationRepository } from "../repositories/notifications.js";
 import { createPostgresNotifications } from "./postgres-notifications.js";
 import { createJsonNotifications } from "./json/notifications.js";
 
+import type { ApplicationRepository } from "../repositories/applications.js";
+import { createPostgresApplications } from "./postgres-applications.js";
+import { createJsonApplications } from "./json/applications.js";
+
 export interface StorageRuntime {
   readonly passwordChanges: PasswordChangeRepository;
+  readonly applications: ApplicationRepository;
   readonly sessions: SessionRepository;
   readonly notifications: NotificationRepository;
   readonly authentication: AuthenticationRepository;
@@ -108,6 +113,7 @@ export async function selectStorage(
         internalNotes: createPostgresInternalNotes(postgres.pool),
         audit: createPostgresAudit(postgres.pool),
         notifications: createPostgresNotifications(postgres.pool),
+        applications: createPostgresApplications(postgres.pool),
         health: async (signal: AbortSignal) =>
           (await postgres.probe(signal, postgresReadinessSql)) &&
           !signal.aborted &&
@@ -125,6 +131,17 @@ export async function selectStorage(
   const security = new JsonSecurityCoordinator(options.jsonDirectory);
   const store = security.store,
     sessions = createJsonSessions(security);
+  const applications = createJsonApplications(
+    options.jsonDirectory,
+    store,
+    undefined,
+    security,
+  );
+  await applications
+    .recover()
+    .catch(() =>
+      options.logger("error", { event: "applications.recovery_failed" }),
+    );
   const health: HealthProbe = async (signal) => {
     if (signal.aborted) return false;
     try {
@@ -155,6 +172,7 @@ export async function selectStorage(
     internalNotes: createJsonInternalNotes(options.jsonDirectory),
     audit: createJsonAudit(options.jsonDirectory),
     notifications: createJsonNotifications(options.jsonDirectory),
+    applications,
     health,
     close: () => retirement,
   });

@@ -15,8 +15,14 @@ import {
   sendSuccess,
 } from "./http.js";
 
+import {
+  createApplicationRouter,
+  type ApplicationHandler,
+} from "./application-route.js";
+
 interface AppOptions {
   passwordChange?: PasswordChangeHandler;
+  applications?: ApplicationHandler;
   sessions?: SessionService;
   sessionLogin?: SessionService["login"];
   login?: LoginHandler;
@@ -38,6 +44,8 @@ export function createApp(options: AppOptions = {}) {
   app.use(requestLogging(logger));
   if (options.login)
     app.use(createLoginRouter(options.login, Date.now, options.sessionLogin));
+  if (options.applications)
+    app.use(createApplicationRouter(options.applications));
   app.use(createSessionRouter(options.sessions));
   app.use(createPasswordChangeRouter(options.passwordChange));
   app.use(express.json());

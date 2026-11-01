@@ -126,6 +126,10 @@ async function base(client) {
 test("shipped migration discovers exactly the approved core tables, without transaction control or internal notes", async () => {
   assert.throws(() => databaseConfig(" "));
   const migrations = await loadMigrations(directory);
+  assert.deepEqual(
+    migrations.slice(0, 2).map((row) => row.version),
+    [1, 2],
+  );
   assert.ok(
     migrations.some(
       (entry) =>

@@ -10,6 +10,7 @@ import { createApp } from "./app.js";
 import { randomUUID } from "node:crypto";
 import { createAudit } from "./services/audit.js";
 import { createLogin, createVerifiedLogin } from "./services/login.js";
+import { createApplications } from "./services/applications.js";
 import { parseSessionConfiguration } from "./infrastructure/session-config.js";
 import { createAccessTokens } from "./infrastructure/access-tokens.js";
 import { createSessions } from "./services/sessions.js";
@@ -74,6 +75,12 @@ try {
           record,
         )
       : undefined,
+    applications: createApplications(
+      selectedStorage.applications,
+      hashPassword,
+      (event) => audit.record(event),
+      randomUUID,
+    ),
     sessions,
     sessionLogin:
       sessions?.login ??

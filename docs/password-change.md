@@ -72,8 +72,9 @@ the new password is the recovery path; the API does not silently undo it.
 No migration is added. The session binding migration comes from merged #28.
 The shared session-file/account readers were factored for this writer rather
 than duplicated. Future onboarding/lifecycle user writers must use the same
-security boundary; #132's independently developed metadata/registration must be
-preserved when integrating. This branch does not consume unmerged onboarding.
+security boundary. The merged #132 application intake and recovery now share
+the coordinator with password changes and sessions. Its registration and
+metadata remain preserved; no applied migration is renamed.
 
 ## Verification
 
