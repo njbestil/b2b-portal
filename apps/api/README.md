@@ -1,5 +1,7 @@
 # Portal API repository contracts
 
+Current-session logout: [HTTP contract and persistence semantics](../../docs/logout.md).
+
 The separate private `AuthenticationRepository` supports
 [credential verification](../../docs/login.md). It must never replace the
 company-scoped public user projection or expose password hashes over HTTP.

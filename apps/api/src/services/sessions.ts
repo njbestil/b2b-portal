@@ -128,7 +128,7 @@ export function createSessions(
         accessExpiresAt: new Date(proof.expiresAt).toISOString(),
       };
     },
-    /** Private producer capability; HTTP logout is #29. */
+    /** Revoke only the session resolved from validated current backend context. */
     async revoke(token: string, requestId: string): Promise<void> {
       const proof = await access.verify(token);
       await repository.admit(proof.sessionId, proof.userId);
