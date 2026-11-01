@@ -3,6 +3,8 @@
 The separate private `AuthenticationRepository` supports
 [credential verification](../../docs/login.md). It must never replace the
 company-scoped public user projection or expose password hashes over HTTP.
+The private [session producer](../../docs/sessions.md) composes that verifier and
+returns a validated backend principal; public role/company claims are not proof.
 
 The separate backend-only `NotificationRepository` and `createNotifications`
 service support [user-scoped notification creation](../../docs/notifications.md)

@@ -1,8 +1,10 @@
 import { Router, json } from "express";
-import type { LoginResult } from "@b2b-portal/contracts";
+import type { LoginResult, SessionTokenResult } from "@b2b-portal/contracts";
 import type { LoginPrincipal } from "./repositories/authentication.js";
 import { LoginError } from "./services/login.js";
 import { HttpError, requestIdFor, sendSuccess } from "./http.js";
+import { SessionError } from "./services/session-state.js";
+import { sessionHttpError } from "./session-route.js";
 
 export type LoginHandler = (
   body: unknown,
@@ -11,6 +13,10 @@ export type LoginHandler = (
 export function createLoginRouter(
   login: LoginHandler,
   now: () => number = Date.now,
+  sessionLogin?: (
+    body: unknown,
+    requestId: string,
+  ) => Promise<SessionTokenResult>,
 ) {
   const router = Router();
   // Direct peer IP only (Express trust proxy remains disabled). Bounded, process-local guard.
@@ -62,10 +68,15 @@ export function createLoginRouter(
     json({ limit: "4kb", inflate: false }),
     async (request, response, next) => {
       try {
-        const user = await login(request.body, requestIdFor(response));
-        const result: LoginResult = { user };
+        const result: LoginResult = sessionLogin
+          ? await sessionLogin(request.body, requestIdFor(response))
+          : { user: await login(request.body, requestIdFor(response)) };
         sendSuccess(response, result);
       } catch (error) {
+        if (error instanceof SessionError) {
+          next(sessionHttpError(error));
+          return;
+        }
         if (error instanceof LoginError) {
           if (error.code === "invalid_input")
             next(

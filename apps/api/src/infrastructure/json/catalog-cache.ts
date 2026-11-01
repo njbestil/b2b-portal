@@ -34,6 +34,7 @@ export function createJsonCatalogCache(
       "audit_logs.json",
       "notifications.json",
       "delivery_addresses.json",
+      "user_sessions.json",
     ];
   return {
     async refresh(build) {

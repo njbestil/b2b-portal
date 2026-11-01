@@ -150,6 +150,14 @@ export function createOrderService() {
   }
 
   return {
+    findById(erpOrderId: string): MockErpOrder {
+      if (!/^[\da-f]{8}(?:-[\da-f]{4}){3}-[\da-f]{12}$/i.test(erpOrderId))
+        throw new OrderError(400, "INVALID_ORDER_ID", "Invalid ERP order ID.");
+      for (const { order } of byKey.values())
+        if (order.erpOrderId === erpOrderId.toLowerCase())
+          return structuredClone(order);
+      throw new OrderError(404, "ORDER_NOT_FOUND", "Mock ERP order not found.");
+    },
     invoice(erpOrderId: string): MockErpInvoice | null {
       if (!/^[\da-f]{8}(?:-[\da-f]{4}){3}-[\da-f]{12}$/i.test(erpOrderId))
         throw new OrderError(400, "INVALID_ORDER_ID", "Invalid ERP order ID.");

@@ -1,3 +1,4 @@
+import { sessionProofs } from "./infrastructure/session-crypto.js";
 import {
   EnvironmentConfigurationError,
   parseErpEnvironment,
@@ -8,9 +9,13 @@ import {
 import { createApp } from "./app.js";
 import { randomUUID } from "node:crypto";
 import { createAudit } from "./services/audit.js";
-import { createLogin } from "./services/login.js";
+import { createLogin, createVerifiedLogin } from "./services/login.js";
 import { createApplications } from "./services/applications.js";
 import { hashPassword } from "./infrastructure/passwords.js";
+import { parseSessionConfiguration } from "./infrastructure/session-config.js";
+import { createAccessTokens } from "./infrastructure/access-tokens.js";
+import { createSessions } from "./services/sessions.js";
+import { SessionError } from "./services/session-state.js";
 import { verifyPassword } from "./infrastructure/passwords.js";
 import { createLogger } from "./logging.js";
 import { resolve } from "node:path";
@@ -31,6 +36,7 @@ try {
   const postgresConfig = parsePostgresEnvironment(process.env);
   const erpConfig = parseErpEnvironment(process.env);
   const storageConfig = parseStorageEnvironment(process.env);
+  const sessionConfig = parseSessionConfiguration(process.env);
   storage = await selectStorage({
     postgres: postgresConfig,
     jsonDirectory: resolve(
@@ -39,9 +45,26 @@ try {
     ),
     startupTimeoutMs: storageConfig.startupTimeoutMs,
     logger,
+    requireSessions: sessionConfig !== undefined,
   });
   const selectedStorage = storage;
   const audit = createAudit(selectedStorage.audit, randomUUID);
+  const record = (input: Parameters<typeof audit.record>[0]) =>
+    audit.record(input);
+  const sessions = sessionConfig
+    ? createSessions(
+        selectedStorage.sessions,
+        createVerifiedLogin(
+          selectedStorage.authentication,
+          verifyPassword,
+          record,
+        ),
+        record,
+        sessionConfig,
+        createAccessTokens(sessionConfig),
+        sessionProofs,
+      )
+    : undefined;
   const app = createApp({
     applications: createApplications(
       selectedStorage.applications,
@@ -49,6 +72,12 @@ try {
       (event) => audit.record(event),
       randomUUID,
     ),
+    sessions,
+    sessionLogin:
+      sessions?.login ??
+      (async () => {
+        throw new SessionError("unavailable");
+      }),
     login: createLogin(
       selectedStorage.authentication,
       verifyPassword,
