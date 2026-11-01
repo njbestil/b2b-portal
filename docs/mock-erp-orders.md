@@ -123,3 +123,5 @@ Ordinary success remains unchanged; invoice availability never implies an automa
 portal fulfillment transition.
 
 B2B-065 adds [synthetic cancellation decisions](mock-erp-cancellations.md) for retained orders; portal authorization and business cancellation remain separate.
+
+Child #134 adds [explicit synthetic fulfillment fixtures and status retrieval](mock-erp-fulfillment.md); the original created order field and portal mapping remain separate.
