@@ -4,6 +4,7 @@ import { Button, Field } from "../../shared/ui";
 import { Brand } from "../../shell/WorkspaceLayout";
 import { useAuth } from "./AuthContext";
 import { AuthError } from "./session";
+import { replacementPasswordError } from "./passwords";
 
 type Mode = "login" | "temporary" | "forgot" | "reset";
 const copy = {
@@ -100,14 +101,8 @@ export function AuthPage({ mode }: { mode: Mode }) {
     }
     if (mode === "temporary" || mode === "reset") {
       const next = value("newPassword");
-      if (
-        next.length < 8 ||
-        !/[A-Z]/.test(next) ||
-        !/[0-9]/.test(next) ||
-        !/[^A-Za-z0-9\s]/.test(next)
-      )
-        errors.newPassword =
-          "Use 8+ characters with an uppercase letter, number and symbol.";
+      const passwordError = replacementPasswordError(next);
+      if (passwordError) errors.newPassword = passwordError;
       if (next !== value("confirmPassword"))
         errors.confirmPassword = "The new passwords must match.";
     }

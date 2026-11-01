@@ -5,33 +5,12 @@ import {
   useSyncExternalStore,
   type ReactNode,
 } from "react";
-import { AuthError, SessionClient } from "./session";
+import { SessionClient } from "./session";
+import { createPasswordFlows, type PasswordFlows } from "./passwords";
+export type { PasswordFlows } from "./passwords";
 
 /** Feature-level UI port, not an invented HTTP DTO. Bind only after producer handoff. */
-export interface PasswordFlows {
-  changeInitialPassword(
-    currentPassword: string,
-    newPassword: string,
-    signal?: AbortSignal,
-  ): Promise<void>;
-  requestRecovery(email: string, signal?: AbortSignal): Promise<void>;
-  redeemRecovery(
-    proof: string,
-    newPassword: string,
-    signal?: AbortSignal,
-  ): Promise<void>;
-}
-const unavailable: PasswordFlows = {
-  async changeInitialPassword() {
-    throw new AuthError("unavailable");
-  },
-  async requestRecovery() {
-    throw new AuthError("unavailable");
-  },
-  async redeemRecovery() {
-    throw new AuthError("unavailable");
-  },
-};
+const unavailable = createPasswordFlows();
 const AuthContext = createContext<{
   client: SessionClient;
   passwords: PasswordFlows;
