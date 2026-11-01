@@ -733,3 +733,176 @@ select,
     grid-template-columns: 1fr;
   }
 }
+/* Public application form and receipt follow the reference Auth flow. */
+.public-layout[data-application="true"] {
+  grid-template-columns: 0.9fr 1.1fr;
+}
+.public-layout[data-application="true"] .public-main {
+  display: grid;
+  place-items: center;
+  padding: 3.125rem;
+}
+.application-page {
+  inline-size: min(45rem, 100%);
+  min-inline-size: 0;
+}
+.application-page h1 {
+  font-size: 1.875rem;
+  letter-spacing: -0.05rem;
+  margin-block: 0 0.5rem;
+}
+.application-intro {
+  color: var(--content-subtle);
+  margin-block: 0 1.625rem;
+}
+.application-form {
+  display: grid;
+  gap: 1rem;
+}
+.application-form fieldset {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  min-inline-size: 0;
+}
+.application-form legend {
+  inline-size: 100%;
+  border-block-end: 1px solid var(--border);
+  padding-block-end: 0.5rem;
+  margin-block-end: 0.875rem;
+  color: var(--action);
+  font-size: var(--text-label);
+  font-weight: 800;
+  letter-spacing: 0.06em;
+}
+.application-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 0.875rem;
+}
+.application-form > .button {
+  inline-size: 100%;
+  margin-block-start: 0.25rem;
+}
+.application-form input[aria-invalid="true"] {
+  border-color: var(--status-danger);
+}
+.application-form input[aria-invalid="true"] ~ small {
+  color: var(--status-danger);
+}
+.application-error {
+  padding: 1rem;
+  border: 1px solid var(--status-danger);
+  border-radius: var(--radius-sm);
+}
+.application-error h2 {
+  font-size: 1rem;
+  margin-block: 0 0.5rem;
+}
+.application-error p {
+  margin: 0;
+}
+.application-error:focus {
+  outline: 2px solid var(--action);
+  outline-offset: 0.25rem;
+}
+.application-status {
+  color: var(--content-subtle);
+  margin: 0;
+}
+.application-status:not(:empty) {
+  margin-block-end: 1rem;
+}
+.application-switch {
+  text-align: center;
+  color: var(--content-subtle);
+  margin-block-start: 1.375rem;
+}
+.application-switch a {
+  font-weight: 750;
+  color: var(--action);
+}
+.application-mobile-brand {
+  display: none;
+}
+.application-receipt-layout {
+  min-block-size: 100dvh;
+  display: grid;
+  place-items: center;
+  padding: 2rem 1.25rem;
+  background: var(--surface-muted);
+}
+.application-receipt-card {
+  inline-size: min(30rem, 100%);
+  border: 1px solid var(--border);
+  border-radius: 1.125rem;
+  padding: 2.625rem;
+  background: var(--surface);
+  text-align: center;
+  box-shadow: var(--shadow);
+}
+.application-success-icon {
+  display: grid;
+  place-items: center;
+  margin: 0 auto 1.25rem;
+  inline-size: 3.75rem;
+  block-size: 3.75rem;
+  border-radius: 50%;
+  color: var(--action);
+  background: var(--surface-accent);
+}
+.application-success-icon svg {
+  inline-size: 1.875rem;
+  block-size: 1.875rem;
+}
+.application-receipt-card h1 {
+  font-size: 1.75rem;
+  margin-block: 1.125rem 0.625rem;
+}
+.application-receipt-card > p {
+  color: var(--content-subtle);
+  line-height: 1.6;
+}
+.application-reference {
+  padding: 0.875rem;
+  margin-block: 1.375rem;
+  border-radius: 0.625rem;
+  background: var(--surface-muted);
+}
+.application-reference dt {
+  color: var(--content-subtle);
+  font-size: var(--text-label);
+}
+.application-reference dd {
+  margin: 0.3125rem 0 0;
+  font-weight: 750;
+  overflow-wrap: anywhere;
+}
+@media (max-width: 50rem) {
+  .public-layout[data-application="true"] {
+    grid-template-columns: 1fr;
+  }
+  .public-layout[data-application="true"] .public-brand {
+    display: none;
+  }
+  .public-layout[data-application="true"] .public-main {
+    padding: 1.875rem 1.25rem;
+    align-items: start;
+  }
+  .application-mobile-brand {
+    display: block;
+    margin-block-end: 2.8125rem;
+  }
+  .application-mobile-brand .brand {
+    padding: 0;
+    color: var(--content);
+  }
+}
+@media (max-width: 35rem) {
+  .application-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .application-receipt-card {
+    padding: 1.5rem;
+  }
+}

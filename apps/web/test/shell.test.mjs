@@ -21,7 +21,7 @@ before(async () => {
   server = await createServer({
     root: fileURLToPath(new URL("../", import.meta.url)),
     configFile: false,
-    server: { middlewareMode: true, hmr: false, watch: null },
+    server: { middlewareMode: true, hmr: false, ws: false, watch: null },
   });
   ({ App } = await server.ssrLoadModule("/src/app.tsx"));
 });
@@ -162,11 +162,11 @@ test("unknown addresses produce a safe not-found page without reflecting URL inp
 });
 
 test("public account routes use their own layout without pretending to authenticate or collect credentials", () => {
-  for (const path of ["/login", "/apply", "/forgot-password"]) {
+  for (const path of ["/login", "/forgot-password"]) {
     const html = render(path);
     assert.match(html, /class="public-layout"/);
     assert.ok(!html.includes('aria-label="Workspace"'));
-    assert.match(html, /No credentials or applications are collected/);
+    assert.match(html, /Sign-in and recovery are not available/);
     assert.match(html, /Explore workspace preview/);
     assert.ok(!html.includes("<form"));
     assert.ok(!html.includes("<input"));

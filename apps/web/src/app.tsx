@@ -32,9 +32,12 @@ function savePreference(key: string, value: string) {
   }
 }
 
-function PublicLayout() {
+import { ApplicationPage } from "./features/customer-applications/ApplicationPage";
+import { ApplicationReceiptPage } from "./features/customer-applications/ApplicationReceiptPage";
+
+function PublicLayout({ application = false }: { application?: boolean }) {
   return (
-    <div className="public-layout">
+    <div className="public-layout" data-application={application || undefined}>
       <aside className="public-brand">
         <Brand />
         <div>
@@ -64,7 +67,7 @@ function PublicPlaceholder({ title }: { title: string }) {
       description="Account access is coming in the authentication and onboarding issues."
     >
       <Badge tone="warning">Shell preview</Badge>
-      <p>No credentials or applications are collected by this shell.</p>
+      <p>Sign-in and recovery are not available on this preview screen.</p>
       <Link className="button button-primary" to="/dashboard">
         Explore workspace preview
       </Link>
@@ -99,15 +102,16 @@ export function App({ initialRole }: { initialRole?: Role } = {}) {
           path="login"
           element={<PublicPlaceholder title="Welcome back" />}
         />
-        <Route
-          path="apply"
-          element={<PublicPlaceholder title="Apply for an account" />}
-        />
+
         <Route
           path="forgot-password"
           element={<PublicPlaceholder title="Forgot your password?" />}
         />
       </Route>
+      <Route element={<PublicLayout application />}>
+        <Route path="apply" element={<ApplicationPage />} />
+      </Route>
+      <Route path="apply/received" element={<ApplicationReceiptPage />} />
       <Route
         element={
           <WorkspaceLayout

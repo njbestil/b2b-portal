@@ -1,8 +1,8 @@
 # Gulf Provision web shell
 
 B2B-006 / [issue #18](https://github.com/njbestil/b2b-portal/issues/18) establishes
-the application shell only. No API calls, credentials, business records, or
-workflow mutations are implemented here.
+the application shell. Issue #37 adds the public customer application form and
+receipt screen. Other business screens remain scoped to their owning issues.
 
 ## Run and check
 
@@ -43,8 +43,24 @@ Routes are `/dashboard`, `/catalog`, `/orders`, `/invoices`, `/notifications`,
 `/company`, `/users`, `/profile`, `/customer-applications`, `/customers`,
 `/sales-staff`, `/erp-integrations`, `/audit-logs`, and `/configuration`.
 `/design-system` is a shared utility destination for all roles. The account-access
-layout has `/login`, `/apply`, and `/forgot-password` placeholders, without forms
-or fake sign-in. “Exit preview” opens that layout; it is not a logout operation.
+layout has `/login` and `/forgot-password` placeholders. `/apply` submits the
+actual ten-field anonymous intake contract to `POST /api/v1/customer-applications`.
+Only a validated HTTP 202 receipt opens `/apply/received`; it grants no account
+access. The receipt is an attempt reference, with no public status lookup.
+“Exit preview” opens the account layout; it is not a logout operation.
+
+Application fields remain in the form DOM only. Passwords clear after transmitted
+attempts; errors retain editable non-credential details. Uncertain network/503
+outcomes require re-entry of the original password and a deliberate retry, never
+an automatic replay. No application data is written to browser storage or URLs.
+Receipt history state contains only its opaque reference. A direct receipt URL
+without valid state returns to the form.
+
+Vite dev/preview proxies `/api` to `http://127.0.0.1:3000` by default; set the
+server-only `PORTAL_API_PROXY_TARGET` to use another local Portal API. Production
+hosting must route `/api` to the real Portal API separately from the SPA fallback.
+There are no production fixtures or offline success paths. #36/PR #132 supplies
+the producer; its merge and real integration remain acceptance dependencies.
 
 Menus and direct-route preview restrictions use the same role policy. A hidden
 destination cannot be rendered simply by typing its URL. This is only UI
