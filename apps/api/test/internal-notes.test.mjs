@@ -301,12 +301,12 @@ async function database(t) {
     }
   });
   assert.deepEqual(await runMigrations(adminClient, migrations), {
-    applied: 1,
+    applied: migrations.length - 1,
     skipped: 1,
   });
   assert.deepEqual(await runMigrations(adminClient, migrations), {
     applied: 0,
-    skipped: 2,
+    skipped: migrations.length,
   });
   return {
     client: adminClient,

@@ -11,6 +11,7 @@ import {
 } from "../dist/infrastructure/migrations.js";
 
 const directory = new URL("../migrations/", import.meta.url);
+const migrationCount = (await loadMigrations(directory)).length;
 const coreTables = [
   "companies",
   "users",
@@ -125,7 +126,12 @@ async function base(client) {
 test("shipped migration discovers exactly the approved core tables, without transaction control or internal notes", async () => {
   assert.throws(() => databaseConfig(" "));
   const migrations = await loadMigrations(directory);
-  assert.equal(migrations.length, 2);
+  assert.ok(
+    migrations.some(
+      (entry) =>
+        entry.version === 4 && entry.name === "session_credential_binding",
+    ),
+  );
   assert.equal(migrations[0].version, 1);
   assert.equal(migrations[0].name, "mvp_schema");
   const sql = migrations[0].sql;
@@ -145,12 +151,12 @@ test(
   async (t) => {
     const { client, schema, migrations } = await fixture(t, false);
     assert.deepEqual(await runMigrations(client, migrations), {
-      applied: 2,
+      applied: migrationCount,
       skipped: 0,
     });
     assert.deepEqual(await runMigrations(client, migrations), {
       applied: 0,
-      skipped: 2,
+      skipped: migrationCount,
     });
     const actual = await client.query(
       "SELECT table_name FROM information_schema.tables WHERE table_schema=$1 AND table_type='BASE TABLE' ORDER BY table_name",
@@ -212,7 +218,7 @@ test(
     );
     const history = (await client.query("SELECT * FROM schema_migrations"))
       .rows;
-    assert.equal(history.length, 2);
+    assert.equal(history.length, migrationCount);
     assert.match(history[0].checksum, /^[a-f0-9]{64}$/);
     assert.ok(history[0].applied_at instanceof Date);
   },
@@ -563,7 +569,7 @@ test(
       runMigrations(client, [
         ...migrations,
         {
-          version: 3,
+          version: 999999,
           name: "failure_probe",
           sql: "SELECT definitely_not_a_function();",
         },
@@ -590,8 +596,8 @@ test(
     assert.deepEqual(
       results.sort((a, b) => b.applied - a.applied),
       [
-        { applied: 2, skipped: 0 },
-        { applied: 0, skipped: 2 },
+        { applied: migrationCount, skipped: 0 },
+        { applied: 0, skipped: migrationCount },
       ],
     );
   },
@@ -626,8 +632,8 @@ test(
     url.pathname = `/${name}`;
     const entry = fileURLToPath(new URL("../dist/migrate.js", import.meta.url));
     for (const expected of [
-      { applied: 2, skipped: 0 },
-      { applied: 0, skipped: 2 },
+      { applied: migrationCount, skipped: 0 },
+      { applied: 0, skipped: migrationCount },
     ]) {
       const result = spawnSync(process.execPath, [entry], {
         env: {
