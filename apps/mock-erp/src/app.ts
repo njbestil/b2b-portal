@@ -1,3 +1,7 @@
+import {
+  resolveInvoiceDocument,
+  documentReferenceErrorHandler,
+} from "./invoice-documents.js";
 import express from "express";
 import { createMasterData } from "./master-data.js";
 import { requireJson, orderErrorHandler } from "./order-http.js";
@@ -139,6 +143,25 @@ export function createApp() {
       }
     },
   );
+  app.get(
+    "/mock-erp/v1/invoice-documents/:documentReference",
+    (request, response) => {
+      response.setHeader("Cache-Control", "no-store");
+      response.setHeader("X-Content-Type-Options", "nosniff");
+      const document = resolveInvoiceDocument(
+        request.params.documentReference,
+        orders.invoice,
+      );
+      response.setHeader("Content-Type", "text/plain; charset=utf-8");
+      response.setHeader(
+        "Content-Disposition",
+        `attachment; filename="${document.filename}"`,
+      );
+      response.setHeader("Content-Length", String(document.bytes.byteLength));
+      response.end(document.bytes);
+    },
+  );
+  app.use("/mock-erp/v1/invoice-documents", documentReferenceErrorHandler);
   app.use(orderErrorHandler);
 
   return app;
