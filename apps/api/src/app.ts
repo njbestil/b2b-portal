@@ -1,6 +1,8 @@
 import express from "express";
 import { createLoginRouter, type LoginHandler } from "./login-route.js";
 import { createSessionRouter } from "./session-route.js";
+import { createPasswordChangeRouter } from "./password-change-route.js";
+import type { PasswordChangeHandler } from "./services/password-change.js";
 import type { SessionService } from "./services/sessions.js";
 import type { HealthResponse, StorageProvider } from "@b2b-portal/contracts";
 import { createHealthReporter, type HealthChecks } from "./health.js";
@@ -14,6 +16,7 @@ import {
 } from "./http.js";
 
 interface AppOptions {
+  passwordChange?: PasswordChangeHandler;
   sessions?: SessionService;
   sessionLogin?: SessionService["login"];
   login?: LoginHandler;
@@ -36,6 +39,7 @@ export function createApp(options: AppOptions = {}) {
   if (options.login)
     app.use(createLoginRouter(options.login, Date.now, options.sessionLogin));
   app.use(createSessionRouter(options.sessions));
+  app.use(createPasswordChangeRouter(options.passwordChange));
   app.use(express.json());
 
   app.get("/", (_request, response) => {

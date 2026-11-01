@@ -24,12 +24,16 @@ import type { SessionRepository } from "../repositories/sessions.js";
 import { createPostgresSessions } from "./postgres-sessions.js";
 import { createJsonSessions } from "./json/sessions.js";
 import { JsonSecurityCoordinator } from "./json/security.js";
+import type { PasswordChangeRepository } from "../repositories/password-change.js";
+import { createJsonPasswordChange } from "./json/password-change.js";
+import { createPostgresPasswordChange } from "./postgres-password-change.js";
 
 import type { NotificationRepository } from "../repositories/notifications.js";
 import { createPostgresNotifications } from "./postgres-notifications.js";
 import { createJsonNotifications } from "./json/notifications.js";
 
 export interface StorageRuntime {
+  readonly passwordChanges: PasswordChangeRepository;
   readonly sessions: SessionRepository;
   readonly notifications: NotificationRepository;
   readonly authentication: AuthenticationRepository;
@@ -98,6 +102,7 @@ export async function selectStorage(
       return Object.freeze({
         provider: "postgresql",
         sessions,
+        passwordChanges: createPostgresPasswordChange(postgres.pool),
         repositories: createPostgresRepositories(postgres.pool),
         authentication: createPostgresAuthentication(postgres.pool),
         internalNotes: createPostgresInternalNotes(postgres.pool),
@@ -144,6 +149,7 @@ export async function selectStorage(
   return Object.freeze({
     provider: "json",
     sessions,
+    passwordChanges: createJsonPasswordChange(security),
     repositories: createJsonRepositories(store),
     authentication: createJsonAuthentication(store),
     internalNotes: createJsonInternalNotes(options.jsonDirectory),
