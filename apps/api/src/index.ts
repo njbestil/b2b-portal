@@ -1,3 +1,5 @@
+import { createPasswordReset } from "./services/password-reset.js";
+import { resetProofs } from "./infrastructure/reset-crypto.js";
 import { sessionProofs } from "./infrastructure/session-crypto.js";
 import {
   EnvironmentConfigurationError,
@@ -46,6 +48,7 @@ try {
     startupTimeoutMs: storageConfig.startupTimeoutMs,
     logger,
     requireSessions: sessionConfig !== undefined,
+    requirePasswordResets: true,
   });
   const selectedStorage = storage;
   const audit = createAudit(selectedStorage.audit, randomUUID);
@@ -66,6 +69,14 @@ try {
       )
     : undefined;
   const app = createApp({
+    passwordReset: createPasswordReset(
+      selectedStorage.passwordResets,
+      hashPassword,
+      verifyPassword,
+      record,
+      resetProofs,
+    ),
+    pendingApplication: selectedStorage.applications.pending,
     passwordChange: sessions
       ? createPasswordChange(
           selectedStorage.passwordChanges,

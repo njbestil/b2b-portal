@@ -1,3 +1,8 @@
+import { lookupCatalog } from "./catalog.js";
+import {
+  createSubmissionService,
+  parseSubmissionScenario,
+} from "./submissions.js";
 import {
   resolveInvoiceDocument,
   documentReferenceErrorHandler,
@@ -19,6 +24,7 @@ import {
 export function createApp() {
   const app = express();
   const orders = createOrderService();
+  const submissions = createSubmissionService(orders);
   const cancellations = createCancellationService(orders.findById);
 
   app.get("/", (_request, response) => {
@@ -35,6 +41,26 @@ export function createApp() {
     response.json(createMasterData());
   });
 
+  app.get("/mock-erp/v1/catalog", (request, response) => {
+    response.setHeader("Cache-Control", "no-store");
+    response.json(lookupCatalog(request.query));
+  });
+  app.post(
+    "/mock-erp/v1/submissions",
+    requireJson,
+    express.json({ limit: "32kb", inflate: false }),
+    (request, response) => {
+      const scenario = parseSubmissionScenario(
+        request.get("X-Mock-ERP-Scenario"),
+      );
+      const result = submissions.submit(request.body, scenario);
+      response
+        .status(
+          result.created && result.receipt.outcome === "accepted" ? 201 : 200,
+        )
+        .json(result.receipt);
+    },
+  );
   app.post(
     "/mock-erp/v1/orders",
     requireJson,
