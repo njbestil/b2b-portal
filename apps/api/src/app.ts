@@ -1,6 +1,7 @@
 import express from "express";
 import { createLoginRouter, type LoginHandler } from "./login-route.js";
 import { createSessionRouter } from "./session-route.js";
+import { createLogoutRouter } from "./logout-route.js";
 import type { SessionService } from "./services/sessions.js";
 import type { HealthResponse, StorageProvider } from "@b2b-portal/contracts";
 import { createHealthReporter, type HealthChecks } from "./health.js";
@@ -44,6 +45,7 @@ export function createApp(options: AppOptions = {}) {
   if (options.applications)
     app.use(createApplicationRouter(options.applications));
   app.use(createSessionRouter(options.sessions));
+  app.use(createLogoutRouter(options.sessions));
   app.use(express.json());
 
   app.get("/", (_request, response) => {
