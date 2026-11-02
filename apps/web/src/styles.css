@@ -956,6 +956,89 @@ select,
   color: var(--content-subtle);
   font-size: 0.8125rem;
 }
+.address-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1rem;
+  justify-content: space-between;
+  margin-block: 1rem;
+}
+.address-toolbar input,
+.address-choices input[type="radio"] {
+  accent-color: var(--action);
+}
+.address-choices {
+  border: 0;
+  padding: 0;
+  margin: 0 0 1rem;
+  min-inline-size: 0;
+}
+.address-card-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1.25rem;
+}
+.address-card-grid article {
+  display: grid;
+  align-content: start;
+  gap: 0.75rem;
+}
+.address-card-grid h2,
+.address-card-grid p {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.address-contact {
+  font-size: 0.8125rem;
+  color: var(--content-subtle);
+}
+.address-editor {
+  margin-block-start: 1.5rem;
+}
+.address-editor h2:focus {
+  outline: 2px solid var(--action);
+  outline-offset: 0.25rem;
+}
+.address-editor select {
+  inline-size: 100%;
+  font: inherit;
+  color: var(--content);
+  background: var(--surface);
+  border: 1px solid var(--control-border);
+  border-radius: var(--radius-sm);
+  padding: 0.75rem;
+}
+.address-editor select[aria-invalid="true"] {
+  border-color: var(--status-danger);
+}
+.address-management {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.address-management > li {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  justify-content: space-between;
+  border-block-end: 1px solid var(--border);
+  padding-block: 1rem;
+}
+.address-management .account-actions {
+  margin: 0;
+}
+@media (max-width: 75rem) {
+  .address-card-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 38rem) {
+  .address-card-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
 @media (max-width: 65rem) {
   .company-form-layout {
     grid-template-columns: minmax(0, 1fr);
