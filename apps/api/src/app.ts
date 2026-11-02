@@ -5,6 +5,8 @@ import type { ApplicationRepository } from "./repositories/applications.js";
 import express from "express";
 import { createTenantRouter } from "./tenant-route.js";
 import type { RepositoryPorts } from "./repositories/index.js";
+import { createAccountStatusRouter } from "./account-status-route.js";
+import type { AccountStatusService } from "./services/account-status.js";
 import { createLoginRouter, type LoginHandler } from "./login-route.js";
 import { createSessionRouter } from "./session-route.js";
 import { createPasswordChangeRouter } from "./password-change-route.js";
@@ -28,6 +30,7 @@ import {
 } from "./application-route.js";
 
 interface AppOptions {
+  accountStatus?: AccountStatusService;
   passwordReset?: PasswordResetService;
   companyRepositories?: RepositoryPorts;
   pendingApplication?: ApplicationRepository["pending"];
@@ -63,6 +66,7 @@ export function createApp(options: AppOptions = {}) {
   app.use(
     createApplicationReviewRouter(options.sessions, options.pendingApplication),
   );
+  app.use(createAccountStatusRouter(options.sessions, options.accountStatus));
   app.use(express.json());
   app.use(createTenantRouter(options.sessions, options.companyRepositories));
 

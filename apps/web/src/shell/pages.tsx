@@ -38,7 +38,13 @@ export function Page({
   );
 }
 
-export function Dashboard({ role }: { role: Role }) {
+export function Dashboard({
+  role,
+  preview = true,
+}: {
+  role: Role;
+  preview?: boolean;
+}) {
   const pages = navigationFor(role).filter(
     (page) => page.path !== "/dashboard",
   );
@@ -61,9 +67,11 @@ export function Dashboard({ role }: { role: Role }) {
             <Icon name="shield" />
           </span>
           <div>
-            <small>Preview role</small>
+            <small>{preview ? "Preview role" : "Account role"}</small>
             <strong>{role}</strong>
-            <small>Design-reference persona</small>
+            <small>
+              {preview ? "Design-reference persona" : "Verified account"}
+            </small>
           </div>
         </article>
         <article className="panel metric">
@@ -94,7 +102,7 @@ export function Dashboard({ role }: { role: Role }) {
               <p className="eyebrow">Explore your workspace</p>
               <h2 id="workspace-heading">Workspace destinations</h2>
             </div>
-            <Badge>Shell preview</Badge>
+            <Badge>{preview ? "Shell preview" : "Workspace"}</Badge>
           </div>
           <ul className="destination-list">
             {pages.map((page) => (

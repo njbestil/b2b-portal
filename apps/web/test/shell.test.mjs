@@ -44,6 +44,7 @@ const expected = {
     "/orders",
     "/invoices",
     "/notifications",
+    "/company",
     "/profile",
   ],
   "Customer Admin": [
@@ -135,11 +136,11 @@ test("unknown role values never validate as a preview role", () => {
 });
 
 test("route placeholders preserve semantic landmarks, a skip link, and active location", () => {
-  const html = render("/company");
+  const html = render("/users");
   assert.match(html, /href="#main-content"/);
   assert.match(html, /<main id="main-content" tabindex="-1">/);
-  assert.match(html, /<h1 tabindex="-1">Company<\/h1>/);
-  assert.match(html, /aria-current="page"[^>]*href="\/company"/);
+  assert.match(html, /<h1 tabindex="-1">Company users<\/h1>/);
+  assert.match(html, /aria-current="page"[^>]*href="\/users"/);
   assert.match(
     html,
     /Business data and actions will be connected in their own issues/,
@@ -161,15 +162,14 @@ test("unknown addresses produce a safe not-found page without reflecting URL inp
   }
 });
 
-test("public account routes use their own layout without pretending to authenticate or collect credentials", () => {
+test("public account forms use their own layout without workspace previews", () => {
   for (const path of ["/login", "/forgot-password"]) {
     const html = render(path);
     assert.match(html, /class="public-layout"/);
     assert.ok(!html.includes('aria-label="Workspace"'));
-    assert.match(html, /Sign-in and recovery are not available/);
-    assert.match(html, /Explore workspace preview/);
-    assert.ok(!html.includes("<form"));
-    assert.ok(!html.includes("<input"));
+    assert.ok(!html.includes("Explore workspace preview"));
+    assert.ok(html.includes("<form"));
+    assert.match(html, /name="email"/);
     assert.equal((html.match(/<h1[\s>]/g) ?? []).length, 1);
   }
 });
