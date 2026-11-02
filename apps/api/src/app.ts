@@ -3,6 +3,8 @@ import type { PasswordResetService } from "./services/password-reset.js";
 import { createApplicationReviewRouter } from "./application-review-route.js";
 import type { ApplicationRepository } from "./repositories/applications.js";
 import express from "express";
+import { createTenantRouter } from "./tenant-route.js";
+import type { RepositoryPorts } from "./repositories/index.js";
 import { createAccountStatusRouter } from "./account-status-route.js";
 import type { AccountStatusService } from "./services/account-status.js";
 import { createLoginRouter, type LoginHandler } from "./login-route.js";
@@ -30,6 +32,7 @@ import {
 interface AppOptions {
   accountStatus?: AccountStatusService;
   passwordReset?: PasswordResetService;
+  companyRepositories?: RepositoryPorts;
   pendingApplication?: ApplicationRepository["pending"];
   passwordChange?: PasswordChangeHandler;
   applications?: ApplicationHandler;
@@ -65,6 +68,7 @@ export function createApp(options: AppOptions = {}) {
   );
   app.use(createAccountStatusRouter(options.sessions, options.accountStatus));
   app.use(express.json());
+  app.use(createTenantRouter(options.sessions, options.companyRepositories));
 
   app.get("/", (_request, response) => {
     sendSuccess(response, { service: "b2b-portal-api" });
