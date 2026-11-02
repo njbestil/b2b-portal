@@ -1,3 +1,6 @@
+import type { SalesAssignmentRepository } from "../repositories/sales-assignments.js";
+import { createJsonSalesAssignments } from "./json/sales-assignments.js";
+import { createPostgresSalesAssignments } from "./postgres-sales-assignments.js";
 import type { PasswordResetRepository } from "../repositories/password-reset.js";
 import { createJsonPasswordReset } from "./json/password-reset.js";
 import { createPostgresPasswordReset } from "./postgres-password-reset.js";
@@ -40,6 +43,7 @@ import { createPostgresApplications } from "./postgres-applications.js";
 import { createJsonApplications } from "./json/applications.js";
 
 export interface StorageRuntime {
+  readonly salesAssignments: SalesAssignmentRepository;
   readonly passwordResets: PasswordResetRepository;
   readonly passwordChanges: PasswordChangeRepository;
   readonly applications: ApplicationRepository;
@@ -90,6 +94,7 @@ export async function selectStorage(
     logger: Logger;
     requireSessions?: boolean;
     requirePasswordResets?: boolean;
+    requireSalesAssignments?: boolean;
   },
   makePostgres: typeof createPostgres = createPostgres,
 ): Promise<StorageRuntime> {
@@ -104,6 +109,7 @@ export async function selectStorage(
     const postgres = makePostgres(options.postgres, options.logger);
     if (await reachable(postgres.health, options.startupTimeoutMs)) {
       const sessions = createPostgresSessions(postgres.pool);
+      const salesAssignments = createPostgresSalesAssignments(postgres.pool);
       const passwordResets = createPostgresPasswordReset(postgres.pool);
       options.logger("info", {
         event: "storage.selected",
@@ -115,6 +121,7 @@ export async function selectStorage(
         sessions,
         passwordChanges: createPostgresPasswordChange(postgres.pool),
         passwordResets,
+        salesAssignments,
         repositories: createPostgresRepositories(postgres.pool),
         authentication: createPostgresAuthentication(postgres.pool),
         internalNotes: createPostgresInternalNotes(postgres.pool),
@@ -125,7 +132,9 @@ export async function selectStorage(
           (await postgres.probe(signal, postgresReadinessSql)) &&
           !signal.aborted &&
           (!options.requireSessions || (await sessions.ready())) &&
-          (!options.requirePasswordResets || (await passwordResets.ready())),
+          (!options.requirePasswordResets || (await passwordResets.ready())) &&
+          (!options.requireSalesAssignments ||
+            (await salesAssignments.ready())),
         close: () => postgres.close(),
       });
     }
@@ -140,6 +149,7 @@ export async function selectStorage(
   const store = security.store,
     sessions = createJsonSessions(security);
   const passwordResets = createJsonPasswordReset(security);
+  const salesAssignments = createJsonSalesAssignments(security);
   const applications = createJsonApplications(
     options.jsonDirectory,
     store,
@@ -162,7 +172,8 @@ export async function selectStorage(
       return (
         !signal.aborted &&
         (!options.requireSessions || (await sessions.ready())) &&
-        (!options.requirePasswordResets || (await passwordResets.ready()))
+        (!options.requirePasswordResets || (await passwordResets.ready())) &&
+        (!options.requireSalesAssignments || (await salesAssignments.ready()))
       );
     } catch {
       return false;
@@ -178,6 +189,7 @@ export async function selectStorage(
     sessions,
     passwordChanges: createJsonPasswordChange(security),
     passwordResets,
+    salesAssignments,
     repositories: createJsonRepositories(store),
     authentication: createJsonAuthentication(store),
     internalNotes: createJsonInternalNotes(options.jsonDirectory),
