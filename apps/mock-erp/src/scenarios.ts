@@ -6,6 +6,7 @@ const scenarios = [
   "completed",
   "timeout",
   "unavailable",
+  "temporary-server-failure",
   "validation",
   "credit-hold",
   "insufficient-stock",
@@ -31,6 +32,11 @@ export async function runScenario(
     throw new OrderError(504, "ERP_TIMEOUT", "Simulated ERP timeout.");
   }
   const failures = {
+    "temporary-server-failure": [
+      500,
+      "ERP_TEMPORARY_FAILURE",
+      "Simulated temporary ERP server failure.",
+    ],
     unavailable: [
       503,
       "ERP_UNAVAILABLE",
