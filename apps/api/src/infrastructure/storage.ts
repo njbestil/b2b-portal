@@ -1,3 +1,6 @@
+import type { AccountStatusRepository } from "../repositories/account-status.js";
+import { createJsonAccountStatus } from "./json/account-status.js";
+import { createPostgresAccountStatus } from "./postgres-account-status.js";
 import type { SalesAssignmentRepository } from "../repositories/sales-assignments.js";
 import { createJsonSalesAssignments } from "./json/sales-assignments.js";
 import { createPostgresSalesAssignments } from "./postgres-sales-assignments.js";
@@ -43,6 +46,7 @@ import { createPostgresApplications } from "./postgres-applications.js";
 import { createJsonApplications } from "./json/applications.js";
 
 export interface StorageRuntime {
+  readonly accountStatus: AccountStatusRepository;
   readonly salesAssignments: SalesAssignmentRepository;
   readonly passwordResets: PasswordResetRepository;
   readonly passwordChanges: PasswordChangeRepository;
@@ -121,6 +125,7 @@ export async function selectStorage(
         sessions,
         passwordChanges: createPostgresPasswordChange(postgres.pool),
         passwordResets,
+        accountStatus: createPostgresAccountStatus(postgres.pool),
         salesAssignments,
         repositories: createPostgresRepositories(postgres.pool),
         authentication: createPostgresAuthentication(postgres.pool),
@@ -188,6 +193,7 @@ export async function selectStorage(
     provider: "json",
     sessions,
     passwordChanges: createJsonPasswordChange(security),
+    accountStatus: createJsonAccountStatus(security),
     passwordResets,
     salesAssignments,
     repositories: createJsonRepositories(store),

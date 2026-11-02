@@ -1,4 +1,5 @@
 export type { ApiFailure, ApiResponse, ApiSuccess } from "./api.js";
+export type { AccountStatusResult } from "./account-status.js";
 export type {
   PasswordResetRequestResult,
   PasswordResetResult,
