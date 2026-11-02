@@ -26,6 +26,7 @@ const orderSql = `SELECT id, company_id AS "companyId", order_number AS "orderNu
   created_by_user_id AS "createdByUserId", created_at AS "createdAt",
   order_status AS status, integration_status AS "integrationStatus" FROM orders WHERE company_id=$1`;
 const catalogSql = `SELECT p.id, p.sku, p.name, p.selling_uom AS "sellingUom",
+  p.category,p.brand,p.available_quantity::text AS "availableQuantity",
   p.minimum_order_quantity::text AS "minimumOrderQuantity",
   CASE WHEN cp.id IS NOT NULL THEN cp.amount
     WHEN (p.price_valid_from IS NULL OR p.price_valid_from <= $2::timestamptz)
@@ -52,10 +53,24 @@ export const postgresReadinessSql = `SELECT c.id, c.legal_name, c.trade_name, c.
   FROM companies c, users u, products p, customer_product_access a, customer_product_prices cp, orders o LIMIT 0`;
 
 type RawCatalog = Omit<CatalogProduct, "price"> & {
+  category: string | null;
+  brand: string | null;
+  availableQuantity: string | null;
   priceAmount: string | null;
   priceCurrency: string | null;
 };
 const catalogProduct = (row: RawCatalog): CatalogProduct => ({
+  ...(row.category === null &&
+  row.brand === null &&
+  row.availableQuantity === null
+    ? {}
+    : {
+        metadata: {
+          category: row.category,
+          brand: row.brand,
+          availableQuantity: row.availableQuantity,
+        },
+      }),
   id: row.id,
   sku: row.sku,
   name: row.name,

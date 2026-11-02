@@ -4,6 +4,8 @@ import type {
   PortalProduct,
   PortalOrder,
   PortalPage,
+  CustomerCatalogProduct,
+  CustomerCatalogPage,
 } from "@b2b-portal/contracts";
 import { Router, type Request } from "express";
 import type { RepositoryPorts } from "./repositories/index.js";
@@ -99,6 +101,20 @@ export function createTenantRouter(
     );
   }
   const base = "/api/v1/companies/:companyId";
+  read(
+    "/api/v1/catalog/products",
+    "catalog.read",
+    true,
+    (q, a, _r, p): Promise<CustomerCatalogPage> => q.listOwnProducts(a, p),
+  );
+  read(
+    "/api/v1/catalog/products/:productId",
+    "catalog.read",
+    false,
+    async (q, a, r): Promise<{ product: CustomerCatalogProduct }> => ({
+      product: await q.getOwnProduct(a, r.params.productId),
+    }),
+  );
   read(
     base,
     "company.read",
