@@ -1,3 +1,4 @@
+import { validNewPassword } from "./password-policy.js";
 import type { AuditInput } from "../repositories/audit.js";
 import type { PasswordChangeRepository } from "../repositories/password-change.js";
 import type { AuthenticatedPrincipal } from "./sessions.js";
@@ -28,13 +29,8 @@ function input(value: unknown): {
   if (
     typeof current !== "string" ||
     !current.length ||
-    typeof next !== "string" ||
+    !validNewPassword(next) ||
     new TextEncoder().encode(current).byteLength > 1024 ||
-    new TextEncoder().encode(next).byteLength > 1024 ||
-    Array.from(next).length < 8 ||
-    !/\p{Lu}/u.test(next) ||
-    !/\p{N}/u.test(next) ||
-    !/[\p{P}\p{S}]/u.test(next) ||
     current === next
   )
     throw new PasswordChangeError("invalid_input");
