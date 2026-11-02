@@ -39,6 +39,8 @@ import {
 } from "./features/authentication/AuthContext";
 import { AuthPage } from "./features/authentication/AuthPages";
 import { SessionClient, type ApiRole } from "./features/authentication/session";
+import { ApplicationReviewEntry } from "./features/application-review/ReviewPage";
+import type { ReviewAdapter } from "./features/application-review/api";
 
 function PublicLayout({ application = false }: { application?: boolean }) {
   return (
@@ -68,14 +70,19 @@ export function App({
   initialRole,
   sessionClient,
   passwords,
+  applicationReview,
 }: {
   initialRole?: Role;
   sessionClient?: SessionClient;
   passwords?: PasswordFlows;
+  applicationReview?: ReviewAdapter;
 } = {}) {
   return (
     <AuthProvider client={sessionClient} passwords={passwords}>
-      <AppRoutes initialRole={initialRole} />
+      <AppRoutes
+        initialRole={initialRole}
+        applicationReview={applicationReview}
+      />
     </AuthProvider>
   );
 }
@@ -85,7 +92,13 @@ const roleNames: Record<ApiRole, Role> = {
   INTERNAL_ADMIN: "Internal Admin",
   SALES_STAFF: "Sales Staff",
 };
-function AppRoutes({ initialRole }: { initialRole?: Role }) {
+function AppRoutes({
+  initialRole,
+  applicationReview,
+}: {
+  initialRole?: Role;
+  applicationReview?: ReviewAdapter;
+}) {
   const { user, client } = useAuth();
   const [previewRole, setRole] = useState<Role>(() => {
     const saved = readPreference("b2b-preview-role");
@@ -151,12 +164,18 @@ function AppRoutes({ initialRole }: { initialRole?: Role }) {
                 <UnavailablePage />
               ) : page.path === "/dashboard" ? (
                 <Dashboard role={role} preview={!user} />
+              ) : page.path === "/customer-applications" ? (
+                <ApplicationReviewEntry adapter={applicationReview} />
               ) : (
                 <FeaturePlaceholder page={page} />
               )
             }
           />
         ))}
+        <Route
+          path="customer-applications/:companyId"
+          element={<ApplicationReviewEntry adapter={applicationReview} />}
+        />
         <Route path="design-system" element={<DesignSystem />} />
         <Route path="*" element={<UnavailablePage notFound />} />
       </Route>

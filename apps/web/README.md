@@ -97,6 +97,41 @@ keyboard, responsive, focus and live API checks remain incomplete due to the
 local verification environment; Node transport/race and actual-route SSR tests
 are reproducible without running dev servers.
 
+## Staged Internal Admin application review (#38)
+
+`/customer-applications` and `/customer-applications/:companyId` now provide a
+bounded queue, submitted business/admin details and approve/reject actions for a
+normal Internal Admin session. Preview personas cannot load or decide anything.
+The feature projects only the nine #36 application fields, company ID, submission
+time, normalized review status/version, rejection reason and reported event
+processing states. Credentials and private user/address IDs are discarded.
+
+`ReviewAdapter` is an injectable normalized UI port. Its default is unavailable;
+`reviewHttpAdapter` takes explicitly confirmed routes and an authenticated
+transport, never a public fetch fallback. Final review DTO/routes/version/reason
+bounds are proposed to A in #38; #32 authorization and the actual #38 API remain
+integration gates. No application activation, audit append or notification is
+implemented by this Web PR. Pending/unknown event processing does not claim
+notification delivery or exactly-once publication.
+
+Decision payloads include only the loaded company/version and decision, with a
+bounded nonempty reason for rejection. Buttons remain keyboard operable; the
+handler/model blocks duplicate writes. Canonical server results drive recorded
+states. No optimistic activation or automatic mutation retry is used. Conflict
+or uncertain outcomes retain the displayed record and require a reload before
+another decision. Async results are cancelled/ignored after navigation.
+
+Small shared remote-state/error/envelope helpers support this batch's profile and
+address screens. `SessionClient.request` permits bounded normal-access GET/POST/
+PATCH resource operations using its private Bearer proof, omitting cookies and
+never replaying a failed mutation. The existing GET-only convenience remains.
+No new production package, API route or data migration is added.
+
+This PR is a child of #140 (retargeted to main after #137 merged). Separate #39
+and #40 children will consume the shared helpers. Full API/tenant/event and browser
+keyboard/responsive integration are still pending; fixtures only verify the UI
+port and local state, not backend authorization or persistence parity.
+
 Menus and direct-route preview restrictions use the same role policy. A hidden
 destination cannot be rendered simply by typing its URL. This is only UI
 scaffolding, **not security enforcement**: future API authentication and backend
