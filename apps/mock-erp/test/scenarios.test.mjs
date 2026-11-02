@@ -39,6 +39,7 @@ function post(url, key, value, scenario, signal = AbortSignal.timeout(5000)) {
   });
 }
 const failures = [
+  ["temporary-server-failure", 500, "ERP_TEMPORARY_FAILURE"],
   ["unavailable", 503, "ERP_UNAVAILABLE"],
   ["validation", 422, "ERP_VALIDATION_FAILED"],
   ["credit-hold", 422, "CREDIT_HOLD"],

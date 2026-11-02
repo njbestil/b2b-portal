@@ -44,10 +44,40 @@ export function createApp() {
     "/mock-erp/v1/submissions",
     requireJson,
     express.json({ limit: "32kb", inflate: false }),
-    (request, response) => {
+    async (request, response) => {
       const scenario = parseSubmissionScenario(
         request.get("X-Mock-ERP-Scenario"),
       );
+      const replay = submissions.replay(request.body);
+      if (replay) {
+        response.status(200).json(replay);
+        return;
+      }
+      if (
+        scenario === "timeout" ||
+        scenario === "unavailable" ||
+        scenario === "temporary-server-failure"
+      ) {
+        const correlation = submissions.correlation(request.body);
+        const controller = new AbortController(),
+          cancel = () => controller.abort();
+        request.once("aborted", cancel);
+        response.once("close", cancel);
+        try {
+          await runScenario(scenario, controller.signal);
+        } catch (error) {
+          if (controller.signal.aborted) return;
+          if (!(error instanceof OrderError)) throw error;
+          response.status(error.statusCode).json({
+            ...correlation,
+            error: { code: error.code, message: error.message },
+          });
+        } finally {
+          request.off("aborted", cancel);
+          response.off("close", cancel);
+        }
+        return;
+      }
       const result = submissions.submit(request.body, scenario);
       response
         .status(

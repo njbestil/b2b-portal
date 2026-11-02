@@ -55,3 +55,5 @@ Restart loses all demo state; multiple instances do not coordinate. This is not
 production durable idempotency. No auth, scheduler, retry engine or portal
 business transition is implemented. Consumer #62 must explicitly choose/adapt
 this producer contract; legacy /orders remains independently compatible.
+
+Child #146 adds [explicit correlated technical failure fixtures](mock-erp-failures.md); terminal receipt behavior stays unchanged.
