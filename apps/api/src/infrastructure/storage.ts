@@ -1,3 +1,6 @@
+import type { AccountStatusRepository } from "../repositories/account-status.js";
+import { createJsonAccountStatus } from "./json/account-status.js";
+import { createPostgresAccountStatus } from "./postgres-account-status.js";
 import type { PasswordResetRepository } from "../repositories/password-reset.js";
 import { createJsonPasswordReset } from "./json/password-reset.js";
 import { createPostgresPasswordReset } from "./postgres-password-reset.js";
@@ -40,6 +43,7 @@ import { createPostgresApplications } from "./postgres-applications.js";
 import { createJsonApplications } from "./json/applications.js";
 
 export interface StorageRuntime {
+  readonly accountStatus: AccountStatusRepository;
   readonly passwordResets: PasswordResetRepository;
   readonly passwordChanges: PasswordChangeRepository;
   readonly applications: ApplicationRepository;
@@ -115,6 +119,7 @@ export async function selectStorage(
         sessions,
         passwordChanges: createPostgresPasswordChange(postgres.pool),
         passwordResets,
+        accountStatus: createPostgresAccountStatus(postgres.pool),
         repositories: createPostgresRepositories(postgres.pool),
         authentication: createPostgresAuthentication(postgres.pool),
         internalNotes: createPostgresInternalNotes(postgres.pool),
@@ -177,6 +182,7 @@ export async function selectStorage(
     provider: "json",
     sessions,
     passwordChanges: createJsonPasswordChange(security),
+    accountStatus: createJsonAccountStatus(security),
     passwordResets,
     repositories: createJsonRepositories(store),
     authentication: createJsonAuthentication(store),

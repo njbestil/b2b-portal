@@ -22,6 +22,8 @@ const roles = [
   "CUSTOMER_USER",
 ];
 const expected = {
+  "accounts.status.read": roles.slice(0, 1),
+  "accounts.status.write": roles.slice(0, 1),
   "profile.read": roles,
   "company.read": roles,
   "catalog.read": roles,
@@ -30,7 +32,7 @@ const expected = {
   "applications.read": roles.slice(0, 1),
 };
 const forbidden = (e) => e.name === "AuthorizationError";
-test("frozen six-operation/four-role matrix denies unknown permissions/roles and copied profiles by default", async () => {
+test("declared operation/four-role matrix denies unknown permissions/roles and copied profiles by default", async () => {
   for (const role of [...roles, "ROOT", "__proto__"]) {
     const auth = createAuthorization(async () => ({
       userId: randomUUID(),
