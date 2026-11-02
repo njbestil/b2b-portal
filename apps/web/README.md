@@ -238,12 +238,11 @@ empty results, actual missing-product errors, focused headings/errors and 320px
 reflow. Screenshots were inspected locally. PostgreSQL and independent review
 remain separate evidence gates.
 
-The local review stack consumes #47 at 6b0b339 and #48 at 3b8f983, plus the
-merged main/auth batch. Their publication gate must be cleared before this Web
-branch is pushed. The existing #143 remains draft until the complete stack can
-be published and reviewed; retarget it to the published #48 branch to preserve
-an incremental Web diff. Merge tenant integration -> #47 -> #48 -> #143. #140 is
-already merged. #50 follows this catalog as a separate issue branch.
+Review stack: #158 (tenant integration) -> #159 (#47 customer API) -> #160
+(#48 filters) -> #143 (#49 Web). This branch targets codex/48-catalog-filters
+at 8470f9f so its review diff contains only Web work. #140 is already merged.
+Retarget/recheck successors after their parents merge. #50 follows this catalog
+as a separate issue branch and PR. No automatic merge is authorized.
 
 Menus and direct-route preview restrictions use the same role policy. A hidden
 destination cannot be rendered simply by typing its URL. This is only UI
