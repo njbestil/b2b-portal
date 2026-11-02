@@ -1,3 +1,4 @@
+import { lookupCatalog } from "./catalog.js";
 import {
   resolveInvoiceDocument,
   documentReferenceErrorHandler,
@@ -35,6 +36,10 @@ export function createApp() {
     response.json(createMasterData());
   });
 
+  app.get("/mock-erp/v1/catalog", (request, response) => {
+    response.setHeader("Cache-Control", "no-store");
+    response.json(lookupCatalog(request.query));
+  });
   app.post(
     "/mock-erp/v1/orders",
     requireJson,
