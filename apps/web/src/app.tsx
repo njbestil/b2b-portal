@@ -43,6 +43,8 @@ import { ApplicationReviewEntry } from "./features/application-review/ReviewPage
 import type { ReviewAdapter } from "./features/application-review/api";
 import { CompanyEntry } from "./features/company-profile/CompanyPage";
 import type { CompanyAdapter } from "./features/company-profile/api";
+import { AddressEntry } from "./features/delivery-addresses/AddressPage";
+import type { AddressAdapter } from "./features/delivery-addresses/api";
 
 function PublicLayout({ application = false }: { application?: boolean }) {
   return (
@@ -74,12 +76,14 @@ export function App({
   passwords,
   applicationReview,
   companyProfile,
+  deliveryAddresses,
 }: {
   initialRole?: Role;
   sessionClient?: SessionClient;
   passwords?: PasswordFlows;
   applicationReview?: ReviewAdapter;
   companyProfile?: CompanyAdapter;
+  deliveryAddresses?: AddressAdapter;
 } = {}) {
   return (
     <AuthProvider client={sessionClient} passwords={passwords}>
@@ -87,6 +91,7 @@ export function App({
         initialRole={initialRole}
         applicationReview={applicationReview}
         companyProfile={companyProfile}
+        deliveryAddresses={deliveryAddresses}
       />
     </AuthProvider>
   );
@@ -101,10 +106,12 @@ function AppRoutes({
   initialRole,
   applicationReview,
   companyProfile,
+  deliveryAddresses,
 }: {
   initialRole?: Role;
   applicationReview?: ReviewAdapter;
   companyProfile?: CompanyAdapter;
+  deliveryAddresses?: AddressAdapter;
 }) {
   const { user, client } = useAuth();
   const [previewRole, setRole] = useState<Role>(() => {
@@ -186,6 +193,14 @@ function AppRoutes({
           element={<ApplicationReviewEntry adapter={applicationReview} />}
         />
         <Route path="design-system" element={<DesignSystem />} />
+        <Route
+          path="company/addresses"
+          element={<AddressEntry adapter={deliveryAddresses} />}
+        />
+        <Route
+          path="customers/:scopedCompanyId/addresses"
+          element={<AddressEntry adapter={deliveryAddresses} />}
+        />
         <Route
           path="customers/:scopedCompanyId/company"
           element={<CompanyEntry adapter={companyProfile} />}
