@@ -8,6 +8,7 @@ import type {
 
 /** ERP-owned reference data, already filtered for this company's eligibility. */
 export interface CatalogProduct {
+  readonly metadata?: CatalogMetadata;
   readonly id: EntityId;
   readonly sku: string;
   readonly name: string;
@@ -18,6 +19,12 @@ export interface CatalogProduct {
     readonly amount: Decimal;
     readonly currency: string;
   } | null;
+}
+
+export interface CatalogMetadata {
+  readonly category: string | null;
+  readonly brand: string | null;
+  readonly availableQuantity: string | null;
 }
 
 export interface CatalogRepository {

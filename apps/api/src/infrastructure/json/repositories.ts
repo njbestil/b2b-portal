@@ -82,6 +82,7 @@ export function createJsonRepositories(
             ? row.defaultPrice
             : null;
         return {
+          ...(row.metadata === undefined ? {} : { metadata: row.metadata }),
           id: row.id,
           sku: row.sku,
           name: row.name,
