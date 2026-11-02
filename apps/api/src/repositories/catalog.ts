@@ -27,6 +27,15 @@ export interface CatalogMetadata {
   readonly availableQuantity: string | null;
 }
 
+export interface CatalogFilters {
+  readonly name?: string;
+  readonly sku?: string;
+  readonly category?: string;
+  readonly brand?: string;
+  readonly search?: string;
+  readonly availability?: "available" | "unavailable" | "unknown";
+}
+
 export interface CatalogRepository {
   /** Ineligible, inactive and missing products all return null. */
   findEligibleById(
@@ -37,5 +46,6 @@ export interface CatalogRepository {
   listEligible(
     scope: CompanyScope,
     page: PageRequest,
+    filters?: CatalogFilters,
   ): Promise<Page<CatalogProduct>>;
 }

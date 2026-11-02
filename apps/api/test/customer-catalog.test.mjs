@@ -184,7 +184,7 @@ for (const provider of ["json", "postgresql"]) {
         "?companyId=" + f.data.companies[1].id,
         "?customerId=DEMO-C002",
         "?role=INTERNAL_ADMIN",
-        "?name=rice",
+        "?unsupported=rice",
         "?limit=0",
         "?offset=-1",
         "?limit=1&limit=2",
@@ -295,6 +295,292 @@ for (const provider of ["json", "postgresql"]) {
       await change(future, null, at, false);
       assert.equal((await f.get("/" + rice.id, token)).status, 404);
       assert.equal((await data(await f.get("", token))).total, page.total - 1);
+    },
+  );
+}
+for (const provider of ["json", "postgresql"]) {
+  const options = {
+    skip:
+      provider === "postgresql" && !process.env.B2B_TEST_MIGRATIONS_DATABASE_URL
+        ? "Set B2B_TEST_MIGRATIONS_DATABASE_URL"
+        : false,
+  };
+  test(
+    provider +
+      ": catalog filters precede tenant counts/pages and preserve exact stock, prices and deterministic ties",
+    options,
+    async (t) => {
+      const f = await fixture(t, provider),
+        a = (await f.login(2)).accessToken,
+        b = (await f.login(4)).accessToken;
+      const id = (n) =>
+        "00000000-0000-4000-8000-" + String(n).padStart(12, "0");
+      const names = [
+        "Twin 100%_\\ O'Reilly Café 😀",
+        "Twin 100%_\\ O'Reilly Café 😀",
+        "Other CAFÉ",
+        "Twin foreign",
+        "Twin hidden",
+        "Unknown",
+        "Legacy",
+      ];
+      const products = names.map((name, i) => ({
+        id: id(901 + i),
+        sku: "FILTER-" + (901 + i),
+        name,
+        sellingUom: "Case",
+        minimumOrderQuantity: "0.125",
+        active: i !== 4,
+        defaultPrice: {
+          amount: "12.3400",
+          currency: "AED",
+          validFrom: null,
+          validTo: null,
+        },
+        ...(i === 6
+          ? {}
+          : {
+              metadata: {
+                category: i === 5 ? null : "Filter",
+                brand: i === 5 ? null : "Brand",
+                availableQuantity:
+                  i === 0 ? "0.000000000000000001" : i === 1 ? "0.000" : null,
+              },
+            }),
+      }));
+      const access = products.flatMap((p, i) =>
+        f.data.companies.flatMap((c, ci) =>
+          (ci === 0 ? i !== 3 : i === 1 || i === 3)
+            ? [{ companyId: c.id, productId: p.id, eligible: true }]
+            : [],
+        ),
+      );
+      const custom = {
+        companyId: f.data.companies[0].id,
+        productId: id(901),
+        price: {
+          amount: "9007199254740993.0001",
+          currency: "AED",
+          validFrom: null,
+          validTo: null,
+        },
+      };
+      if (provider === "json") {
+        await f.store.replace("products", [
+          ...(await f.store.read("products")),
+          ...products,
+        ]);
+        await f.store.replace("customer_product_access", [
+          ...(await f.store.read("customer_product_access")),
+          ...access,
+        ]);
+        await f.store.replace("customer_product_prices", [
+          ...(await f.store.read("customer_product_prices")),
+          custom,
+        ]);
+      } else {
+        for (const p of products)
+          await f.pool.query(
+            "INSERT INTO products(id,erp_product_reference,sku,name,selling_uom,minimum_order_quantity,active,default_price,currency,category,brand,available_quantity) VALUES($1,$2,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)",
+            [
+              p.id,
+              p.sku,
+              p.name,
+              p.sellingUom,
+              p.minimumOrderQuantity,
+              p.active,
+              p.defaultPrice.amount,
+              "AED",
+              p.metadata?.category ?? null,
+              p.metadata?.brand ?? null,
+              p.metadata?.availableQuantity ?? null,
+            ],
+          );
+        for (const r of access)
+          await f.pool.query(
+            "INSERT INTO customer_product_access(id,company_id,product_id,eligible) VALUES($1,$2,$3,$4)",
+            [randomUUID(), r.companyId, r.productId, r.eligible],
+          );
+        await f.pool.query(
+          "INSERT INTO customer_product_prices(id,company_id,product_id,amount,currency) VALUES($1,$2,$3,$4,$5)",
+          [
+            randomUUID(),
+            custom.companyId,
+            custom.productId,
+            custom.price.amount,
+            "AED",
+          ],
+        );
+      }
+      const query = (values, token = a) =>
+        f.get("?" + new URLSearchParams(values), token).then(data);
+      const ids = (page) => page.items.map((p) => p.id);
+      assert.deepEqual(ids(await query({ name: "  tWIN  " })), [
+        id(901),
+        id(902),
+      ]);
+      assert.deepEqual(ids(await query({ name: "twin" }, b)), [
+        id(902),
+        id(904),
+      ]);
+      assert.equal((await query({ name: "foreign" })).total, 0);
+      const page = await query({ name: "twin", offset: "1", limit: "1" });
+      assert.deepEqual(ids(page), [id(902)]);
+      assert.equal(page.total, 2);
+      assert.equal(page.offset, 1);
+      assert.equal(page.limit, 1);
+      assert.equal(
+        (await query({ name: "twin", offset: "2", limit: "100" })).total,
+        2,
+      );
+      assert.equal(
+        (await query({ name: "twin", offset: "100000", limit: "100" })).items
+          .length,
+        0,
+      );
+      assert.deepEqual(
+        ids(
+          await query({
+            sku: "901",
+            category: " FILTER ",
+            brand: "bRAND",
+            availability: "available",
+          }),
+        ),
+        [id(901)],
+      );
+      const exact = (await query({ sku: "901" })).items[0];
+      assert.equal(exact.availableQuantity, "0.000000000000000001");
+      assert.equal(exact.minimumOrderQuantity, "0.125");
+      assert.equal(exact.price.amount, "9007199254740993.0001");
+      assert.deepEqual(
+        ids(await query({ category: "filter", availability: "unavailable" })),
+        [id(902)],
+      );
+      assert.deepEqual(
+        ids(await query({ category: "filter", availability: "unknown" })),
+        [id(903)],
+      );
+      assert.deepEqual(
+        ids(await query({ sku: "FILTER-", availability: "unknown" })),
+        [id(903), id(906), id(907)],
+      );
+      assert.deepEqual(ids(await query({ search: "filter-903" })), [id(903)]);
+      assert.deepEqual(ids(await query({ search: "twin", sku: "902" })), [
+        id(902),
+      ]);
+      for (const name of ["%", "_", "\\", "O'Reilly", "café", "😀"])
+        assert.deepEqual(ids(await query({ name })), [id(901), id(902)], name);
+      assert.deepEqual(ids(await query({ name: "CAFÉ" })), [id(903)]);
+      assert.equal((await query({ category: "filt" })).total, 0);
+      assert.equal((await query({ brand: "missing" })).total, 0);
+      assert.equal(
+        (await query({ name: "twin", availability: "unknown" })).total,
+        0,
+      );
+      assert.deepEqual(
+        await query({
+          name: " ",
+          sku: "",
+          category: " ",
+          brand: "",
+          search: "",
+          availability: "all",
+        }),
+        await query({}),
+      );
+      const cu = (await f.login(3)).accessToken;
+      assert.deepEqual(
+        await query({ name: "twin" }, cu),
+        await query({ name: "twin" }),
+      );
+    },
+  );
+  test(
+    provider +
+      ": catalog rejects malformed filters/page bounds before any company or catalog query",
+    options,
+    async (t) => {
+      const f = await fixture(t, provider),
+        token = (await f.login(2)).accessToken;
+      let calls = 0;
+      const blocked = {
+        ...f.repositories,
+        companies: {
+          findById: async () => {
+            calls++;
+            throw new Error("PRIVATE");
+          },
+        },
+        catalog: {
+          listEligible: async () => {
+            calls++;
+            throw new Error("PRIVATE");
+          },
+        },
+      };
+      const url = await serve(
+        t,
+        createApp({
+          sessions: f.auth,
+          companyRepositories: blocked,
+          logger: () => {},
+        }),
+      );
+      const paths = [
+        "name=a&name=b",
+        "name[x]=a",
+        "sku=a&sku=b",
+        "category=a&category=b",
+        "brand=a&brand=b",
+        "availability=all&availability=all",
+        "availability=",
+        "availability=AVAILABLE",
+        "availability=low",
+        "offset=100001",
+        "offset=1.5",
+        "offset=01",
+        "limit=101",
+        "limit=0",
+        "offset=9007199254740992",
+        "offset=1e2",
+        "search=" + encodeURIComponent("a".repeat(129)),
+        "name=%00",
+        "name=%0A",
+        "category=%7F",
+        "brand=%C2%85",
+        "companyId=foreign",
+        "sort=recommended",
+      ];
+      for (const query of paths) {
+        const response = await fetch(
+          url + "/api/v1/catalog/products?" + query,
+          { headers: { authorization: "Bearer " + token } },
+        );
+        assert.equal(response.status, 400, query);
+        assert.equal(response.headers.get("cache-control"), "no-store");
+        assert.equal(
+          (await response.json()).error.code,
+          "INVALID_COMPANY_QUERY",
+        );
+      }
+      assert.equal(calls, 0);
+      assert.equal(
+        (await f.get("/" + randomUUID() + "?name=a", token)).status,
+        400,
+      );
+      assert.equal(
+        (
+          await fetch(
+            f.url +
+              "/api/v1/companies/" +
+              f.data.companies[0].id +
+              "/catalog?name=a",
+            { headers: { authorization: "Bearer " + token } },
+          )
+        ).status,
+        400,
+      );
     },
   );
 }

@@ -10,6 +10,7 @@ import type {
   PageRequest,
 } from "../repositories/common.js";
 import { checkedScope, checkedPage } from "../services/query-input.js";
+import { checkedCatalogFilters } from "../services/catalog-filters.js";
 
 export class PostgresStorageError extends Error {
   constructor() {
@@ -169,13 +170,32 @@ export function createPostgresRepositories(
         )[0];
         return row ? catalogProduct(row) : null;
       },
-      async listEligible(scope, page) {
-        const result = await list<RawCatalog>(
-          catalogSql,
-          [companyId(scope), at()],
-          page,
-          "id ASC",
-        );
+      async listEligible(scope, page, filters) {
+        const checked = checkedCatalogFilters(filters);
+        const values: unknown[] = [companyId(scope), at()];
+        let sql = catalogSql;
+        const fold = (column: string) =>
+          `translate(${column},'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz') COLLATE "C"`;
+        for (const key of ["name", "sku", "category", "brand"] as const) {
+          if (checked[key] === undefined) continue;
+          values.push(checked[key]);
+          const parameter = `$${values.length}::text COLLATE "C"`;
+          sql += ["name", "sku"].includes(key)
+            ? ` AND strpos(${fold("p." + key)},${parameter})>0`
+            : ` AND ${fold("p." + key)}=${parameter}`;
+        }
+        if (checked.search !== undefined) {
+          values.push(checked.search);
+          sql += ` AND (strpos(${fold("p.name")},$${values.length}::text COLLATE "C")>0 OR strpos(${fold("p.sku")},$${values.length}::text COLLATE "C")>0)`;
+        }
+        if (checked.availability !== undefined)
+          sql +=
+            checked.availability === "unknown"
+              ? " AND p.available_quantity IS NULL"
+              : checked.availability === "available"
+                ? " AND p.available_quantity>0"
+                : " AND p.available_quantity=0";
+        const result = await list<RawCatalog>(sql, values, page, "id ASC");
         return { total: result.total, items: result.items.map(catalogProduct) };
       },
     },

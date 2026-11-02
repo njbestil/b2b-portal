@@ -28,11 +28,18 @@ import {
   authorizationHttpError,
 } from "./authorization-middleware.js";
 import { HttpError, sendSuccess } from "./http.js";
-function page(request: Request, paged: boolean): PageRequest {
+import { catalogTextKeys } from "./services/catalog-filters.js";
+function page(request: Request, paged: boolean, catalog = false): PageRequest {
   const query = request.query;
   if (
     Object.keys(query).some(
-      (key) => !paged || !["offset", "limit"].includes(key),
+      (key) =>
+        !paged ||
+        ![
+          "offset",
+          "limit",
+          ...(catalog ? [...catalogTextKeys, "availability"] : []),
+        ].includes(key),
     )
   )
     throw new TenantQueryError("invalid_input");
@@ -60,6 +67,7 @@ export function createTenantRouter(
       r: Request,
       p: PageRequest,
     ) => Promise<unknown>,
+    catalog = false,
   ) {
     router.get(
       path,
@@ -71,7 +79,7 @@ export function createTenantRouter(
             queries,
             actorFor(request),
             request,
-            page(request, paged),
+            page(request, paged, catalog),
           );
           sendSuccess(response, result);
         } catch (e) {
@@ -105,7 +113,17 @@ export function createTenantRouter(
     "/api/v1/catalog/products",
     "catalog.read",
     true,
-    (q, a, _r, p): Promise<CustomerCatalogPage> => q.listOwnProducts(a, p),
+    (q, a, r, p): Promise<CustomerCatalogPage> =>
+      q.listOwnProducts(
+        a,
+        p,
+        Object.fromEntries(
+          Object.entries(r.query).filter(
+            ([key]) => key !== "offset" && key !== "limit",
+          ),
+        ),
+      ),
+    true,
   );
   read(
     "/api/v1/catalog/products/:productId",
