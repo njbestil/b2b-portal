@@ -1,5 +1,7 @@
 # Portal API repository contracts
 
+Authenticated company reads: [tenant ownership matrix and API contract](../../docs/tenant-isolation.md).
+
 Backend permissions: [role matrix and protected read contracts](../../docs/authorization.md).
 
 Current-session logout: [HTTP contract and persistence semantics](../../docs/logout.md).
