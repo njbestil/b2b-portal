@@ -12,6 +12,11 @@ import {
 } from "./authorization.js";
 import { SessionError } from "./session-state.js";
 import { checkedPage } from "./query-input.js";
+import {
+  checkedCatalogFilters,
+  checkedCatalogPage,
+} from "./catalog-filters.js";
+import type { CatalogFilters } from "../repositories/catalog.js";
 export class TenantQueryError extends Error {
   constructor(readonly code: "invalid_input" | "not_found" | "unavailable") {
     super("Company query could not be confirmed.");
@@ -112,15 +117,25 @@ export function createTenantQueries(repositories: RepositoryPorts) {
     return { scope, company: row };
   }
   return {
-    async listOwnProducts(actor: AuthorizedActor, input?: PageRequest) {
+    async listOwnProducts(
+      actor: AuthorizedActor,
+      input?: PageRequest,
+      filters?: CatalogFilters,
+    ) {
       requirePermission(actor, "catalog.read");
       if (!["CUSTOMER_ADMIN", "CUSTOMER_USER"].includes(actor.role))
         throw new AuthorizationError();
-      const page = pageRequest(input);
+      let page: PageRequest, checkedFilters: CatalogFilters;
+      try {
+        page = checkedCatalogPage(input);
+        checkedFilters = checkedCatalogFilters(filters);
+      } catch {
+        throw new TenantQueryError("invalid_input");
+      }
       const { scope } = await access(actor, "catalog.read", actor.companyId);
       return {
         ...pageView(
-          await repositories.catalog.listEligible(scope, page),
+          await repositories.catalog.listEligible(scope, page, checkedFilters),
           page,
           customerProductView,
           () => true,

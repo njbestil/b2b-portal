@@ -6,16 +6,48 @@ Customer Admin and Customer User use normal Bearer authentication:
 - `GET /api/v1/catalog/products/:productId`
 
 The API derives the company exclusively from the current authenticated actor.
-Company/customer/role selectors and all query keys except list offset/limit
-are rejected with 400. Detail accepts no query. Internal Admin and Sales use
+Company/customer/role selectors and unsupported query keys are rejected with 400. Detail accepts no query. Internal Admin and Sales use
 the separate company-scoped API and cannot use these customer endpoints.
 The existing Sales assignment integration remains a separate #34 dependency.
 
 Successful responses use the existing `{success:true,data,requestId}` envelope
 and `Cache-Control: no-store`. List data is
 `{items,total,offset,limit}`; detail data is `{product}`.
-Offset is a nonnegative safe integer, limit is 1–100, default 20. Ordering is
-product ID ascending. Search and filters belong to #48.
+Offset is an integer from 0 through 100,000, default 0; limit is 1–100, default 20. Both use canonical unsigned decimal digits, without signs, leading zeroes,
+fractions or exponent notation. Ordering is product ID ascending, including
+when names/SKUs tie. Beyond-end pages return no items and retain the filtered
+total. Eligibility and all filters apply before counts and pagination.
+
+## List filters (#48)
+
+| Query key       | Matching rule                                          |
+| --------------- | ------------------------------------------------------ |
+| name, sku       | Literal substring in the corresponding field           |
+| search          | Literal substring in name OR SKU                       |
+| category, brand | Exact field equality                                   |
+| availability    | `all` (default), `available`, `unavailable`, `unknown` |
+
+All supplied filters combine with AND; `search` retains its internal OR.
+Text is limited to 128 UTF-16 code units before trimming; blank/omitted text
+means no restriction. C0/C1 control characters and unpaired surrogates are
+invalid. Repeated/unknown parameters, array/object values and empty/unsupported
+availability values are invalid and return the existing 400
+`INVALID_COMPANY_QUERY` envelope. Availability enum values are case-sensitive.
+Detail and the older company-scoped catalog routes keep their existing query
+contract; these extensions apply to the customer list only.
+
+ASCII A–Z case folds to a–z in both SQL and JSON. Non-ASCII characters match
+exactly, without accent folding, Unicode normalization or locale-specific
+case conversion. For example, `café` matches `Café`, while `CAFÉ` does not.
+SQL binds values and uses literal substring comparison, so `%`, `_`,
+backslashes and quotes have no wildcard or SQL syntax meaning.
+
+Availability follows the synchronized Mock catalog producer: known positive
+stock is available, known zero is unavailable, null/missing stock is unknown.
+Positive fractional stock remains available even below MOQ. No floating-point
+conversion, low-stock threshold, MOQ interpretation or submit-time stock
+guarantee is introduced. Missing category/brand values cannot match a nonblank
+filter.
 
 Each product contains only:
 
@@ -70,6 +102,12 @@ This issue branch is `codex/47-customer-catalog`.
 Review the clean integration into main first, then retarget this incremental
 successor to main. No merge is authorized or performed by this change.
 
+The filter successor `codex/48-catalog-filters` starts at #47's local reviewed
+implementation commit `6b0b339` and adds only #48. Review/merge order is clean
+#33 integration → #47 → #48. Retarget each successor after its parent is
+integrated. Publication currently requires clearance of the automatic approval
+review gate; local implementation/tests do not imply a published PR.
+
 ## Verification
 
 `apps/api/test/customer-catalog.test.mjs` exercises actual Mock HTTP through
@@ -79,3 +117,8 @@ unknown/zero stock, exact MOQ, public allowlists, missing/inaccessible detail,
 pagination boundaries, selector rejection, role denial, suspension, forged
 actors, override expiry/future/default/null behavior and inactive products.
 Adapter failures are checked before any cache publication.
+
+The #48 cases add individual/combined filters, literal wildcard/quote and case
+rules, Unicode distinctions, identical-name ordering, tenant-filtered totals,
+maximum/beyond-end pages, null/zero/fractional stock, exact large prices, both
+customer roles and malformed query rejection before company/catalog I/O.
