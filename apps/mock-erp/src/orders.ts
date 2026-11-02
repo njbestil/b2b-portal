@@ -1,5 +1,6 @@
 import { createHash, randomUUID } from "node:crypto";
 import { createMasterData } from "./master-data.js";
+import type { FulfillmentStatus, MockErpFulfillment } from "./fulfillment.js";
 
 interface OrderInput {
   portalOrderId: string;
@@ -108,6 +109,7 @@ export function createOrderService() {
   const byKey = new Map<string, { fingerprint: string; order: MockErpOrder }>();
   const portalOrderIds = new Set<string>();
   const invoices = new Map<string, MockErpInvoice | null>();
+  const fulfillmentStates = new Map<string, MockErpFulfillment>();
 
   function inspect(key: unknown, input: unknown) {
     if (
@@ -158,6 +160,18 @@ export function createOrderService() {
           return structuredClone(order);
       throw new OrderError(404, "ORDER_NOT_FOUND", "Mock ERP order not found.");
     },
+    fulfillment(erpOrderId: string): MockErpFulfillment {
+      if (!/^[\da-f]{8}(?:-[\da-f]{4}){3}-[\da-f]{12}$/i.test(erpOrderId))
+        throw new OrderError(400, "INVALID_ORDER_ID", "Invalid ERP order ID.");
+      const state = fulfillmentStates.get(erpOrderId.toLowerCase());
+      if (!state)
+        throw new OrderError(
+          404,
+          "ORDER_NOT_FOUND",
+          "Mock ERP order not found.",
+        );
+      return structuredClone(state);
+    },
     invoice(erpOrderId: string): MockErpInvoice | null {
       if (!/^[\da-f]{8}(?:-[\da-f]{4}){3}-[\da-f]{12}$/i.test(erpOrderId))
         throw new OrderError(400, "INVALID_ORDER_ID", "Invalid ERP order ID.");
@@ -180,6 +194,7 @@ export function createOrderService() {
       key: unknown,
       input: unknown,
       completed = false,
+      fulfillmentStatus: FulfillmentStatus = "confirmed",
     ): { created: boolean; order: MockErpOrder } {
       const {
         key: validKey,
@@ -195,6 +210,19 @@ export function createOrderService() {
         erpOrderId: randomUUID(),
         createdAt: new Date().toISOString(),
         status: "created",
+      };
+      if (!["confirmed", "fulfilling", "delivered"].includes(fulfillmentStatus))
+        throw new OrderError(
+          400,
+          "INVALID_FULFILLMENT_SCENARIO",
+          "Unknown Mock fulfillment scenario.",
+        );
+      const fulfillment: MockErpFulfillment = {
+        erpOrderId: order.erpOrderId,
+        portalOrderId: order.portalOrderId,
+        customerId: order.customerId,
+        fulfillmentStatus,
+        updatedAt: order.createdAt,
       };
       // Explicit synthetic completed fixture only. No commercial calculation or
       // automatic transition from an accepted order to real fulfillment.
@@ -215,6 +243,7 @@ export function createOrderService() {
             }
           : null,
       );
+      fulfillmentStates.set(order.erpOrderId, fulfillment);
       byKey.set(validKey, { fingerprint, order });
       portalOrderIds.add(parsed.portalOrderId);
       return { created: true, order: structuredClone(order) };
