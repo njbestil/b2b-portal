@@ -19,6 +19,7 @@ import {
   filteredQuery,
   parseQuery,
   queryParams,
+  customerCatalogAdapter,
   type CatalogAdapter,
   type CatalogPage,
   type CatalogProduct,
@@ -427,7 +428,17 @@ function Detail({ client, id }: { client: CatalogClient; id: string }) {
   );
 }
 function ConnectedCatalog({ adapter }: { adapter?: CatalogAdapter }) {
-  const client = useMemo(() => new CatalogClient(adapter), [adapter]),
+  const { client: session } = useAuth();
+  const client = useMemo(
+      () =>
+        new CatalogClient(
+          adapter ??
+            customerCatalogAdapter((path, signal) =>
+              session.read(path, signal),
+            ),
+        ),
+      [adapter, session],
+    ),
     { productId } = useParams();
   return productId ? (
     <Detail key={productId} client={client} id={productId} />

@@ -238,3 +238,13 @@ export function createHttpCatalogAdapter(
     },
   };
 }
+
+/** Customer company is derived by the API from the authenticated session. */
+export function customerCatalogAdapter(
+  read: (path: string, signal?: AbortSignal) => Promise<Response>,
+): CatalogAdapter {
+  return createHttpCatalogAdapter(read, {
+    list: "/api/v1/catalog/products",
+    detail: (id) => `/api/v1/catalog/products/${id}`,
+  });
+}

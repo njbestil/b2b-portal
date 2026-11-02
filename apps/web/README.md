@@ -252,13 +252,20 @@ child targets the #35 branch so its diff contains only catalogue work. It remain
 draft until confirmed #47/#48 routes/fields/matching, real
 catalogue integration, browser verification and required reviews are complete.
 
-Rechecked 2 November: #140 provides the tested auth parent. #47 has no API PR;
-its #33 tenant dependency was merged into the former RBAC feature branch after
-that parent had already merged, so it is absent from main 862efce. #48 remains
-Backlog with filter/source semantics unconfirmed. The narrow #155 paging-only
-read contract does not supply the proposed search/filter/metadata behavior.
-Do not wire guessed routes or treat this draft as integrated acceptance. #50
-remains queued until this catalog and its API prerequisites are available.
+Local integration rechecked 2 November: #140 is merged into main d2856a7.
+This branch is reconciled with the clean local #47 implementation 6b0b339,
+whose customer routes derive company scope from the authenticated session.
+The default browser provider uses those routes through SessionClient. Its
+publication gate remains in force; the API predecessor is not published through
+this Web branch. #48 filtering remains pending, so this PR stays draft.
+
+Actual HTTP integration uses an isolated synthetic Mock -> JSON cache -> API
+fixture and checks list/detail/paging, separate company prices, unknown values
+and foreign-resource denial. Browser checks passed for real customer login,
+catalog list/detail/back, focused headings and 320px list/detail reflow; local
+screenshots were inspected. Filter and availability acceptance must be checked
+against #48's final implementation. #50 stays queued until those contracts and
+this catalog integration are available.
 
 Menus and direct-route preview restrictions use the same role policy. A hidden
 destination cannot be rendered simply by typing its URL. This is only UI
