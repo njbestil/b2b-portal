@@ -1,3 +1,5 @@
+import { createApplicationReviewRouter } from "./application-review-route.js";
+import type { ApplicationRepository } from "./repositories/applications.js";
 import express from "express";
 import { createLoginRouter, type LoginHandler } from "./login-route.js";
 import { createSessionRouter } from "./session-route.js";
@@ -22,6 +24,7 @@ import {
 } from "./application-route.js";
 
 interface AppOptions {
+  pendingApplication?: ApplicationRepository["pending"];
   passwordChange?: PasswordChangeHandler;
   applications?: ApplicationHandler;
   sessions?: SessionService;
@@ -50,6 +53,9 @@ export function createApp(options: AppOptions = {}) {
   app.use(createSessionRouter(options.sessions));
   app.use(createPasswordChangeRouter(options.passwordChange));
   app.use(createLogoutRouter(options.sessions));
+  app.use(
+    createApplicationReviewRouter(options.sessions, options.pendingApplication),
+  );
   app.use(express.json());
 
   app.get("/", (_request, response) => {
