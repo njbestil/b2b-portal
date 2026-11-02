@@ -2,6 +2,8 @@
 
 Account lifecycle: [suspension/reactivation contract](../../docs/account-suspension.md).
 
+Sales ownership: [current primary-assignment policy](../../docs/sales-assignment-authorization.md).
+
 Password recovery: [HTTP contract and protected operator runbook](../../docs/password-reset.md).
 
 Backend permissions: [role matrix and protected read contracts](../../docs/authorization.md).
