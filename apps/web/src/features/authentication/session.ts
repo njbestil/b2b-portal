@@ -291,7 +291,20 @@ export class SessionClient {
   }
   /** GET-only business reads: mutation retry/idempotency stays with its feature. */
   async read(path: string, signal?: AbortSignal): Promise<Response> {
+    return this.request(path, { method: "GET", signal });
+  }
+  /** Normal-access resource operation; refresh before admission, never replay a write. */
+  async request(
+    path: string,
+    init: {
+      method: "GET" | "POST" | "PATCH";
+      body?: string;
+      signal?: AbortSignal;
+    },
+  ): Promise<Response> {
     if (
+      !["GET", "POST", "PATCH"].includes(init.method) ||
+      (init.method === "GET" && init.body !== undefined) ||
       !path.startsWith("/api/v1/") ||
       path.startsWith("/api/v1/auth/") ||
       /[?#]/.test(path.split("?")[0]) ||
@@ -307,16 +320,21 @@ export class SessionClient {
     if (!proof || proof.user.mustChangePassword) throw new AuthError("session");
     try {
       const response = await this.#send(path, {
+        method: init.method,
+        ...(init.body === undefined ? {} : { body: init.body }),
         headers: {
           Authorization: `Bearer ${proof.accessToken}`,
           Accept: "application/json",
+          ...(init.body === undefined
+            ? {}
+            : { "Content-Type": "application/json" }),
         },
         credentials: "omit",
         cache: "no-store",
         redirect: "error",
         signal: AbortSignal.any([
           AbortSignal.timeout(15000),
-          ...(signal ? [signal] : []),
+          ...(init.signal ? [init.signal] : []),
         ]),
       });
       if (epoch !== this.#epoch) throw new AuthError("session");
