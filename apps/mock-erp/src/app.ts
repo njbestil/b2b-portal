@@ -1,3 +1,4 @@
+import { lookupCatalog } from "./catalog.js";
 import {
   createSubmissionService,
   parseSubmissionScenario,
@@ -40,6 +41,10 @@ export function createApp() {
     response.json(createMasterData());
   });
 
+  app.get("/mock-erp/v1/catalog", (request, response) => {
+    response.setHeader("Cache-Control", "no-store");
+    response.json(lookupCatalog(request.query));
+  });
   app.post(
     "/mock-erp/v1/submissions",
     requireJson,
