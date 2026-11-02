@@ -4,17 +4,19 @@ The frozen requirements sections 2.2–2.3 define four roles. Backend permission
 come from #28's current validated principal, never the role-preview UI, role
 headers, company headers or a serialized login profile.
 
-| Operation           | Internal Admin | Sales Staff   | Customer Admin   | Customer User    |
-| ------------------- | -------------- | ------------- | ---------------- | ---------------- |
-| profile.read        | yes            | yes           | yes              | yes              |
-| company.read        | yes            | yes, assigned | yes, own company | yes, own company |
-| catalog.read        | yes            | yes, assigned | yes, own company | yes, own company |
-| orders.read         | yes            | yes, assigned | yes, own company | yes, own company |
-| customer-users.read | yes            | yes, assigned | yes, own company | no               |
-| applications.read   | yes            | no            | no               | no               |
+| Operation             | Internal Admin | Sales Staff   | Customer Admin   | Customer User    |
+| --------------------- | -------------- | ------------- | ---------------- | ---------------- |
+| profile.read          | yes            | yes           | yes              | yes              |
+| company.read          | yes            | yes, assigned | yes, own company | yes, own company |
+| catalog.read          | yes            | yes, assigned | yes, own company | yes, own company |
+| orders.read           | yes            | yes, assigned | yes, own company | yes, own company |
+| customer-users.read   | yes            | yes, assigned | yes, own company | no               |
+| applications.read     | yes            | no            | no               | no               |
+| accounts.status.read  | yes            | no            | no               | no               |
+| accounts.status.write | yes            | no            | no               | no               |
 
-These are read permissions for the existing repository projections. They do not
-grant user administration, ERP commercial writes, integration retries, application
+These cover existing read projections and the bounded #42 status transitions.
+They do not grant user provisioning, ERP commercial writes, integration retries, application
 decisions or order mutations. Unlisted operations/unknown roles deny by default.
 Customer User directory management is not exposed. The customer directory
 projection includes only customer-role profiles, never credentials/internal staff.
@@ -57,7 +59,7 @@ fixture identity shortcut or signing secret is introduced.
 
 ## Verification
 
-Tests cover the six-operation/four-role matrix plus unknown roles/permissions,
+Tests cover the declared operation/four-role matrix plus unknown roles/permissions,
 immutable capability/serialized-profile refusal, actual PostgreSQL and JSON
 sessions, live role changes, first-login/inactive/expiry/revocation, header
 spoofing, unavailable producer/repository, redacted responses/logs and existing

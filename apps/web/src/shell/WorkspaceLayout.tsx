@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { Link, NavLink, Outlet, useNavigate } from "react-router";
 import { Icon } from "../shared/Icon";
@@ -28,9 +28,13 @@ export function Brand({ onNavigate }: { onNavigate?: () => void }) {
 function SidebarContent({
   role,
   onNavigate,
+  authenticated = false,
+  accountAction,
 }: {
   role: Role;
   onNavigate?: () => void;
+  authenticated?: boolean;
+  accountAction?: ReactNode;
 }) {
   return (
     <>
@@ -65,10 +69,12 @@ function SidebarContent({
             Your sales contact will appear here when account data is connected.
           </p>
         </div>
-        <Link className="exit-link" to="/login" onClick={onNavigate}>
-          <Icon name="logout" />
-          Exit preview
-        </Link>
+        {accountAction ?? (
+          <Link className="exit-link" to="/login" onClick={onNavigate}>
+            <Icon name="logout" />
+            {authenticated ? "Account access" : "Exit preview"}
+          </Link>
+        )}
       </div>
     </>
   );
@@ -79,11 +85,15 @@ export function WorkspaceLayout({
   setRole,
   dark,
   setDark,
+  identity,
+  accountAction,
 }: {
   role: Role;
   setRole: (role: Role) => void;
   dark: boolean;
   setDark: (dark: boolean) => void;
+  identity?: { displayName: string };
+  accountAction?: ReactNode;
 }) {
   const navigate = useNavigate();
   const drawer = useRef<HTMLDialogElement>(null);
@@ -103,7 +113,11 @@ export function WorkspaceLayout({
         Skip to main content
       </a>
       <aside className="sidebar desktop-sidebar">
-        <SidebarContent role={role} />
+        <SidebarContent
+          role={role}
+          authenticated={!!identity}
+          accountAction={accountAction}
+        />
       </aside>
       <div className="workspace">
         <header className="workspace-header">
@@ -122,30 +136,32 @@ export function WorkspaceLayout({
           </Button>
           <div className="context">
             <span className="avatar" aria-hidden="true">
-              {role.startsWith("Customer") ? "EO" : "GP"}
+              {identity ? "GP" : role.startsWith("Customer") ? "EO" : "GP"}
             </span>
             <span>
-              <strong>{profile.company}</strong>
+              <strong>{identity ? "Gulf Provision" : profile.company}</strong>
               <small>{role === "Sales Staff" ? "Sales workspace" : role}</small>
             </span>
           </div>
           <div className="header-actions">
-            <label className="role-picker">
-              <span>Preview role</span>
-              <select
-                value={role}
-                onChange={(event) => {
-                  if (isRole(event.target.value)) {
-                    setRole(event.target.value);
-                    navigate("/dashboard");
-                  }
-                }}
-              >
-                {roles.map((item) => (
-                  <option key={item}>{item}</option>
-                ))}
-              </select>
-            </label>
+            {!identity && (
+              <label className="role-picker">
+                <span>Preview role</span>
+                <select
+                  value={role}
+                  onChange={(event) => {
+                    if (isRole(event.target.value)) {
+                      setRole(event.target.value);
+                      navigate("/dashboard");
+                    }
+                  }}
+                >
+                  {roles.map((item) => (
+                    <option key={item}>{item}</option>
+                  ))}
+                </select>
+              </label>
+            )}
             <Button
               className="icon-button"
               variant="secondary"
@@ -173,19 +189,23 @@ export function WorkspaceLayout({
             )}
             <div className="profile">
               <span className="avatar" aria-hidden="true">
-                {profile.initials}
+                {identity ? "GP" : profile.initials}
               </span>
               <span>
-                <strong>{profile.name}</strong>
-                <small>{profile.subtitle}</small>
+                <strong>{identity?.displayName ?? profile.name}</strong>
+                <small>{identity ? role : profile.subtitle}</small>
               </span>
             </div>
           </div>
         </header>
         <div className="preview-notice">
-          <Badge tone="warning">Shell preview</Badge>
+          <Badge tone={identity ? "info" : "warning"}>
+            {identity ? "Session connected" : "Shell preview"}
+          </Badge>
           <span>
-            Sample personas only. Sign-in and business data are not connected.
+            {identity
+              ? "Account verified. Business screens still identify their own connection status."
+              : "Sample personas only. Sign-in and business data are not connected."}
           </span>
         </div>
         <main id="main-content" tabIndex={-1}>
@@ -215,6 +235,8 @@ export function WorkspaceLayout({
             <div className="sidebar">
               <SidebarContent
                 role={role}
+                authenticated={!!identity}
+                accountAction={accountAction}
                 onNavigate={() => drawer.current?.close()}
               />
             </div>
