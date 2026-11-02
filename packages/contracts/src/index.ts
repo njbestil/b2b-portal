@@ -21,3 +21,4 @@ export type {
   HealthReport,
   HealthResponse,
 } from "./health.js";
+export type { SalesCompanyPage } from "./sales-companies.js";

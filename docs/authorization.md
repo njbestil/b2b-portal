@@ -14,6 +14,7 @@ headers, company headers or a serialized login profile.
 | applications.read     | yes            | no            | no               | no               |
 | accounts.status.read  | yes            | no            | no               | no               |
 | accounts.status.write | yes            | no            | no               | no               |
+| sales.companies.read  | no             | yes, assigned | no               | no               |
 
 These cover existing read projections and the bounded #42 status transitions.
 They do not grant user provisioning, ERP commercial writes, integration retries, application
@@ -28,6 +29,11 @@ fail-closed without that producer. Do not wire the raw scope-accepting query
 services directly to HTTP.
 
 ## Enforcement
+
+#68's Sales listing uses the dedicated sales.companies.read permission and
+current #34 assignment policy before totals/pagination. See
+[Sales assigned-company listing](sales-company-list.md). It does not enable
+Sales detail/mutation access merely because company.read is role-allowed.
 
 The pure authorization service admits an immutable actor only through injected
 #28 validation, checks the normal-account restriction and role permission, and

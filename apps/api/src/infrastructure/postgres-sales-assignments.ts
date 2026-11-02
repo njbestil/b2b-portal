@@ -1,4 +1,5 @@
 import type { Pool } from "pg";
+import { createPostgresSalesCompanies } from "./postgres-sales-companies.js";
 import type { SalesAssignmentRepository } from "../repositories/sales-assignments.js";
 import {
   assignmentId,
@@ -9,6 +10,7 @@ export function createPostgresSalesAssignments(
   now = Date.now,
 ): SalesAssignmentRepository {
   return {
+    listAssigned: createPostgresSalesCompanies(pool, now),
     async allows(staffId, companyId) {
       const staff = assignmentId(staffId),
         company = assignmentId(companyId);
