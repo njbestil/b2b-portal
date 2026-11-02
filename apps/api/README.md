@@ -7,6 +7,8 @@ The separate private `AuthenticationRepository` supports
 company-scoped public user projection or expose password hashes over HTTP.
 The private [session producer](../../docs/sessions.md) composes that verifier and
 returns a validated backend principal; public role/company claims are not proof.
+The [first-login writer](../../docs/password-change.md) shares that boundary and
+requires fresh login after credential change.
 
 The separate backend-only `NotificationRepository` and `createNotifications`
 service support [user-scoped notification creation](../../docs/notifications.md)

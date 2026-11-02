@@ -26,6 +26,19 @@ const record = (row: SqlSession): SessionRecord => ({
   expiresAt: row.expiresAt.toISOString(),
   revokedAt: row.revokedAt?.toISOString() ?? null,
 });
+/** Caller owns account-first transaction locks. */
+export async function lockedSession(
+  client: PoolClient,
+  id: string,
+): Promise<SessionRecord | null> {
+  const row = (
+    await client.query<SqlSession>(
+      `SELECT ${projection} FROM user_sessions WHERE id=$1 FOR UPDATE`,
+      [id],
+    )
+  ).rows[0];
+  return row ? record(row) : null;
+}
 export function createPostgresSessions(
   pool: Pool,
   now: () => number = Date.now,
@@ -72,14 +85,8 @@ export function createPostgresSessions(
         ).rows[0]?.userId;
       if (!owner) throw new SessionError("invalid_proof");
       return await run(owner, async (client, user) => {
-        const row = (
-          await client.query<SqlSession>(
-            `SELECT ${projection} FROM user_sessions WHERE id=$1 FOR UPDATE`,
-            [id],
-          )
-        ).rows[0];
         const current = bound(
-          row ? record(row) : null,
+          await lockedSession(client, id),
           user,
           now(),
           allowRevoked,

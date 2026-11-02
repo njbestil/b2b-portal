@@ -23,6 +23,7 @@ import {
   applicationText,
 } from "../../services/applications.js";
 import { JsonFileStore } from "./store.js";
+import { JsonSecurityCoordinator } from "./security.js";
 import type { JsonCompany, JsonUser } from "./models.js";
 
 interface Address {
@@ -38,6 +39,7 @@ export function createJsonApplications(
   directory: string,
   store = new JsonFileStore(directory),
   afterPublish: (stage: string) => Promise<void> = async () => {},
+  security = new JsonSecurityCoordinator(directory),
 ) {
   const root = resolve(directory),
     intentPath = join(root, "application_intent.json"),
@@ -48,7 +50,7 @@ export function createJsonApplications(
   async function ordered<T>(operation: () => Promise<T>): Promise<T> {
     if (waiting >= 32) throw new ApplicationError("unavailable");
     waiting++;
-    const result = queue.then(operation);
+    const result = queue.then(() => security.run(operation));
     queue = result.then(
       () => {},
       () => {},

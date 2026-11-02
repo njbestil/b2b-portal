@@ -58,8 +58,9 @@ These are per-process demo limits, not a distributed limiter.
 role, company ID and must-change state in the standard envelope. Duplicate or
 ambiguous Authorization headers deny. Restricted first-login proof is 403 here;
 normal business access requires password change. Refresh preserves restriction.
-Password-change and logout HTTP endpoints remain #30/#29; the private session
-producer already supports persistent revocation for those consumers.
+The [first-login password-change endpoint](password-change.md) is implemented by
+#30. Logout HTTP integration remains #29; the private session producer supports
+persistent revocation for those consumers.
 
 Invalid/expired/revoked proof is 401, restricted normal access is 403, invalid body
 shape is 400, oversized input 413, unsupported encoding/media 415, rate limit 429
@@ -96,10 +97,11 @@ rotation/revocation. An ambiguous SQL commit is unavailable without automatic
 retry. Already admitted work may finish after a concurrent revoke; subsequent
 access/refresh admission denies. Access JWTs never outlive the hard session cap.
 
-Later #30/#31 credential changes must publish the fresh credential and must-change
+The #30 and later #31 credential changes must publish the fresh credential and must-change
 flag together before JSON session cleanup. Restart then rejects old bindings even
 if cleanup never completed; do not restore the old credential on cleanup failure.
-That workflow is not implemented in #28.
+The first-login writer is documented in [password change](password-change.md);
+reset remains separate #31 work.
 
 Offline catalog refresh preserves session bytes. Explicit confirmed disposable
 demo reset can clear the known private session file; unknown files, links and

@@ -16,6 +16,9 @@ export interface SessionTokenResult extends LoginResult {
   readonly expiresIn: number;
   readonly refreshExpiresAt: string;
 }
+export interface PasswordChangeResult {
+  readonly requiresLogin: true;
+}
 export interface LogoutResult {
   readonly loggedOut: true;
 }

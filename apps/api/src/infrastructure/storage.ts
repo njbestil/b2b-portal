@@ -24,6 +24,9 @@ import type { SessionRepository } from "../repositories/sessions.js";
 import { createPostgresSessions } from "./postgres-sessions.js";
 import { createJsonSessions } from "./json/sessions.js";
 import { JsonSecurityCoordinator } from "./json/security.js";
+import type { PasswordChangeRepository } from "../repositories/password-change.js";
+import { createJsonPasswordChange } from "./json/password-change.js";
+import { createPostgresPasswordChange } from "./postgres-password-change.js";
 
 import type { NotificationRepository } from "../repositories/notifications.js";
 import { createPostgresNotifications } from "./postgres-notifications.js";
@@ -34,6 +37,7 @@ import { createPostgresApplications } from "./postgres-applications.js";
 import { createJsonApplications } from "./json/applications.js";
 
 export interface StorageRuntime {
+  readonly passwordChanges: PasswordChangeRepository;
   readonly applications: ApplicationRepository;
   readonly sessions: SessionRepository;
   readonly notifications: NotificationRepository;
@@ -103,6 +107,7 @@ export async function selectStorage(
       return Object.freeze({
         provider: "postgresql",
         sessions,
+        passwordChanges: createPostgresPasswordChange(postgres.pool),
         repositories: createPostgresRepositories(postgres.pool),
         authentication: createPostgresAuthentication(postgres.pool),
         internalNotes: createPostgresInternalNotes(postgres.pool),
@@ -126,7 +131,12 @@ export async function selectStorage(
   const security = new JsonSecurityCoordinator(options.jsonDirectory);
   const store = security.store,
     sessions = createJsonSessions(security);
-  const applications = createJsonApplications(options.jsonDirectory, store);
+  const applications = createJsonApplications(
+    options.jsonDirectory,
+    store,
+    undefined,
+    security,
+  );
   await applications
     .recover()
     .catch(() =>
@@ -156,6 +166,7 @@ export async function selectStorage(
   return Object.freeze({
     provider: "json",
     sessions,
+    passwordChanges: createJsonPasswordChange(security),
     repositories: createJsonRepositories(store),
     authentication: createJsonAuthentication(store),
     internalNotes: createJsonInternalNotes(options.jsonDirectory),

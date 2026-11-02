@@ -11,12 +11,12 @@ import { randomUUID } from "node:crypto";
 import { createAudit } from "./services/audit.js";
 import { createLogin, createVerifiedLogin } from "./services/login.js";
 import { createApplications } from "./services/applications.js";
-import { hashPassword } from "./infrastructure/passwords.js";
 import { parseSessionConfiguration } from "./infrastructure/session-config.js";
 import { createAccessTokens } from "./infrastructure/access-tokens.js";
 import { createSessions } from "./services/sessions.js";
 import { SessionError } from "./services/session-state.js";
-import { verifyPassword } from "./infrastructure/passwords.js";
+import { verifyPassword, hashPassword } from "./infrastructure/passwords.js";
+import { createPasswordChange } from "./services/password-change.js";
 import { createLogger } from "./logging.js";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -66,6 +66,15 @@ try {
       )
     : undefined;
   const app = createApp({
+    passwordChange: sessions
+      ? createPasswordChange(
+          selectedStorage.passwordChanges,
+          sessions.authenticateAccess,
+          verifyPassword,
+          hashPassword,
+          record,
+        )
+      : undefined,
     applications: createApplications(
       selectedStorage.applications,
       hashPassword,
