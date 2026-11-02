@@ -7,6 +7,7 @@ import {
 } from "@b2b-portal/config/server";
 import { checkedTarget } from "./demo/seed.js";
 import { createMockCatalogSource } from "./infrastructure/mock-catalog-adapter.js";
+import { createMockCustomerCatalogSource } from "./infrastructure/mock-customer-catalog-adapter.js";
 import { createJsonCatalogCache } from "./infrastructure/json/catalog-cache.js";
 import { createPostgresCatalogCache } from "./infrastructure/postgres-catalog-cache.js";
 import { createCatalogSync } from "./services/catalog-sync.js";
@@ -21,6 +22,7 @@ try {
       directory: { type: "string" },
       "confirm-target": { type: "string" },
       offline: { type: "boolean" },
+      "customer-catalog": { type: "boolean" },
     },
     strict: true,
   });
@@ -62,7 +64,9 @@ try {
     cache = createPostgresCatalogCache(pool);
   } else throw new Error();
   result = await createCatalogSync(
-    createMockCatalogSource(erp),
+    values["customer-catalog"]
+      ? createMockCustomerCatalogSource(erp)
+      : createMockCatalogSource(erp),
     cache,
     randomUUID,
   ).synchronize(new AbortController().signal);

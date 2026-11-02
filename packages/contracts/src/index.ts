@@ -6,6 +6,8 @@ export type {
   PortalProduct,
   PortalOrder,
   PortalPage,
+  CustomerCatalogProduct,
+  CustomerCatalogPage,
 } from "./portal-reads.js";
 export type {
   PasswordResetRequestResult,

@@ -5,6 +5,7 @@ export interface CachePrice {
   validTo: string | null;
 }
 export interface CachedProduct {
+  metadata?: import("./catalog.js").CatalogMetadata;
   id: string;
   erpProductReference?: string;
   sku: string;
@@ -17,6 +18,7 @@ export interface CachedProduct {
 export interface CatalogSnapshot {
   customers: { reference: string; active: boolean }[];
   products: {
+    metadata?: import("./catalog.js").CatalogMetadata;
     reference: string;
     sku: string;
     name: string;

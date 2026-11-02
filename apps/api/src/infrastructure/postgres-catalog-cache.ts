@@ -34,8 +34,8 @@ export function createPostgresCatalogCache(pool: Pool): CatalogCacheRepository {
         } as CatalogContext);
         for (const p of cache.products)
           await client.query(
-            `INSERT INTO products(id,erp_product_reference,sku,name,selling_uom,minimum_order_quantity,active,default_price,currency,price_valid_from,price_valid_to,synced_at)
-    VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,CURRENT_TIMESTAMP) ON CONFLICT(id) DO UPDATE SET erp_product_reference=EXCLUDED.erp_product_reference,sku=EXCLUDED.sku,name=EXCLUDED.name,selling_uom=EXCLUDED.selling_uom,minimum_order_quantity=EXCLUDED.minimum_order_quantity,active=EXCLUDED.active,default_price=EXCLUDED.default_price,currency=EXCLUDED.currency,price_valid_from=EXCLUDED.price_valid_from,price_valid_to=EXCLUDED.price_valid_to,synced_at=EXCLUDED.synced_at`,
+            `INSERT INTO products(id,erp_product_reference,sku,name,selling_uom,minimum_order_quantity,active,default_price,currency,price_valid_from,price_valid_to,category,brand,available_quantity,synced_at)
+    VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,CURRENT_TIMESTAMP) ON CONFLICT(id) DO UPDATE SET erp_product_reference=EXCLUDED.erp_product_reference,sku=EXCLUDED.sku,name=EXCLUDED.name,selling_uom=EXCLUDED.selling_uom,minimum_order_quantity=EXCLUDED.minimum_order_quantity,active=EXCLUDED.active,default_price=EXCLUDED.default_price,currency=EXCLUDED.currency,price_valid_from=EXCLUDED.price_valid_from,price_valid_to=EXCLUDED.price_valid_to,category=EXCLUDED.category,brand=EXCLUDED.brand,available_quantity=EXCLUDED.available_quantity,synced_at=EXCLUDED.synced_at`,
             [
               p.id,
               p.erpProductReference,
@@ -48,6 +48,9 @@ export function createPostgresCatalogCache(pool: Pool): CatalogCacheRepository {
               p.defaultPrice?.currency ?? null,
               p.defaultPrice?.validFrom ?? null,
               p.defaultPrice?.validTo ?? null,
+              p.metadata?.category ?? null,
+              p.metadata?.brand ?? null,
+              p.metadata?.availableQuantity ?? null,
             ],
           );
         await client.query("DELETE FROM customer_product_access");

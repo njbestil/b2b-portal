@@ -51,6 +51,12 @@ const productView = (row: CatalogProduct) => ({
     ? { amount: row.price.amount, currency: row.price.currency }
     : null,
 });
+const customerProductView = (row: CatalogProduct) => ({
+  ...productView(row),
+  category: row.metadata?.category ?? null,
+  brand: row.metadata?.brand ?? null,
+  availableQuantity: row.metadata?.availableQuantity ?? null,
+});
 const orderView = (row: OrderSummary) => ({
   id: row.id,
   companyId: row.companyId,
@@ -106,6 +112,32 @@ export function createTenantQueries(repositories: RepositoryPorts) {
     return { scope, company: row };
   }
   return {
+    async listOwnProducts(actor: AuthorizedActor, input?: PageRequest) {
+      requirePermission(actor, "catalog.read");
+      if (!["CUSTOMER_ADMIN", "CUSTOMER_USER"].includes(actor.role))
+        throw new AuthorizationError();
+      const page = pageRequest(input);
+      const { scope } = await access(actor, "catalog.read", actor.companyId);
+      return {
+        ...pageView(
+          await repositories.catalog.listEligible(scope, page),
+          page,
+          customerProductView,
+          () => true,
+        ),
+        ...page,
+      };
+    },
+    async getOwnProduct(actor: AuthorizedActor, productId: unknown) {
+      requirePermission(actor, "catalog.read");
+      if (!["CUSTOMER_ADMIN", "CUSTOMER_USER"].includes(actor.role))
+        throw new AuthorizationError();
+      const key = id(productId);
+      const { scope } = await access(actor, "catalog.read", actor.companyId);
+      const row = await repositories.catalog.findEligibleById(scope, key);
+      if (!row || row.id !== key) throw notFound();
+      return customerProductView(row);
+    },
     async getCompany(actor: AuthorizedActor, companyId: unknown) {
       const result = await access(actor, "company.read", companyId);
       return companyView(result.company);
