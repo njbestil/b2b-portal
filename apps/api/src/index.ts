@@ -76,6 +76,7 @@ try {
       record,
       resetProofs,
     ),
+    pendingApplication: selectedStorage.applications.pending,
     passwordChange: sessions
       ? createPasswordChange(
           selectedStorage.passwordChanges,

@@ -2,6 +2,8 @@
 
 Password recovery: [HTTP contract and protected operator runbook](../../docs/password-reset.md).
 
+Backend permissions: [role matrix and protected read contracts](../../docs/authorization.md).
+
 Current-session logout: [HTTP contract and persistence semantics](../../docs/logout.md).
 
 The separate private `AuthenticationRepository` supports

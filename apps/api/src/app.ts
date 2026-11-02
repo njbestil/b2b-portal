@@ -1,5 +1,7 @@
 import { createPasswordResetRouter } from "./password-reset-route.js";
 import type { PasswordResetService } from "./services/password-reset.js";
+import { createApplicationReviewRouter } from "./application-review-route.js";
+import type { ApplicationRepository } from "./repositories/applications.js";
 import express from "express";
 import { createLoginRouter, type LoginHandler } from "./login-route.js";
 import { createSessionRouter } from "./session-route.js";
@@ -25,6 +27,7 @@ import {
 
 interface AppOptions {
   passwordReset?: PasswordResetService;
+  pendingApplication?: ApplicationRepository["pending"];
   passwordChange?: PasswordChangeHandler;
   applications?: ApplicationHandler;
   sessions?: SessionService;
@@ -54,6 +57,9 @@ export function createApp(options: AppOptions = {}) {
   app.use(createPasswordChangeRouter(options.passwordChange));
   app.use(createLogoutRouter(options.sessions));
   app.use(createPasswordResetRouter(options.passwordReset));
+  app.use(
+    createApplicationReviewRouter(options.sessions, options.pendingApplication),
+  );
   app.use(express.json());
 
   app.get("/", (_request, response) => {
