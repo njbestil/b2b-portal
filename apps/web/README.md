@@ -62,40 +62,38 @@ hosting must route `/api` to the real Portal API separately from the SPA fallbac
 There are no production fixtures or offline success paths. #36/PR #132 supplies
 the producer; its merge and real integration remain acceptance dependencies.
 
-## Staged authentication (#35)
+## Authentication (#35)
 
-The authentication feature consumes the #28 handoff: exact email/password login,
-normal-access `/auth/me` confirmation, and serialized single-flight refresh.
-Only a complete validated token envelope is a session; credential-only profiles,
-SPA HTML and malformed success bodies fail safely. Restricted users go to
-`/first-login` and cannot render workspace routes or perform business reads.
-Connected workspace chrome uses the returned identity and removes the preview
-role selector. Anonymous shell previews remain explicitly labelled; they cannot
-supply credentials for data requests. API authorization remains authoritative.
+Login, first-login password change, recovery receipt, manual proof redemption and
+logout use the merged Portal API contracts. Normal sign-in confirms `/auth/me`;
+restricted users can change their password or sign out and cannot enter the
+workspace. Password changes and resets require a fresh sign-in. The replacement
+password policy matches the server, including Unicode character categories and
+UTF-8 size limits; passwords are never trimmed or truncated.
 
-Tokens stay in memory for this loaded tab, with no Remember me persistence or
-session lifetime extension. Reload requires a new sign-in. Proofs are sent only
-as Bearer headers or the exact refresh JSON body, never URLs, logs or storage.
-Refresh is serialized; a lost/failed rotation clears memory and requires fresh
-login, with no replay of stale proof. Late responses cannot resurrect cleared
-sessions. This is browser behavior, not implementation of backend revocation.
+Recovery is the protected demo operator workflow: the generic receipt neither
+issues a proof nor notifies the operator. The user contacts the operator for
+identity verification and enters the protected handoff directly in the form.
+There is no email delivery or proof in URLs, browser storage or logs.
 
-**Draft integration boundary:** first-login/recovery/reset forms own validation,
-busy/errors, protected-demo recovery copy, manual proof entry and fresh-login
-continuation. Their feature-level `PasswordFlows` port deliberately fails
-unavailable in production until #30/#31 provide their exact HTTP contracts. No
-route/body/success shape is guessed. Tests may supply clearly labelled ports;
-the browser bundle has no fixture success or query/environment switch enabling
-one. No email delivery, reset token issuance or password write is claimed.
-The form's replacement-password guidance follows Figma; final server-bound
-validation must be reconciled with the producer handoff. #29 logout remains a
-backend/integration dependency; Account access is a link, not a logout claim.
+Session proofs stay in memory for the loaded tab. Reload and anonymous workspace
+navigation require sign-in. The production application has no preview sign-in;
+explicit persona injection is a test/story seam only. Connected chrome uses the
+API identity and offers real logout. Local state is cleared on logout even if
+server revocation cannot be confirmed, with an honest continuation notice.
 
-#35 is transparently stacked on #37's public layout/proxy. Merge #36/#37 and
-the applicable auth producers before integrated acceptance of #35. Browser
-keyboard, responsive, focus and live API checks remain incomplete due to the
-local verification environment; Node transport/race and actual-route SSR tests
-are reproducible without running dev servers.
+Refresh is single-flight and stale responses cannot resurrect a cleared session.
+Password mutation uncertainty requires fresh sign-in rather than replaying the
+write. Transport calls retain the native browser fetch receiver. Tests include
+that browser-specific regression and actual API HTTP journeys using isolated
+synthetic JSON fixtures; run `npm run test:integration --workspace=@b2b-portal/web`.
+
+Browser checks cover login, first-login change, fresh sign-in, logout, generic
+recovery receipt, invalid proof feedback/clearing, keyboard focus and 320px reflow.
+Valid reset redemption and post-commit uncertainty are covered by real API HTTP
+integration tests. These checks do not establish PostgreSQL parity, production
+release readiness or independent QA approval. Other feature adapters described
+below retain their separate producer and integration boundaries.
 
 ## Staged Internal Admin application review (#38)
 

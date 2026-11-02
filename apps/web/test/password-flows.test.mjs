@@ -14,7 +14,7 @@ before(async () => {
 });
 after(async () => server?.close());
 const password = " Synthetic-new-1! ";
-test("production password adapters are unavailable, never synthetic success", async () => {
+test("unconfigured adapters reject instead of producing synthetic success", async () => {
   const flows = createPasswordFlows();
   await assert.rejects(flows.changeInitialPassword("temporary", password), {
     code: "unavailable",
@@ -108,6 +108,8 @@ test("cancelled workflows cannot report a successful continuation or retry a cre
 });
 test("Figma replacement-password validation checks UTF-8 bounds and does not send invalid inputs to producer", async () => {
   assert.equal(replacementPasswordError(password), undefined);
+  assert.equal(replacementPasswordError("Äbcdef١🙂"), undefined);
+  assert.ok(replacementPasswordError("Ä١🙂abc"));
   for (const value of [
     "lowercase1!",
     "NoNumber!",

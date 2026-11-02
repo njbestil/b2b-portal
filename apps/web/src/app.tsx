@@ -38,6 +38,7 @@ import {
   type PasswordFlows,
 } from "./features/authentication/AuthContext";
 import { AuthPage } from "./features/authentication/AuthPages";
+import { LogoutButton } from "./features/authentication/LogoutButton";
 import { SessionClient, type ApiRole } from "./features/authentication/session";
 import { ApplicationReviewEntry } from "./features/application-review/ReviewPage";
 import type { ReviewAdapter } from "./features/application-review/api";
@@ -155,7 +156,7 @@ function AppRoutes({
         element={
           user?.mustChangePassword ? (
             <Navigate to="/first-login" replace />
-          ) : client.requiresLogin ? (
+          ) : client.requiresLogin || (!user && initialRole === undefined) ? (
             <Navigate to="/login" replace />
           ) : (
             <WorkspaceLayout
@@ -164,6 +165,7 @@ function AppRoutes({
               dark={dark}
               setDark={setDark}
               identity={user ?? undefined}
+              accountAction={user ? <LogoutButton /> : undefined}
             />
           )
         }

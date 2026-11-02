@@ -1,4 +1,4 @@
-import { AuthError } from "./session";
+import { AuthError, type SessionClient } from "./session";
 
 export interface PasswordFlows {
   changeInitialPassword(
@@ -39,12 +39,33 @@ export function replacementPasswordError(value: string): string | undefined {
   )
     return "Choose a shorter password.";
   if (
-    value.length < 8 ||
-    !/[A-Z]/.test(value) ||
-    !/[0-9]/.test(value) ||
-    !/[^A-Za-z0-9\s]/.test(value)
+    Array.from(value).length < 8 ||
+    !/\p{Lu}/u.test(value) ||
+    !/\p{N}/u.test(value) ||
+    !/[\p{P}\p{S}]/u.test(value)
   )
     return "Use 8+ characters with an uppercase letter, number and symbol.";
+}
+/** Bind the merged HTTP APIs; this is the production provider, not a fixture. */
+export function httpPasswordProducer(client: SessionClient): PasswordProducer {
+  return {
+    async changeInitialPassword(input, signal) {
+      await client.changeInitialPassword(
+        input.currentPassword,
+        input.newPassword,
+        signal,
+      );
+      return { kind: "password-changed", requiresLogin: true };
+    },
+    async requestRecovery(input, signal) {
+      await client.requestRecovery(input.email, signal);
+      return { kind: "received" };
+    },
+    async redeemRecovery(input, signal) {
+      await client.redeemRecovery(input.token, input.newPassword, signal);
+      return { kind: "password-changed", requiresLogin: true };
+    },
+  };
 }
 const record = (v: unknown): v is Record<string, unknown> =>
   !!v && typeof v === "object" && !Array.isArray(v);
@@ -80,6 +101,7 @@ export function createPasswordFlows(
     async changeInitialPassword(currentPassword, replacement, signal) {
       if (
         !currentPassword.length ||
+        currentPassword === replacement ||
         new TextEncoder().encode(currentPassword).length > 1024
       )
         throw new AuthError("invalid");

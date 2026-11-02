@@ -23,10 +23,14 @@ export class AuthError extends Error {
     | "session"
     | "restricted"
     | "rate"
+    | "proof"
+    | "conflict"
     | "unavailable";
-  constructor(code: AuthError["code"]) {
+  readonly retryAfter?: number;
+  constructor(code: AuthError["code"], retryAfter?: number) {
     super("Account access could not be completed.");
     this.code = code;
+    this.retryAfter = retryAfter;
   }
 }
 const record = (v: unknown): v is Record<string, unknown> =>
@@ -100,6 +104,17 @@ function tokens(value: unknown, now: number): Tokens {
   };
 }
 export class SessionClient {
+  #notice:
+    | "password-changed"
+    | "password-uncertain"
+    | "session-ended"
+    | "logged-out"
+    | "logout-uncertain"
+    | null = null;
+  get notice() {
+    return this.#notice;
+  }
+  #logout: Promise<void> | null = null;
   #proof: Tokens | null = null;
   #user: SessionUser | null = null;
   #started = false;
@@ -113,7 +128,7 @@ export class SessionClient {
   #send: typeof fetch;
   #now: () => number;
   constructor(send: typeof fetch = fetch, now = Date.now) {
-    this.#send = send;
+    this.#send = (input, init) => send.call(globalThis, input, init);
     this.#now = now;
   }
   snapshot = () => this.#user;
@@ -123,15 +138,21 @@ export class SessionClient {
       this.#listeners.delete(listener);
     };
   };
-  clear = () => {
+  clear = (notice: SessionClient["notice"] = null) => {
     this.#epoch++;
     this.#proof = null;
     this.#user = null;
     this.#accessExpires = 0;
     this.#refresh = null;
+    this.#logout = null;
+    this.#notice = notice;
     for (const listener of this.#listeners) listener();
   };
-  async #json(path: string, init: RequestInit): Promise<unknown> {
+  async #json(
+    path: string,
+    init: RequestInit,
+    expectedStatus = 200,
+  ): Promise<unknown> {
     try {
       const response = await this.#send(`/api/v1/auth/${path}`, {
         ...init,
@@ -148,34 +169,47 @@ export class SessionClient {
           ...(init.signal ? [init.signal] : []),
         ]),
       });
-      if (response.status !== 200) {
-        let restricted = false;
+      if (response.status !== expectedStatus) {
+        let errorCode: unknown;
         if (
-          response.status === 403 &&
           /^application\/json(?:;|$)/i.test(
             response.headers.get("content-type") ?? "",
           )
         ) {
-          const body: unknown = await response.json();
-          restricted =
-            record(body) &&
-            record(body.error) &&
-            body.error.code === "PASSWORD_CHANGE_REQUIRED";
+          try {
+            const body: unknown = await response.json();
+            if (record(body) && record(body.error)) errorCode = body.error.code;
+          } catch {
+            /* Never expose an invalid error body. */
+          }
         }
+        const rawRetry = response.headers.get("retry-after") ?? "",
+          retryAfter =
+            /^\d{1,4}$/.test(rawRetry) &&
+            Number(rawRetry) > 0 &&
+            Number(rawRetry) <= 3600
+              ? Number(rawRetry)
+              : undefined;
         throw new AuthError(
           response.status === 401
-            ? path === "login"
-              ? "credentials"
-              : "session"
-            : restricted
+            ? path === "reset-password"
+              ? "proof"
+              : path === "login" || errorCode === "INVALID_CREDENTIALS"
+                ? "credentials"
+                : "session"
+            : response.status === 403 &&
+                errorCode === "PASSWORD_CHANGE_REQUIRED"
               ? "restricted"
-              : response.status === 400 ||
-                  response.status === 413 ||
-                  response.status === 415
-                ? "invalid"
-                : response.status === 429
-                  ? "rate"
-                  : "unavailable",
+              : response.status === 409
+                ? "conflict"
+                : response.status === 400 ||
+                    response.status === 413 ||
+                    response.status === 415
+                  ? "invalid"
+                  : response.status === 429
+                    ? "rate"
+                    : "unavailable",
+          retryAfter,
         );
       }
       if (
@@ -196,6 +230,116 @@ export class SessionClient {
     } catch (error) {
       if (error instanceof AuthError) throw error;
       throw new AuthError("unavailable");
+    }
+  }
+  async #access(allowRestricted: boolean): Promise<Tokens> {
+    if (
+      !this.#proof ||
+      (!allowRestricted && this.#proof.user.mustChangePassword)
+    )
+      throw new AuthError(this.#proof ? "restricted" : "session");
+    if (this.#now() >= this.#accessExpires) await this.refresh();
+    if (
+      !this.#proof ||
+      (!allowRestricted && this.#proof.user.mustChangePassword)
+    )
+      throw new AuthError("session");
+    return this.#proof;
+  }
+  async changeInitialPassword(
+    currentPassword: string,
+    newPassword: string,
+    signal?: AbortSignal,
+  ): Promise<void> {
+    if (!this.#proof?.user.mustChangePassword)
+      throw new AuthError("restricted");
+    const epoch = this.#epoch;
+    try {
+      const proof = await this.#access(true);
+      const data = await this.#json("change-password", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${proof.accessToken}` },
+        body: JSON.stringify({ currentPassword, newPassword }),
+        signal,
+      });
+      if (epoch !== this.#epoch) throw new AuthError("session");
+      if (!record(data) || data.requiresLogin !== true)
+        throw new AuthError("unavailable");
+      this.clear("password-changed");
+    } catch (error) {
+      if (
+        epoch === this.#epoch &&
+        error instanceof AuthError &&
+        ["session", "conflict", "unavailable"].includes(error.code)
+      )
+        this.clear(
+          error.code === "unavailable" ? "password-uncertain" : "session-ended",
+        );
+      throw error;
+    }
+  }
+  async requestRecovery(email: string, signal?: AbortSignal): Promise<void> {
+    const data = await this.#json(
+      "forgot-password",
+      { method: "POST", body: JSON.stringify({ email }), signal },
+      202,
+    );
+    if (!record(data) || data.received !== true)
+      throw new AuthError("unavailable");
+  }
+  async redeemRecovery(
+    token: string,
+    newPassword: string,
+    signal?: AbortSignal,
+  ): Promise<void> {
+    const epoch = this.#epoch;
+    try {
+      const data = await this.#json("reset-password", {
+        method: "POST",
+        body: JSON.stringify({ token, newPassword }),
+        signal,
+      });
+      if (epoch !== this.#epoch) throw new AuthError("session");
+      if (!record(data) || data.requiresLogin !== true)
+        throw new AuthError("unavailable");
+      this.clear("password-changed");
+    } catch (error) {
+      if (
+        epoch === this.#epoch &&
+        error instanceof AuthError &&
+        error.code === "unavailable"
+      )
+        this.clear("password-uncertain");
+      throw error;
+    }
+  }
+  async logout(signal?: AbortSignal): Promise<void> {
+    if (this.#logout) return this.#logout;
+    const epoch = this.#epoch;
+    const work = async () => {
+      let confirmed = false;
+      try {
+        const proof = await this.#access(true);
+        const data = await this.#json("logout", {
+          method: "POST",
+          headers: { Authorization: `Bearer ${proof.accessToken}` },
+          body: "{}",
+          signal,
+        });
+        if (!record(data) || data.loggedOut !== true)
+          throw new AuthError("unavailable");
+        confirmed = true;
+      } finally {
+        if (epoch === this.#epoch)
+          this.clear(confirmed ? "logged-out" : "logout-uncertain");
+      }
+    };
+    const pending = work();
+    this.#logout = pending;
+    try {
+      await pending;
+    } finally {
+      if (this.#logout === pending) this.#logout = null;
     }
   }
   async login(
@@ -302,6 +446,7 @@ export class SessionClient {
       signal?: AbortSignal;
     },
   ): Promise<Response> {
+    if (this.#logout) throw new AuthError("session");
     if (
       !["GET", "POST", "PATCH"].includes(init.method) ||
       (init.method === "GET" && init.body !== undefined) ||
