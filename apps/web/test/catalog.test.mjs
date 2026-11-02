@@ -433,3 +433,31 @@ test("availability and API text bounds survive URL filters and reset paging", ()
     { code: "invalid" },
   );
 });
+
+test("card and detail preserve exact selling units and MOQ while disclosing absent pack information", () => {
+  for (const [minimumOrderQuantity, sellingUom] of [
+    ["0.1250", "KG"],
+    ["9007199254740993.1200", "Case"],
+    ["2", "Box / 6"],
+  ]) {
+    const product = { ...item, minimumOrderQuantity, sellingUom };
+    const card = view({ kind: "ready", data: { items: [product], total: 1 } });
+    const detail = render(ProductView, {
+      state: { kind: "ready", data: product },
+      back: "/catalog",
+      retry() {},
+    });
+    for (const html of [card, detail]) {
+      assert.ok(html.includes(`${minimumOrderQuantity} ${sellingUom}`));
+      assert.ok(html.includes(`<dt>Selling unit</dt><dd>${sellingUom}</dd>`));
+      assert.ok(
+        html.includes("<dt>Pack information</dt><dd>Not supplied</dd>"),
+      );
+      assert.ok(
+        html.includes("Pack size and unit conversions have not been supplied."),
+      );
+      assert.ok(!html.includes("Cases"));
+      assert.ok(!html.includes("Add to order"));
+    }
+  }
+});

@@ -27,6 +27,7 @@ import {
   type CatalogQuery,
 } from "./api";
 import { CatalogResource, type ResourceState } from "./resource";
+import { ProductFacts } from "./ProductFacts";
 
 function failure(error: CatalogError) {
   if (error.code === "session")
@@ -67,50 +68,6 @@ function ResourceError({
         )
       )}
     </div>
-  );
-}
-function ProductFacts({ product }: { product: CatalogProduct }) {
-  return (
-    <>
-      <p className="catalog-sku">SKU {product.sku}</p>
-      <p className="catalog-price">
-        {product.price ? (
-          <>
-            <strong>
-              {product.price.currency} {product.price.amount}
-            </strong>
-            <span> / {product.sellingUom}</span>
-          </>
-        ) : (
-          <strong>Price unavailable</strong>
-        )}
-      </p>
-      <dl className="catalog-facts">
-        <div>
-          <dt>Minimum order</dt>
-          <dd>
-            {product.minimumOrderQuantity} {product.sellingUom}
-          </dd>
-        </div>
-        <div>
-          <dt>Selling unit</dt>
-          <dd>{product.sellingUom}</dd>
-        </div>
-        <div>
-          <dt>Availability</dt>
-          <dd>
-            {product.availableQuantity === null
-              ? "Not supplied"
-              : `${product.availableQuantity} ${product.sellingUom} (cached quantity)`}
-          </dd>
-        </div>
-      </dl>
-      {!product.price && (
-        <p className="catalog-price-note">
-          Ordering requires a confirmed account price.
-        </p>
-      )}
-    </>
   );
 }
 function ProductVisual() {
