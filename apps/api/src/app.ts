@@ -3,6 +3,7 @@ import { createLoginRouter, type LoginHandler } from "./login-route.js";
 import { createSessionRouter } from "./session-route.js";
 import { createPasswordChangeRouter } from "./password-change-route.js";
 import type { PasswordChangeHandler } from "./services/password-change.js";
+import { createLogoutRouter } from "./logout-route.js";
 import type { SessionService } from "./services/sessions.js";
 import type { HealthResponse, StorageProvider } from "@b2b-portal/contracts";
 import { createHealthReporter, type HealthChecks } from "./health.js";
@@ -48,6 +49,7 @@ export function createApp(options: AppOptions = {}) {
     app.use(createApplicationRouter(options.applications));
   app.use(createSessionRouter(options.sessions));
   app.use(createPasswordChangeRouter(options.passwordChange));
+  app.use(createLogoutRouter(options.sessions));
   app.use(express.json());
 
   app.get("/", (_request, response) => {

@@ -19,3 +19,6 @@ export interface SessionTokenResult extends LoginResult {
 export interface PasswordChangeResult {
   readonly requiresLogin: true;
 }
+export interface LogoutResult {
+  readonly loggedOut: true;
+}

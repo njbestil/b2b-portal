@@ -3,6 +3,7 @@ export type {
   LoginResult,
   SessionTokenResult,
   PasswordChangeResult,
+  LogoutResult,
 } from "./authentication.js";
 export type {
   DependencyHealth,
