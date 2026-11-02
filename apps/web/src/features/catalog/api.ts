@@ -68,9 +68,9 @@ function product(value: unknown): CatalogProduct {
   if (
     !record(value) ||
     !isProductId(value.id) ||
-    !text(value.sku, 100) ||
-    !text(value.name, 200) ||
-    !text(value.sellingUom, 40) ||
+    !text(value.sku, 256) ||
+    !text(value.name, 256) ||
+    !text(value.sellingUom, 256) ||
     !decimal(value.minimumOrderQuantity) ||
     !/[1-9]/.test(value.minimumOrderQuantity)
   )
@@ -87,7 +87,7 @@ function product(value: unknown): CatalogProduct {
     price = { amount: value.price.amount, currency: value.price.currency };
   }
   for (const key of ["category", "brand"] as const)
-    if (value[key] != null && !text(value[key], 100))
+    if (value[key] != null && !text(value[key], 256))
       throw new CatalogError("unavailable");
   if (value.availableQuantity != null && !decimal(value.availableQuantity))
     throw new CatalogError("unavailable");
