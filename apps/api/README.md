@@ -1,8 +1,14 @@
 # Portal API repository contracts
 
+Current-session logout: [HTTP contract and persistence semantics](../../docs/logout.md).
+
 The separate private `AuthenticationRepository` supports
 [credential verification](../../docs/login.md). It must never replace the
 company-scoped public user projection or expose password hashes over HTTP.
+The private [session producer](../../docs/sessions.md) composes that verifier and
+returns a validated backend principal; public role/company claims are not proof.
+The [first-login writer](../../docs/password-change.md) shares that boundary and
+requires fresh login after credential change.
 
 The separate backend-only `NotificationRepository` and `createNotifications`
 service support [user-scoped notification creation](../../docs/notifications.md)
@@ -64,3 +70,5 @@ remain separate work; the initial projections above are still the contract bound
 B2B-014 supplies a [separate internal-note persistence capability](../../docs/internal-notes.md),
 not a customer order DTO extension or a new HTTP route. Internal callers must use
 the note service with a real object/assignment authorizer; customer roles are denied.
+
+Public Pending-only [customer application intake](../../docs/customer-applications.md) is a separate selected-provider capability with a private complete-bundle handoff to later admin review.
