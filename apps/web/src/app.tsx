@@ -41,6 +41,8 @@ import { AuthPage } from "./features/authentication/AuthPages";
 import { SessionClient, type ApiRole } from "./features/authentication/session";
 import { ApplicationReviewEntry } from "./features/application-review/ReviewPage";
 import type { ReviewAdapter } from "./features/application-review/api";
+import { CompanyEntry } from "./features/company-profile/CompanyPage";
+import type { CompanyAdapter } from "./features/company-profile/api";
 
 function PublicLayout({ application = false }: { application?: boolean }) {
   return (
@@ -71,17 +73,20 @@ export function App({
   sessionClient,
   passwords,
   applicationReview,
+  companyProfile,
 }: {
   initialRole?: Role;
   sessionClient?: SessionClient;
   passwords?: PasswordFlows;
   applicationReview?: ReviewAdapter;
+  companyProfile?: CompanyAdapter;
 } = {}) {
   return (
     <AuthProvider client={sessionClient} passwords={passwords}>
       <AppRoutes
         initialRole={initialRole}
         applicationReview={applicationReview}
+        companyProfile={companyProfile}
       />
     </AuthProvider>
   );
@@ -95,9 +100,11 @@ const roleNames: Record<ApiRole, Role> = {
 function AppRoutes({
   initialRole,
   applicationReview,
+  companyProfile,
 }: {
   initialRole?: Role;
   applicationReview?: ReviewAdapter;
+  companyProfile?: CompanyAdapter;
 }) {
   const { user, client } = useAuth();
   const [previewRole, setRole] = useState<Role>(() => {
@@ -166,6 +173,8 @@ function AppRoutes({
                 <Dashboard role={role} preview={!user} />
               ) : page.path === "/customer-applications" ? (
                 <ApplicationReviewEntry adapter={applicationReview} />
+              ) : page.path === "/company" ? (
+                <CompanyEntry adapter={companyProfile} />
               ) : (
                 <FeaturePlaceholder page={page} />
               )
@@ -177,6 +186,10 @@ function AppRoutes({
           element={<ApplicationReviewEntry adapter={applicationReview} />}
         />
         <Route path="design-system" element={<DesignSystem />} />
+        <Route
+          path="customers/:scopedCompanyId/company"
+          element={<CompanyEntry adapter={companyProfile} />}
+        />
         <Route path="*" element={<UnavailablePage notFound />} />
       </Route>
     </Routes>

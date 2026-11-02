@@ -132,6 +132,36 @@ and #40 children will consume the shared helpers. Full API/tenant/event and brow
 keyboard/responsive integration are still pending; fixtures only verify the UI
 port and local state, not backend authorization or persistence parity.
 
+## Staged company profile (#39)
+
+`/company` provides own-company viewing for normal Customer Users/Admins.
+Only Customer Admin can edit an active company's portal trading name, primary
+contact, business email, phone and billing address. Nullable contact fields can
+be cleared explicitly; client bounds/email errors are associated with inputs and
+the focused error summary. Legal name/trade licence are read-only; licence changes
+require Internal Admin review. ERP reference/payment terms/credit status remain
+read-only, and no absent credit-limit amount is invented or accepted as a write.
+
+`/customers/:scopedCompanyId/company` is a view-only context for authenticated
+Internal Admin/Sales. Actual #32/#33/#34 permission, tenant and Sales-assignment
+checks remain mandatory server-side. Customers cannot select another company
+through this route; their adapter receives only `{kind:own}`, not an override.
+The Customer User menu now exposes the read screen; it grants no management.
+
+`CompanyAdapter` and its explicit-route HTTP mapper are injectable normalized UI
+ports. Production defaults to unavailable. Loaded scope/version and exactly five
+portal fields define a save; status/actor/legal/licence/ERP fields are rejected.
+Only a validated canonical same-company response marks saved. Conflict/uncertain
+failures require reload, with no optimistic changes or automatic write replay.
+Company changes remount resource state, and missing contacts/commercial values
+remain not supplied. No API mutation or SQL/JSON parity is claimed by fixtures.
+
+This is a child of #149 (#38), consuming its shared async/HTTP helpers. The company
+section navigation is preserved; address functionality is delivered by the #40
+child, not claimed here. The exact routes/DTO/version/null/billing JSON mapping
+and server bounds are handoff questions in #39. The combined issue remains open
+until API authorization/persistence integration and browser/review gates pass.
+
 Menus and direct-route preview restrictions use the same role policy. A hidden
 destination cannot be rendered simply by typing its URL. This is only UI
 scaffolding, **not security enforcement**: future API authentication and backend
