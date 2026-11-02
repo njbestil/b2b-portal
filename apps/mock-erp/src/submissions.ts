@@ -60,7 +60,10 @@ function text(value: unknown, max = 128): value is string {
     typeof value === "string" &&
     value.length > 0 &&
     value.length <= max &&
-    !/[\u0000-\u001f\u007f]/.test(value) &&
+    !Array.from(value).some((character) => {
+      const code = character.charCodeAt(0);
+      return code < 32 || code === 127;
+    }) &&
     value.trim() === value
   );
 }
