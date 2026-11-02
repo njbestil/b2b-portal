@@ -70,6 +70,7 @@ const paths = {
   ),
   menu: <path d="M4 6h16M4 12h16M4 18h16" />,
   close: <path d="m6 6 12 12M18 6 6 18" />,
+  check: <path d="m5 12 4 4L19 6" />,
 } satisfies Record<string, ReactNode>;
 
 export function Icon({ name }: { name: keyof typeof paths }) {
