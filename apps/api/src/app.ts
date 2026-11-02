@@ -1,5 +1,14 @@
+import { createPasswordResetRouter } from "./password-reset-route.js";
+import type { PasswordResetService } from "./services/password-reset.js";
+import { createApplicationReviewRouter } from "./application-review-route.js";
+import type { ApplicationRepository } from "./repositories/applications.js";
 import express from "express";
 import { createLoginRouter, type LoginHandler } from "./login-route.js";
+import { createSessionRouter } from "./session-route.js";
+import { createPasswordChangeRouter } from "./password-change-route.js";
+import type { PasswordChangeHandler } from "./services/password-change.js";
+import { createLogoutRouter } from "./logout-route.js";
+import type { SessionService } from "./services/sessions.js";
 import type { HealthResponse, StorageProvider } from "@b2b-portal/contracts";
 import { createHealthReporter, type HealthChecks } from "./health.js";
 import { createLogger, type Logger, requestLogging } from "./logging.js";
@@ -11,7 +20,18 @@ import {
   sendSuccess,
 } from "./http.js";
 
+import {
+  createApplicationRouter,
+  type ApplicationHandler,
+} from "./application-route.js";
+
 interface AppOptions {
+  passwordReset?: PasswordResetService;
+  pendingApplication?: ApplicationRepository["pending"];
+  passwordChange?: PasswordChangeHandler;
+  applications?: ApplicationHandler;
+  sessions?: SessionService;
+  sessionLogin?: SessionService["login"];
   login?: LoginHandler;
   logger?: Logger;
   healthChecks?: HealthChecks;
@@ -29,7 +49,17 @@ export function createApp(options: AppOptions = {}) {
   const app = express();
   app.use(requestIdMiddleware);
   app.use(requestLogging(logger));
-  if (options.login) app.use(createLoginRouter(options.login));
+  if (options.login)
+    app.use(createLoginRouter(options.login, Date.now, options.sessionLogin));
+  if (options.applications)
+    app.use(createApplicationRouter(options.applications));
+  app.use(createSessionRouter(options.sessions));
+  app.use(createPasswordChangeRouter(options.passwordChange));
+  app.use(createLogoutRouter(options.sessions));
+  app.use(createPasswordResetRouter(options.passwordReset));
+  app.use(
+    createApplicationReviewRouter(options.sessions, options.pendingApplication),
+  );
   app.use(express.json());
 
   app.get("/", (_request, response) => {

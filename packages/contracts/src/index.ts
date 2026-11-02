@@ -1,5 +1,12 @@
 export type { ApiFailure, ApiResponse, ApiSuccess } from "./api.js";
-export type { LoginResult } from "./authentication.js";
+export type {
+  PasswordResetRequestResult,
+  PasswordResetResult,
+  LoginResult,
+  SessionTokenResult,
+  PasswordChangeResult,
+  LogoutResult,
+} from "./authentication.js";
 export type {
   DependencyHealth,
   StorageProvider,

@@ -55,6 +55,9 @@ async function checkedDirectory(directory: string) {
         name !== privateNoteFile &&
         name !== privateAuditFile &&
         name !== privateNotificationFile &&
+        name !== "delivery_addresses.json" &&
+        name !== "user_sessions.json" &&
+        name !== "password_reset_tokens.json" &&
         !files.includes(name as (typeof files)[number]),
     )
   )

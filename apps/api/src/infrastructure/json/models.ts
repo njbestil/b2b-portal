@@ -15,7 +15,11 @@ export interface JsonProduct extends Omit<CatalogProduct, "price"> {
   readonly active: boolean;
   readonly defaultPrice: JsonPrice | null;
 }
+export interface JsonCompany extends CompanyProfile {
+  readonly application?: import("../../repositories/applications.js").PendingApplication;
+}
 export interface JsonUser {
+  readonly mobile?: string;
   /** Optional private credential fields; legacy/demo projections stay unprovisioned. */
   readonly email?: string;
   readonly passwordHash?: string;
@@ -38,7 +42,7 @@ export interface JsonCustomerPrice {
   readonly price: JsonPrice;
 }
 export interface JsonCollections {
-  companies: CompanyProfile;
+  companies: JsonCompany;
   users: JsonUser;
   products: JsonProduct;
   customer_product_access: JsonProductAccess;

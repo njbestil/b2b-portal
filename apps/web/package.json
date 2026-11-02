@@ -12,7 +12,8 @@
     "format": "prettier . --ignore-path ../../.prettierignore --write",
     "format:check": "prettier . --ignore-path ../../.prettierignore --check",
     "preview": "vite preview --host 127.0.0.1",
-    "test": "node --test test/*.test.mjs"
+    "test": "node --test test/*.test.mjs",
+    "test:integration": "npm run build --workspace=@b2b-portal/api && node --test --test-concurrency=1 test/integration/*.test.mjs"
   },
   "dependencies": {
     "react": "19.3.1",

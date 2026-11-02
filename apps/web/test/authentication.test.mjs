@@ -250,6 +250,13 @@ const render = (path, props = {}) =>
       createElement(App, props),
     ),
   );
+test("production workspace routes require sign-in; explicit story roles never become authentication", () => {
+  for (const path of ["/dashboard", "/catalog", "/orders", "/company"])
+    assert.equal(render(path), "");
+  const preview = render("/dashboard", { initialRole: "Internal Admin" });
+  assert.ok(preview.includes("Shell preview"));
+  assert.ok(preview.includes("Sample personas only"));
+});
 test("login renders the real form with correct autocomplete, recovery/apply links and no durable remember-me promise", () => {
   const html = render("/login");
   assert.equal((html.match(/<main[\s>]/g) ?? []).length, 1);
@@ -264,11 +271,11 @@ test("login renders the real form with correct autocomplete, recovery/apply link
   assert.ok(!html.includes("Remember me"));
   assert.ok(!html.includes("Explore workspace preview"));
 });
-test("reset/recovery screens truthfully disclose protected operator delivery and disconnected producers", () => {
+test("reset/recovery screens expose the connected forms and protected operator delivery", () => {
   for (const path of ["/forgot-password", "/reset-password"]) {
     const html = render(path);
     assert.match(html, /protected.*operator/);
-    assert.match(html, /awaiting its API connection/);
+    assert.ok(!html.includes("awaiting its API connection"));
     assert.ok(!html.includes("send a secure reset link"));
     assert.match(html, /href="\/login"/);
   }

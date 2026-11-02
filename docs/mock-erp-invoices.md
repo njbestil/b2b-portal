@@ -50,3 +50,5 @@ with no persistence or distributed guarantee. No autonomous completion or timers
 Run `npm test --workspace=@b2b-portal/mock-erp` and root `npm run check`.
 Coverage includes exact metadata, detached records, normal/completed/missing cases,
 concurrent replay, failure recovery, unchanged scenario semantics and app restart.
+
+Child #135 adds [bounded synthetic text document retrieval](mock-erp-invoice-documents.md) for the existing opaque reference; authorized portal download/UI remains #81.

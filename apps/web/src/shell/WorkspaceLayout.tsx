@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { Link, NavLink, Outlet, useNavigate } from "react-router";
 import { Icon } from "../shared/Icon";
@@ -29,10 +29,12 @@ function SidebarContent({
   role,
   onNavigate,
   authenticated = false,
+  accountAction,
 }: {
   role: Role;
   onNavigate?: () => void;
   authenticated?: boolean;
+  accountAction?: ReactNode;
 }) {
   return (
     <>
@@ -67,10 +69,12 @@ function SidebarContent({
             Your sales contact will appear here when account data is connected.
           </p>
         </div>
-        <Link className="exit-link" to="/login" onClick={onNavigate}>
-          <Icon name="logout" />
-          {authenticated ? "Account access" : "Exit preview"}
-        </Link>
+        {accountAction ?? (
+          <Link className="exit-link" to="/login" onClick={onNavigate}>
+            <Icon name="logout" />
+            {authenticated ? "Account access" : "Exit preview"}
+          </Link>
+        )}
       </div>
     </>
   );
@@ -82,12 +86,14 @@ export function WorkspaceLayout({
   dark,
   setDark,
   identity,
+  accountAction,
 }: {
   role: Role;
   setRole: (role: Role) => void;
   dark: boolean;
   setDark: (dark: boolean) => void;
   identity?: { displayName: string };
+  accountAction?: ReactNode;
 }) {
   const navigate = useNavigate();
   const drawer = useRef<HTMLDialogElement>(null);
@@ -107,7 +113,11 @@ export function WorkspaceLayout({
         Skip to main content
       </a>
       <aside className="sidebar desktop-sidebar">
-        <SidebarContent role={role} authenticated={!!identity} />
+        <SidebarContent
+          role={role}
+          authenticated={!!identity}
+          accountAction={accountAction}
+        />
       </aside>
       <div className="workspace">
         <header className="workspace-header">
@@ -226,6 +236,7 @@ export function WorkspaceLayout({
               <SidebarContent
                 role={role}
                 authenticated={!!identity}
+                accountAction={accountAction}
                 onNavigate={() => drawer.current?.close()}
               />
             </div>

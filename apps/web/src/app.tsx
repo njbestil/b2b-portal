@@ -38,9 +38,16 @@ import {
   type PasswordFlows,
 } from "./features/authentication/AuthContext";
 import { AuthPage } from "./features/authentication/AuthPages";
+import { LogoutButton } from "./features/authentication/LogoutButton";
 import { SessionClient, type ApiRole } from "./features/authentication/session";
 import { CatalogEntry } from "./features/catalog/CatalogPage";
 import type { CatalogAdapter } from "./features/catalog/api";
+import { ApplicationReviewEntry } from "./features/application-review/ReviewPage";
+import type { ReviewAdapter } from "./features/application-review/api";
+import { CompanyEntry } from "./features/company-profile/CompanyPage";
+import type { CompanyAdapter } from "./features/company-profile/api";
+import { AddressEntry } from "./features/delivery-addresses/AddressPage";
+import type { AddressAdapter } from "./features/delivery-addresses/api";
 
 function PublicLayout({ application = false }: { application?: boolean }) {
   return (
@@ -71,15 +78,27 @@ export function App({
   sessionClient,
   passwords,
   catalog,
+  applicationReview,
+  companyProfile,
+  deliveryAddresses,
 }: {
   initialRole?: Role;
   sessionClient?: SessionClient;
   passwords?: PasswordFlows;
   catalog?: CatalogAdapter;
+  applicationReview?: ReviewAdapter;
+  companyProfile?: CompanyAdapter;
+  deliveryAddresses?: AddressAdapter;
 } = {}) {
   return (
     <AuthProvider client={sessionClient} passwords={passwords}>
-      <AppRoutes initialRole={initialRole} catalog={catalog} />
+      <AppRoutes
+        initialRole={initialRole}
+        catalog={catalog}
+        applicationReview={applicationReview}
+        companyProfile={companyProfile}
+        deliveryAddresses={deliveryAddresses}
+      />
     </AuthProvider>
   );
 }
@@ -92,9 +111,15 @@ const roleNames: Record<ApiRole, Role> = {
 function AppRoutes({
   initialRole,
   catalog,
+  applicationReview,
+  companyProfile,
+  deliveryAddresses,
 }: {
   initialRole?: Role;
   catalog?: CatalogAdapter;
+  applicationReview?: ReviewAdapter;
+  companyProfile?: CompanyAdapter;
+  deliveryAddresses?: AddressAdapter;
 }) {
   const { user, client } = useAuth();
   const [previewRole, setRole] = useState<Role>(() => {
@@ -138,7 +163,7 @@ function AppRoutes({
         element={
           user?.mustChangePassword ? (
             <Navigate to="/first-login" replace />
-          ) : client.requiresLogin ? (
+          ) : client.requiresLogin || (!user && initialRole === undefined) ? (
             <Navigate to="/login" replace />
           ) : (
             <WorkspaceLayout
@@ -147,6 +172,7 @@ function AppRoutes({
               dark={dark}
               setDark={setDark}
               identity={user ?? undefined}
+              accountAction={user ? <LogoutButton /> : undefined}
             />
           )
         }
@@ -163,6 +189,10 @@ function AppRoutes({
                 <Dashboard role={role} preview={!user} />
               ) : page.path === "/catalog" ? (
                 <CatalogEntry adapter={catalog} />
+              ) : page.path === "/customer-applications" ? (
+                <ApplicationReviewEntry adapter={applicationReview} />
+              ) : page.path === "/company" ? (
+                <CompanyEntry adapter={companyProfile} />
               ) : (
                 <FeaturePlaceholder page={page} />
               )
@@ -170,10 +200,26 @@ function AppRoutes({
           />
         ))}
         <Route
+          path="customer-applications/:companyId"
+          element={<ApplicationReviewEntry adapter={applicationReview} />}
+        />
+        <Route
           path="catalog/:productId"
           element={<CatalogEntry adapter={catalog} />}
         />
         <Route path="design-system" element={<DesignSystem />} />
+        <Route
+          path="company/addresses"
+          element={<AddressEntry adapter={deliveryAddresses} />}
+        />
+        <Route
+          path="customers/:scopedCompanyId/addresses"
+          element={<AddressEntry adapter={deliveryAddresses} />}
+        />
+        <Route
+          path="customers/:scopedCompanyId/company"
+          element={<CompanyEntry adapter={companyProfile} />}
+        />
         <Route path="*" element={<UnavailablePage notFound />} />
       </Route>
     </Routes>

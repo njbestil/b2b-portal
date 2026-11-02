@@ -5,6 +5,7 @@ import { Brand } from "../../shell/WorkspaceLayout";
 import { useAuth } from "./AuthContext";
 import { AuthError } from "./session";
 import { replacementPasswordError } from "./passwords";
+import { LogoutButton } from "./LogoutButton";
 
 type Mode = "login" | "temporary" | "forgot" | "reset";
 const copy = {
@@ -31,14 +32,22 @@ const copy = {
     submit: "Reset password",
   },
 };
-function message(error: unknown) {
+function message(error: unknown, mode: Mode) {
   if (!(error instanceof AuthError))
     return "Account access is unavailable. Please try again later.";
   switch (error.code) {
     case "credentials":
-      return "The email or password could not be verified. Pending accounts require approval before sign-in.";
+      return mode === "temporary"
+        ? "The temporary password could not be verified. Re-enter it before trying again."
+        : "The email or password could not be verified. Pending accounts require approval before sign-in.";
     case "rate":
-      return "Too many attempts. Please wait before trying again.";
+      return error.retryAfter
+        ? `Too many attempts. Wait ${error.retryAfter} seconds before trying again.`
+        : "Too many attempts. Please wait before trying again.";
+    case "proof":
+      return "The recovery proof could not be verified. Contact the demo operator for a new protected handoff.";
+    case "conflict":
+      return "Password change is no longer available for this session. Sign in again.";
     case "invalid":
       return "Check the entered details and try again.";
     case "session":
@@ -46,11 +55,15 @@ function message(error: unknown) {
     case "restricted":
       return "Change your temporary password before continuing.";
     default:
-      return "We couldn’t confirm the outcome. Please sign in again if you have already changed your password. Otherwise try again later.";
+      return mode === "login"
+        ? "Sign-in is unavailable. Please try again later."
+        : mode === "forgot"
+          ? "We couldn’t confirm the request. Contact the demo operator for recovery help."
+          : "The password change may have completed. Try signing in with your new password before another attempt.";
   }
 }
 export function AuthPage({ mode }: { mode: Mode }) {
-  const { client, user, passwords, passwordFlowsConnected } = useAuth();
+  const { client, user, passwords } = useAuth();
   const heading = useRef<HTMLHeadingElement>(null),
     summary = useRef<HTMLDivElement>(null),
     pending = useRef<AbortController | null>(null);
@@ -103,6 +116,9 @@ export function AuthPage({ mode }: { mode: Mode }) {
       const next = value("newPassword");
       const passwordError = replacementPasswordError(next);
       if (passwordError) errors.newPassword = passwordError;
+      if (mode === "temporary" && next === value("currentPassword"))
+        errors.newPassword =
+          "Choose a password different from the temporary password.";
       if (next !== value("confirmPassword"))
         errors.confirmPassword = "The new passwords must match.";
     }
@@ -145,7 +161,7 @@ export function AuthPage({ mode }: { mode: Mode }) {
             controller.signal,
           );
         if (controller.signal.aborted) return;
-        client.clear();
+        client.clear("password-changed");
         if (!controller.signal.aborted)
           navigate("/login", {
             replace: true,
@@ -154,7 +170,7 @@ export function AuthPage({ mode }: { mode: Mode }) {
       }
     } catch (failure) {
       if (!controller.signal.aborted)
-        setError({ message: message(failure), fields: {} });
+        setError({ message: message(failure, mode), fields: {} });
     } finally {
       for (const control of Array.from(form.elements))
         if (
@@ -201,18 +217,34 @@ export function AuthPage({ mode }: { mode: Mode }) {
       </h1>
       <p className="auth-intro">
         {received
-          ? "If the account is eligible, recovery follows the protected operator handoff after identity verification. This does not sign you in."
+          ? "Contact the demo operator yourself for identity verification and protected handoff. This receipt only acknowledges the request; it does not issue a proof or notify the operator."
           : info.intro}
       </p>
-      {mode === "login" && location.state?.passwordChanged === true && (
+      {mode === "login" &&
+        (location.state?.passwordChanged === true ||
+          client.notice === "password-changed") && (
+          <p className="auth-notice">
+            Password changed. Sign in with your new password.
+          </p>
+        )}
+      {mode === "login" && client.notice === "password-uncertain" && (
         <p className="auth-notice">
-          Password changed. Sign in with your new password.
+          The password change may have completed. Try signing in with the new
+          password before attempting recovery again.
         </p>
       )}
-      {mode !== "login" && !passwordFlowsConnected && (
+      {mode === "login" && client.notice === "logged-out" && (
+        <p className="auth-notice">Signed out.</p>
+      )}
+      {mode === "login" && client.notice === "logout-uncertain" && (
         <p className="auth-notice">
-          This password flow is awaiting its API connection. Submitting here
-          cannot change your password or request a recovery proof yet.
+          This tab’s session was cleared. Server sign-out could not be
+          confirmed.
+        </p>
+      )}
+      {mode === "login" && client.notice === "session-ended" && (
+        <p className="auth-notice">
+          Your session ended. Sign in again to continue.
         </p>
       )}
       <p role="status">{busy ? "Please wait…" : ""}</p>
@@ -303,6 +335,7 @@ export function AuthPage({ mode }: { mode: Mode }) {
           <Link to="/reset-password">I have a recovery proof</Link>
         )}
       </nav>
+      {user && <LogoutButton />}
     </div>
   );
 }
