@@ -289,3 +289,16 @@ fake metrics, mutations, and decorative auth imagery are intentionally not
 imported into this foundation issue. Their routes instead explain that the
 feature is not connected. This keeps the visual foundation without implying
 that later acceptance criteria have been implemented.
+
+## MOQ, selling units and pack information (#50)
+
+Catalog cards and product detail share the same commercial facts component.
+Selling UOM and minimum order quantity are shown exactly as supplied, including
+fractional precision and trailing zeros. The UI does not pluralize units, infer
+case contents, convert units or round through floating-point numbers. Price and
+cached stock remain expressed in the same supplied selling UOM.
+
+The current catalog API has no pack-size or conversion field. Both views label
+pack information as not supplied and explain that pack size/unit conversions
+are unavailable. A selling unit such as Case or Box is not evidence of its
+contents. This slice adds presentation only; cart and ordering remain separate.
