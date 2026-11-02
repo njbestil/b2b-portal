@@ -19,6 +19,12 @@ export interface SessionTokenResult extends LoginResult {
 export interface PasswordChangeResult {
   readonly requiresLogin: true;
 }
+export interface PasswordResetRequestResult {
+  readonly received: true;
+}
+export interface PasswordResetResult {
+  readonly requiresLogin: true;
+}
 export interface LogoutResult {
   readonly loggedOut: true;
 }

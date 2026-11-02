@@ -1,3 +1,4 @@
+import { publishJsonCredential } from "./credential-writer.js";
 import * as fs from "node:fs/promises";
 import type { JsonUser } from "./models.js";
 import type { JsonSecurityCoordinator } from "./security.js";
@@ -54,7 +55,7 @@ export function createJsonPasswordChange(
       })),
     change: (id, proof: VerifiedCredential, newHash) =>
       run(async () => {
-        const { rows, user } = await current(id, proof.userId);
+        const { user } = await current(id, proof.userId);
         if (user.passwordHash !== proof.passwordHash)
           throw new SessionError("invalid_proof");
         if (
@@ -62,25 +63,13 @@ export function createJsonPasswordChange(
           !/^scrypt-v1\$[0-9a-f]{32}\$[0-9a-f]{64}$/.test(newHash)
         )
           throw new PasswordChangeError("invalid_input");
-        const users = await security.store.read("users"),
-          index = users.findIndex((row) => row.id === user.id);
-        if (index < 0 || users[index]!.passwordHash !== proof.passwordHash)
-          throw new SessionError("invalid_proof");
-        users[index] = {
-          ...users[index]!,
-          passwordHash: newHash,
-          mustChangePassword: false,
-        };
-        await writeUsers(users);
-        // Never restore old credential/flag if cleanup fails. Fresh binding makes
-        // all old proof unusable even across process restart before this publish.
-        const revokedAt = new Date(now()).toISOString();
-        await sessions.publish(
-          rows.map((row) =>
-            row.userId === user.id && row.revokedAt === null
-              ? { ...row, revokedAt }
-              : row,
-          ),
+        await publishJsonCredential(
+          security,
+          user,
+          newHash,
+          now(),
+          sessions,
+          writeUsers,
         );
         return principal({
           ...user,

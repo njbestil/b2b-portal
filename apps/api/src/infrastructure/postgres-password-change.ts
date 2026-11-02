@@ -1,3 +1,4 @@
+import { publishPostgresCredential } from "./postgres-credential-writer.js";
 import type { Pool, PoolClient } from "pg";
 import type { LoginCredential } from "../repositories/authentication.js";
 import { withSecurityAccount } from "./postgres-security.js";
@@ -55,14 +56,7 @@ export function createPostgresPasswordChange(
           !/^scrypt-v1\$[0-9a-f]{32}\$[0-9a-f]{64}$/.test(newHash)
         )
           throw new PasswordChangeError("invalid_input");
-        await client.query(
-          "UPDATE users SET password_hash=$1,must_change_password=false,updated_at=$2 WHERE id=$3",
-          [newHash, new Date(now()).toISOString(), user.id],
-        );
-        await client.query(
-          "UPDATE user_sessions SET revoked_at=COALESCE(revoked_at,$1) WHERE user_id=$2",
-          [new Date(now()).toISOString(), user.id],
-        );
+        await publishPostgresCredential(client, user, newHash, now());
         return principal({
           ...user,
           passwordHash: newHash,
