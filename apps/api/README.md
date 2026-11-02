@@ -1,5 +1,9 @@
 # Portal API repository contracts
 
+Account lifecycle: [suspension/reactivation contract](../../docs/account-suspension.md).
+
+Sales ownership: [current primary-assignment policy](../../docs/sales-assignment-authorization.md).
+
 Password recovery: [HTTP contract and protected operator runbook](../../docs/password-reset.md).
 Authenticated company reads: [tenant ownership matrix and API contract](../../docs/tenant-isolation.md).
 
