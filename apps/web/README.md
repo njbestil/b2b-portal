@@ -204,6 +204,46 @@ Browser keyboard/responsive/focus and full root listener tests remain unverified
 under the established environment limitation; Node client/model/actual-view SSR
 tests are local self-checks, not independent QA or provider-parity evidence.
 
+## Company catalogue (#49)
+
+`/catalog` and `/catalog/:productId` use the customer catalog API through the
+normal authenticated SessionClient. The API derives the company from identity;
+there is no company selector. Missing/restricted identities and preview personas
+cannot issue catalog reads. Production has no fixture or offline success switch.
+
+List and detail use `/api/v1/catalog/products` and `/:productId`. Standard JSON
+success envelopes, exact decimal strings and nullable commercial metadata are
+validated before display. Unknown price/stock remains unknown. Missing product
+images use a decorative placeholder; no remote photo request is made.
+
+Search matches name OR SKU. Category and brand use entered exact values instead
+of invented option lists. Availability offers all, available, unavailable and
+unknown: positive stock, zero stock and missing stock respectively. The API owns
+matching and applies eligibility/filters before count and paging. Text bounds
+are 128 UTF-16 units before trimming; controls and malformed URL queries fail
+safely. ASCII case folding, literal wildcard characters and deterministic product
+ID ordering follow the producer. Offset is 0..100000 and limit is 1..100.
+
+Filters persist through detail/back navigation and changing them resets paging.
+Obsolete requests are cancelled and late responses ignored. Native form labels,
+status text, focused errors, empty/retry states and focusable unavailable paging
+controls are included. Browsing does not reserve stock or enable ordering.
+
+`test/integration/catalog-api.test.mjs` exercises the actual customer API with a
+fresh synthetic Mock -> JSON cache fixture: list/detail, tenant prices, foreign
+resource denial, combined filters, availability, literal search and pagination.
+Run `npm run test:integration --workspace=@b2b-portal/web` from the repository root.
+Browser verification covered login, real list/detail/back, combined filters,
+empty results, actual missing-product errors, focused headings/errors and 320px
+reflow. Screenshots were inspected locally. PostgreSQL and independent review
+remain separate evidence gates.
+
+Review stack: #158 (tenant integration) -> #159 (#47 customer API) -> #160
+(#48 filters) -> #143 (#49 Web). This branch targets codex/48-catalog-filters
+at 8470f9f so its review diff contains only Web work. #140 is already merged.
+Retarget/recheck successors after their parents merge. #50 follows this catalog
+as a separate issue branch and PR. No automatic merge is authorized.
+
 Menus and direct-route preview restrictions use the same role policy. A hidden
 destination cannot be rendered simply by typing its URL. This is only UI
 scaffolding, **not security enforcement**: future API authentication and backend
