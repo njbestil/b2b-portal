@@ -1,5 +1,6 @@
 import {
   useCallback,
+  useId,
   useEffect,
   useMemo,
   useRef,
@@ -131,7 +132,12 @@ export function CatalogView({
 }: {
   query: CatalogQuery;
   state: ResourceState<CatalogPage>;
-  apply: (values: Pick<CatalogQuery, "search" | "category" | "brand">) => void;
+  apply: (
+    values: Pick<
+      CatalogQuery,
+      "search" | "category" | "brand" | "availability"
+    >,
+  ) => void;
   page: (offset: number) => void;
   clear: () => void;
   retry: () => void;
@@ -143,12 +149,16 @@ export function CatalogView({
       search: String(data.get("search") ?? ""),
       category: String(data.get("category") ?? ""),
       brand: String(data.get("brand") ?? ""),
+      availability: String(
+        data.get("availability") ?? "all",
+      ) as CatalogQuery["availability"],
     });
   }
+  const availabilityId = useId();
   const data = state.kind === "ready" ? state.data : null;
   const hasNext =
     !!data &&
-    query.offset <= Number.MAX_SAFE_INTEGER - query.limit &&
+    query.offset + query.limit <= 100000 &&
     query.offset + query.limit < data.total;
   return (
     <>
@@ -163,22 +173,35 @@ export function CatalogView({
           name="search"
           defaultValue={query.search}
           placeholder="Product name or SKU"
-          maxLength={200}
+          maxLength={128}
         />
         <Field
           label="Category"
           name="category"
           defaultValue={query.category}
           placeholder="All categories"
-          maxLength={100}
+          maxLength={128}
         />
         <Field
           label="Brand"
           name="brand"
           defaultValue={query.brand}
           placeholder="All brands"
-          maxLength={100}
+          maxLength={128}
         />
+        <div className="field">
+          <label htmlFor={availabilityId}>Availability</label>
+          <select
+            id={availabilityId}
+            name="availability"
+            defaultValue={query.availability}
+          >
+            <option value="all">All availability</option>
+            <option value="available">Available</option>
+            <option value="unavailable">Unavailable</option>
+            <option value="unknown">Unknown availability</option>
+          </select>
+        </div>
         <Button type="submit">Apply filters</Button>
         <Button variant="secondary" onClick={clear}>
           Clear filters

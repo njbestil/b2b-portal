@@ -56,6 +56,11 @@ test("catalogue query round-trips literal name/SKU, category and brand, resets p
     { ...defaultQuery, search: "tea", brand: "brand" },
   );
   for (const raw of [
+    "offset=0001",
+    "offset=100001",
+    "availability=",
+    "availability=low-stock",
+    "search=%C2%80",
     "offset=-1",
     "offset=1.5",
     "offset=9007199254740992",
@@ -65,7 +70,7 @@ test("catalogue query round-trips literal name/SKU, category and brand, resets p
     "companyId=other",
     "role=INTERNAL_ADMIN",
     "search=%00",
-    `brand=${"x".repeat(101)}`,
+    `brand=${"x".repeat(129)}`,
   ])
     assert.throws(() => parseQuery(new URLSearchParams(raw)), {
       code: "invalid",
@@ -97,6 +102,7 @@ test("injectable adapter receives only catalogue filters/paging; exact decimals 
     "search",
     "category",
     "brand",
+    "availability",
     "offset",
     "limit",
   ]);
@@ -400,5 +406,30 @@ test("actual routes cannot fetch or render fixture data from a preview role; rea
     render(App, { sessionClient, catalog }).includes(
       "Loading company products",
     ),
+  );
+});
+
+test("availability and API text bounds survive URL filters and reset paging", () => {
+  const query = parseQuery(
+    new URLSearchParams("search=Rice&availability=unknown&offset=20"),
+  );
+  assert.equal(query.availability, "unknown");
+  assert.deepEqual(parseQuery(queryParams(query)), query);
+  assert.equal(
+    filteredQuery(query, {
+      search: "",
+      category: "",
+      brand: "",
+      availability: "available",
+    }).offset,
+    0,
+  );
+  assert.equal(
+    parseQuery(new URLSearchParams({ brand: "x".repeat(128) })).brand.length,
+    128,
+  );
+  assert.throws(
+    () => parseQuery(new URLSearchParams({ brand: " " + "x".repeat(128) })),
+    { code: "invalid" },
   );
 });

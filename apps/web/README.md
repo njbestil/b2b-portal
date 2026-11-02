@@ -204,68 +204,46 @@ Browser keyboard/responsive/focus and full root listener tests remain unverified
 under the established environment limitation; Node client/model/actual-view SSR
 tests are local self-checks, not independent QA or provider-parity evidence.
 
-## Staged company catalogue (#49)
+## Company catalogue (#49)
 
-`/catalog` and `/catalog/:productId` implement the Figma catalogue grid and a
-matching product detail view. Only a normal customer session can mount the data
-screen; preview roles and missing/restricted identity cannot issue catalogue
-requests. Changing account remounts the screen and cancels its resource. API
-authorization, company eligibility and customer price resolution remain server
-responsibilities; the UI sends no company/role override.
+`/catalog` and `/catalog/:productId` use the customer catalog API through the
+normal authenticated SessionClient. The API derives the company from identity;
+there is no company selector. Missing/restricted identities and preview personas
+cannot issue catalog reads. Production has no fixture or offline success switch.
 
-The feature owns `CatalogAdapter`, runtime-validating `CatalogClient`, query
-helpers and a cancellable screen resource. Inject an adapter through the app
-composition after the #47/#48 contract is confirmed. `createHttpCatalogAdapter`
-consumes a normal authenticated read function and explicitly supplied routes;
-it implements the proposed standard envelope with list `{items,total}` and
-detail `{product}`. It is **not enabled by default**. Production without a
-producer reports unavailable; no query flag, environment variable or browser
-storage enables fixture data. Synthetic products/prices exist only in tests.
+List and detail use `/api/v1/catalog/products` and `/:productId`. Standard JSON
+success envelopes, exact decimal strings and nullable commercial metadata are
+validated before display. Unknown price/stock remains unknown. Missing product
+images use a decorative placeholder; no remote photo request is made.
 
-Search covers name/SKU; category/brand are free-text filter values because no
-authoritative option catalogue is delivered. Applying filters resets offset;
-query strings preserve filters on detail/back navigation. Pagination is bounded
-to safe offsets and 1–100 rows (default 20). Counts, matching and ordering come
-from the producer before paging; the browser does not filter an incomplete
-page or invent a Recommended sort. Draft HTTP/query proposals and unresolved
-producer questions are in #47/#48, including text-matching policy and bounds.
+Search matches name OR SKU. Category and brand use entered exact values instead
+of invented option lists. Availability offers all, available, unavailable and
+unknown: positive stock, zero stock and missing stock respectively. The API owns
+matching and applies eligibility/filters before count and paging. Text bounds
+are 128 UTF-16 units before trimming; controls and malformed URL queries fail
+safely. ASCII case folding, literal wildcard characters and deterministic product
+ID ordering follow the producer. Offset is 0..100000 and limit is 1..100.
 
-Core product fields reuse the current repository projection: ID, SKU, name,
-selling UOM, exact decimal MOQ and nullable exact decimal price/currency.
-Category, brand and available quantity are proposed nullable metadata; absent
-values display unknown, never guessed stock or zero pricing. Cached quantity
-does not imply a Low stock threshold or submit-time availability. Product images
-have no delivered source, so a decorative placeholder requests no remote photo.
-Cards/detail preserve decimal strings without numeric rounding. Missing price
-requires account pricing before ordering. Cart/quantity mutations belong to #50;
-this feature exposes no fake Add to order action or success.
+Filters persist through detail/back navigation and changing them resets paging.
+Obsolete requests are cancelled and late responses ignored. Native form labels,
+status text, focused errors, empty/retry states and focusable unavailable paging
+controls are included. Browsing does not reserve stock or enable ordering.
 
-Loading, safe errors/retry, no matches, beyond-end pages and inaccessible product
-states are implemented. Forms use native labels/submission, mounted status text,
-error focus and focusable unavailable pagination controls. Browser/keyboard/
-responsive verification is still environment-blocked/incomplete; transport,
-query, race and actual-view SSR tests are reproducible locally. No producer
-integration, tenant-isolation parity or stock freshness is claimed by fixtures.
+`test/integration/catalog-api.test.mjs` exercises the actual customer API with a
+fresh synthetic Mock -> JSON cache fixture: list/detail, tenant prices, foreign
+resource denial, combined filters, availability, literal search and pagination.
+Run `npm run test:integration --workspace=@b2b-portal/web` from the repository root.
+Browser verification covered login, real list/detail/back, combined filters,
+empty results, actual missing-product errors, focused headings/errors and 320px
+reflow. Screenshots were inspected locally. PostgreSQL and independent review
+remain separate evidence gates.
 
-Current review order: #140 (#35) -> #143 (#49). Earlier #132/#137 are merged. The catalogue
-child targets the #35 branch so its diff contains only catalogue work. It remains
-draft until confirmed #47/#48 routes/fields/matching, real
-catalogue integration, browser verification and required reviews are complete.
-
-Local integration rechecked 2 November: #140 is merged into main d2856a7.
-This branch is reconciled with the clean local #47 implementation 6b0b339,
-whose customer routes derive company scope from the authenticated session.
-The default browser provider uses those routes through SessionClient. Its
-publication gate remains in force; the API predecessor is not published through
-this Web branch. #48 filtering remains pending, so this PR stays draft.
-
-Actual HTTP integration uses an isolated synthetic Mock -> JSON cache -> API
-fixture and checks list/detail/paging, separate company prices, unknown values
-and foreign-resource denial. Browser checks passed for real customer login,
-catalog list/detail/back, focused headings and 320px list/detail reflow; local
-screenshots were inspected. Filter and availability acceptance must be checked
-against #48's final implementation. #50 stays queued until those contracts and
-this catalog integration are available.
+The local review stack consumes #47 at 6b0b339 and #48 at 3b8f983, plus the
+merged main/auth batch. Their publication gate must be cleared before this Web
+branch is pushed. The existing #143 remains draft until the complete stack can
+be published and reviewed; retarget it to the published #48 branch to preserve
+an incremental Web diff. Merge tenant integration -> #47 -> #48 -> #143. #140 is
+already merged. #50 follows this catalog as a separate issue branch.
 
 Menus and direct-route preview restrictions use the same role policy. A hidden
 destination cannot be rendered simply by typing its URL. This is only UI

@@ -50,3 +50,44 @@ test("Web catalog transport uses the real customer API and Mock-populated JSON c
     code: "unavailable",
   });
 });
+
+test("real filter API applies combined matching and availability before counts and paging", async (t) => {
+  const f = await catalogFixture(t),
+    session = await f.client();
+  const client = new CatalogClient(
+    customerCatalogAdapter((path, signal) => session.read(path, signal)),
+  );
+  const signal = new AbortController().signal;
+  const rice = await client.list(
+    {
+      ...defaultQuery,
+      search: "rice",
+      category: "DEMO PANTRY",
+      brand: "demo staples",
+      availability: "available",
+    },
+    signal,
+  );
+  assert.equal(rice.total, 1);
+  assert.equal(rice.items[0].sku, "DEMO-RICE-BAG");
+  const unknown = await client.list(
+    { ...defaultQuery, availability: "unknown" },
+    signal,
+  );
+  assert.equal(unknown.total, 1);
+  assert.equal(unknown.items[0].availableQuantity, null);
+  const zero = await client.list(
+    { ...defaultQuery, availability: "unavailable" },
+    signal,
+  );
+  assert.equal(zero.total, 1);
+  assert.equal(zero.items[0].availableQuantity, "0");
+  const literal = await client.list({ ...defaultQuery, search: "%_" }, signal);
+  assert.equal(literal.total, 0);
+  const end = await client.list(
+    { ...defaultQuery, search: "DEMO-RICE-BAG", offset: 1, limit: 1 },
+    signal,
+  );
+  assert.equal(end.total, 1);
+  assert.deepEqual(end.items, []);
+});

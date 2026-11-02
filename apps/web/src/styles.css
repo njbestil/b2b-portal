@@ -1230,7 +1230,7 @@ select,
 .catalog-tools {
   display: grid;
   grid-template-columns:
-    minmax(12rem, 2fr) repeat(2, minmax(8rem, 1fr))
+    minmax(12rem, 2fr) repeat(3, minmax(8rem, 1fr))
     auto auto;
   align-items: end;
   gap: 0.875rem;

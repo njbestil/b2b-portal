@@ -14,6 +14,7 @@ export interface CatalogQuery {
   search: string;
   category: string;
   brand: string;
+  availability: "all" | "available" | "unavailable" | "unknown";
   offset: number;
   limit: number;
 }
@@ -38,6 +39,7 @@ export const defaultQuery: CatalogQuery = {
   search: "",
   category: "",
   brand: "",
+  availability: "all",
   offset: 0,
   limit: 20,
 };
@@ -54,7 +56,11 @@ const decimal = (v: unknown): v is string =>
 const unsafeText = (value: string) =>
   Array.from(value).some((c) => {
     const point = c.codePointAt(0)!;
-    return point < 32 || point === 127 || (point >= 0xd800 && point <= 0xdfff);
+    return (
+      point < 32 ||
+      (point >= 127 && point <= 159) ||
+      (point >= 0xd800 && point <= 0xdfff)
+    );
   });
 const text = (v: unknown, limit: number): v is string =>
   typeof v === "string" && !!v.trim() && v.length <= limit && !unsafeText(v);
@@ -100,38 +106,51 @@ function product(value: unknown): CatalogProduct {
 }
 /** Local query limits are UI bounds; final HTTP matching remains producer-owned. */
 export function parseQuery(params: URLSearchParams): CatalogQuery {
-  const allowed = new Set(["search", "category", "brand", "offset", "limit"]);
+  const allowed = new Set([
+    "search",
+    "category",
+    "brand",
+    "availability",
+    "offset",
+    "limit",
+  ]);
   for (const key of params.keys())
     if (!allowed.has(key) || params.getAll(key).length !== 1)
       throw new CatalogError("invalid");
   const query = { ...defaultQuery };
   for (const key of textKeys) {
-    const value = (params.get(key) ?? "").trim();
-    if (value.length > (key === "search" ? 200 : 100) || unsafeText(value))
-      throw new CatalogError("invalid");
-    query[key] = value;
+    const raw = params.get(key) ?? "";
+    if (raw.length > 128 || unsafeText(raw)) throw new CatalogError("invalid");
+    query[key] = raw.trim();
   }
   for (const key of ["offset", "limit"] as const) {
     const raw = params.get(key);
     if (raw !== null) {
-      if (!/^\d+$/.test(raw) || !Number.isSafeInteger(Number(raw)))
+      if (!/^(0|[1-9]\d*)$/.test(raw) || !Number.isSafeInteger(Number(raw)))
         throw new CatalogError("invalid");
       query[key] = Number(raw);
     }
   }
-  if (query.limit < 1 || query.limit > 100) throw new CatalogError("invalid");
+  const availability = params.get("availability") ?? "all";
+  if (!["all", "available", "unavailable", "unknown"].includes(availability))
+    throw new CatalogError("invalid");
+  query.availability = availability as CatalogQuery["availability"];
+  if (query.limit < 1 || query.limit > 100 || query.offset > 100000)
+    throw new CatalogError("invalid");
   return query;
 }
 export function queryParams(query: CatalogQuery): URLSearchParams {
   const params = new URLSearchParams();
   for (const key of textKeys) if (query[key]) params.set(key, query[key]);
+  if (query.availability !== "all")
+    params.set("availability", query.availability);
   if (query.offset) params.set("offset", String(query.offset));
   if (query.limit !== 20) params.set("limit", String(query.limit));
   return params;
 }
 export function filteredQuery(
   query: CatalogQuery,
-  values: Pick<CatalogQuery, "search" | "category" | "brand">,
+  values: Pick<CatalogQuery, "search" | "category" | "brand" | "availability">,
 ): CatalogQuery {
   return parseQuery(queryParams({ ...query, ...values, offset: 0 }));
 }
