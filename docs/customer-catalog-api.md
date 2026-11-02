@@ -105,8 +105,9 @@ successor to main. No merge is authorized or performed by this change.
 The filter successor `codex/48-catalog-filters` starts at #47's local reviewed
 implementation commit `6b0b339` and adds only #48. Review/merge order is clean
 #33 integration → #47 → #48. Retarget each successor after its parent is
-integrated. Publication currently requires clearance of the automatic approval
-review gate; local implementation/tests do not imply a published PR.
+integrated. The producer PRs are #158 (clean #33 integration) and #159 (#47);
+the #48 filter PR targets the #47 branch. Publication does not imply approval
+or a completed merge.
 
 ## Verification
 
