@@ -1,5 +1,7 @@
 # Portal API repository contracts
 
+Backend permissions: [role matrix and protected read contracts](../../docs/authorization.md).
+
 Current-session logout: [HTTP contract and persistence semantics](../../docs/logout.md).
 
 The separate private `AuthenticationRepository` supports

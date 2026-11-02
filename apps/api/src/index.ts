@@ -66,6 +66,7 @@ try {
       )
     : undefined;
   const app = createApp({
+    pendingApplication: selectedStorage.applications.pending,
     passwordChange: sessions
       ? createPasswordChange(
           selectedStorage.passwordChanges,
