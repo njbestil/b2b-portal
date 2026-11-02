@@ -90,7 +90,7 @@ export const workspacePages = [
     label: "Company",
     title: "Company",
     icon: "shield",
-    roles: ["Customer Admin"],
+    roles: customers,
     description: "Portal-owned company details and delivery locations.",
   },
   {
@@ -161,7 +161,7 @@ export const workspacePages = [
 
 export type WorkspacePage = (typeof workspacePages)[number];
 
-// Preserve the ordering in the supplied design, not just the allowed set.
+// Preserve design ordering and the own-company read entry added by #39.
 const navigationOrder: Record<Role, readonly WorkspacePage["path"][]> = {
   "Customer User": [
     "/dashboard",
@@ -169,6 +169,7 @@ const navigationOrder: Record<Role, readonly WorkspacePage["path"][]> = {
     "/orders",
     "/invoices",
     "/notifications",
+    "/company",
     "/profile",
   ],
   "Customer Admin": [

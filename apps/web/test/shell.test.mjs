@@ -44,6 +44,7 @@ const expected = {
     "/orders",
     "/invoices",
     "/notifications",
+    "/company",
     "/profile",
   ],
   "Customer Admin": [
@@ -135,11 +136,11 @@ test("unknown role values never validate as a preview role", () => {
 });
 
 test("route placeholders preserve semantic landmarks, a skip link, and active location", () => {
-  const html = render("/company");
+  const html = render("/users");
   assert.match(html, /href="#main-content"/);
   assert.match(html, /<main id="main-content" tabindex="-1">/);
-  assert.match(html, /<h1 tabindex="-1">Company<\/h1>/);
-  assert.match(html, /aria-current="page"[^>]*href="\/company"/);
+  assert.match(html, /<h1 tabindex="-1">Company users<\/h1>/);
+  assert.match(html, /aria-current="page"[^>]*href="\/users"/);
   assert.match(
     html,
     /Business data and actions will be connected in their own issues/,

@@ -132,6 +132,80 @@ and #40 children will consume the shared helpers. Full API/tenant/event and brow
 keyboard/responsive integration are still pending; fixtures only verify the UI
 port and local state, not backend authorization or persistence parity.
 
+## Staged company profile (#39)
+
+`/company` provides own-company viewing for normal Customer Users/Admins.
+Only Customer Admin can edit an active company's portal trading name, primary
+contact, business email, phone and billing address. Nullable contact fields can
+be cleared explicitly; client bounds/email errors are associated with inputs and
+the focused error summary. Legal name/trade licence are read-only; licence changes
+require Internal Admin review. ERP reference/payment terms/credit status remain
+read-only, and no absent credit-limit amount is invented or accepted as a write.
+
+`/customers/:scopedCompanyId/company` is a view-only context for authenticated
+Internal Admin/Sales. Actual #32/#33/#34 permission, tenant and Sales-assignment
+checks remain mandatory server-side. Customers cannot select another company
+through this route; their adapter receives only `{kind:own}`, not an override.
+The Customer User menu now exposes the read screen; it grants no management.
+
+`CompanyAdapter` and its explicit-route HTTP mapper are injectable normalized UI
+ports. Production defaults to unavailable. Loaded scope/version and exactly five
+portal fields define a save; status/actor/legal/licence/ERP fields are rejected.
+Only a validated canonical same-company response marks saved. Conflict/uncertain
+failures require reload, with no optimistic changes or automatic write replay.
+Company changes remount resource state, and missing contacts/commercial values
+remain not supplied. No API mutation or SQL/JSON parity is claimed by fixtures.
+
+This is a child of #149 (#38), consuming its shared async/HTTP helpers. The company
+section navigation is preserved; address functionality is delivered by the #40
+child, not claimed here. The exact routes/DTO/version/null/billing JSON mapping
+and server bounds are handoff questions in #39. The combined issue remains open
+until API authorization/persistence integration and browser/review gates pass.
+
+## Staged delivery addresses (#40)
+
+`/company/addresses` completes the company section navigation. Normal own-company
+Customer Admin can create/edit/activate/set-default/deactivate. Customer User can
+only select supplied active addresses, with no management controls or inactive
+counts/history. Internal Admin may inspect authorized history, but receives no
+customer-write/ordering impersonation; assigned Sales may view/select active
+choices in `/customers/:scopedCompanyId/addresses` after real #34 authorization.
+
+Address editing follows the Figma cards and uses inline labelled forms. The
+normalized portal fields are label, `address.line1`, nullable contact name/phone,
+and server-controlled active/default/ID. Existing #36 rows provide label/line1/
+active/default; contact metadata is not fabricated. Its exact persistence/DTO
+extension is an explicit API-owner handoff, not implemented in this Web PR.
+
+`AddressAdapter`/explicit-route HTTP mapper and runtime-validating `AddressClient`
+consume a bounded complete scoped snapshot/version. Default production behavior
+is unavailable; synthetic data exists only in tests. Commands carry only the
+loaded version, action, scoped address target and permitted fields. The API
+must derive customer company scope, authorize all object/default references and
+perform atomic persistence/audit. No SQL/JSON/API implementation is included.
+
+There is no destructive delete. Deactivating a default requires an explicit
+clear or an existing active replacement; no arbitrary replacement is selected.
+Canonical results must retain history, contain at most one active default, match
+the intended action and avoid unrequested default changes. Failed/uncertain writes
+require reload, with no optimistic result or auto replay. Concurrent UI writes
+are guarded; stale/cancelled results cannot publish into a new account screen.
+
+Selection stays in component memory and confirms only a choice on this screen,
+not an order update/server save. Default selection uses the server's active
+default; no default means no arbitrary first-row choice. An inactive/foreign/
+missing address cannot be selected. Zero active addresses has no selection submit
+and explains that ordering requires an active address. Actual ordering must
+revalidate the choice and company/status on the backend.
+
+This child targets #152's company navigation/scope code. Review order is #140 ->
+#149 (#38) -> #152 (#39) -> #40 PR; #143 is an independent sibling and its app/style
+integration is not claimed by this branch. All combined issues remain open until
+their API portions and actual authorization/persistence/browser integration pass.
+Browser keyboard/responsive/focus and full root listener tests remain unverified
+under the established environment limitation; Node client/model/actual-view SSR
+tests are local self-checks, not independent QA or provider-parity evidence.
+
 Menus and direct-route preview restrictions use the same role policy. A hidden
 destination cannot be rendered simply by typing its URL. This is only UI
 scaffolding, **not security enforcement**: future API authentication and backend
