@@ -22,6 +22,7 @@ type LogEvent =
   | { event: "storage.cleanup_failed" }
   | { event: "postgres.pool_error" }
   | { event: "applications.recovery_failed" }
+  | { event: "application_reviews.recovery_failed" }
   | { event: "migrations.completed"; applied: number; skipped: number }
   | {
       event: "migrations.failed";

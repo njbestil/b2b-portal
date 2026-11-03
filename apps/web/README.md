@@ -160,7 +160,7 @@ child, not claimed here. The exact routes/DTO/version/null/billing JSON mapping
 and server bounds are handoff questions in #39. The combined issue remains open
 until API authorization/persistence integration and browser/review gates pass.
 
-## Staged delivery addresses (#40)
+## Delivery address client binding (#40)
 
 `/company/addresses` completes the company section navigation. Normal own-company
 Customer Admin can create/edit/activate/set-default/deactivate. Customer User can
@@ -172,12 +172,18 @@ choices in `/customers/:scopedCompanyId/addresses` after real #34 authorization.
 Address editing follows the Figma cards and uses inline labelled forms. The
 normalized portal fields are label, `address.line1`, nullable contact name/phone,
 and server-controlled active/default/ID. Existing #36 rows provide label/line1/
-active/default; contact metadata is not fabricated. Its exact persistence/DTO
-extension is an explicit API-owner handoff, not implemented in this Web PR.
+active/default; missing legacy contact metadata projects as null. Field limits
+are label 100, line1 500, contact name 160 and phone 40; optional blanks clear to
+null. Storage and legacy projection belong to the separate API implementation.
 
 `AddressAdapter`/explicit-route HTTP mapper and runtime-validating `AddressClient`
-consume a bounded complete scoped snapshot/version. Default production behavior
-is unavailable; synthetic data exists only in tests. Commands carry only the
+consume a bounded scoped snapshot/version (up to 200 retained addresses). The
+default binding uses `SessionClient.request`: GET/POST `/api/v1/delivery-addresses`
+for customers and read-only GET `/api/v1/companies/:companyId/delivery-addresses`
+for authorized internal contexts. Only a 200 standard JSON success envelope is
+accepted. Read data is `{companyId,version,items}`; command data is
+`{addresses: canonicalSnapshot,addressId}`. The `addresses-<64 hex>` version is
+opaque to the client. Synthetic data exists only in tests. Commands carry only the
 loaded version, action, scoped address target and permitted fields. The API
 must derive customer company scope, authorize all object/default references and
 perform atomic persistence/audit. No SQL/JSON/API implementation is included.
@@ -196,13 +202,15 @@ missing address cannot be selected. Zero active addresses has no selection submi
 and explains that ordering requires an active address. Actual ordering must
 revalidate the choice and company/status on the backend.
 
-This child targets #152's company navigation/scope code. Review order is #140 ->
-#149 (#38) -> #152 (#39) -> #40 PR; #143 is an independent sibling and its app/style
-integration is not claimed by this branch. All combined issues remain open until
-their API portions and actual authorization/persistence/browser integration pass.
-Browser keyboard/responsive/focus and full root listener tests remain unverified
-under the established environment limitation; Node client/model/actual-view SSR
-tests are local self-checks, not independent QA or provider-parity evidence.
+The API/Web route handoff is recorded in issue #40. Missing routes, malformed
+responses and uncertain writes remain errors; there is no offline success.
+HTTP client tests cover authenticated commands, role restrictions, canonical
+results, conflict/reload, malformed data and cancellation. Mocked HTTP browser
+checks cover validation focus, default replacement/clear, Customer User keyboard
+selection and 320px reflow. Closing an editor restores focus to its opener, or to
+the result message when deactivation removed that opener. These are Web self-checks;
+live API/browser acceptance, persistence parity and independent review wait for
+both layer PRs to merge. The combined issue remains open.
 
 ## Company catalogue (#49)
 

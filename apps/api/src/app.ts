@@ -2,6 +2,7 @@ import { createPasswordResetRouter } from "./password-reset-route.js";
 import type { PasswordResetService } from "./services/password-reset.js";
 import { createApplicationReviewRouter } from "./application-review-route.js";
 import type { ApplicationRepository } from "./repositories/applications.js";
+import type { ApplicationDecisionService } from "./services/application-decisions.js";
 import express from "express";
 import { createDeliveryAddressRouter } from "./delivery-address-route.js";
 import type { DeliveryAddressService } from "./services/delivery-addresses.js";
@@ -42,6 +43,7 @@ interface AppOptions {
   passwordReset?: PasswordResetService;
   companyRepositories?: RepositoryPorts;
   pendingApplication?: ApplicationRepository["pending"];
+  applicationReview?: ApplicationDecisionService;
   passwordChange?: PasswordChangeHandler;
   applications?: ApplicationHandler;
   sessions?: SessionService;
@@ -73,7 +75,11 @@ export function createApp(options: AppOptions = {}) {
   app.use(createLogoutRouter(options.sessions));
   app.use(createPasswordResetRouter(options.passwordReset));
   app.use(
-    createApplicationReviewRouter(options.sessions, options.pendingApplication),
+    createApplicationReviewRouter(
+      options.sessions,
+      options.pendingApplication,
+      options.applicationReview,
+    ),
   );
   app.use(createAccountStatusRouter(options.sessions, options.accountStatus));
   app.use(createCustomerUsersRouter(options.sessions, options.customerUsers));

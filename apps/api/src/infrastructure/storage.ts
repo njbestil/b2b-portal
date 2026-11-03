@@ -48,6 +48,9 @@ import type { ApplicationRepository } from "../repositories/applications.js";
 import type { DeliveryAddressRepository } from "../repositories/delivery-addresses.js";
 import { createPostgresDeliveryAddresses } from "./postgres-delivery-addresses.js";
 import { createJsonDeliveryAddresses } from "./json/delivery-addresses.js";
+import type { ApplicationReviewRepository } from "../repositories/application-reviews.js";
+import { createPostgresApplicationReviews } from "./postgres-application-reviews.js";
+import { createJsonApplicationReviews } from "./json/application-reviews.js";
 import { createPostgresApplications } from "./postgres-applications.js";
 import { createJsonApplications } from "./json/applications.js";
 
@@ -59,6 +62,7 @@ export interface StorageRuntime {
   readonly passwordResets: PasswordResetRepository;
   readonly passwordChanges: PasswordChangeRepository;
   readonly applications: ApplicationRepository;
+  readonly applicationReviews: ApplicationReviewRepository;
   readonly sessions: SessionRepository;
   readonly notifications: NotificationRepository;
   readonly authentication: AuthenticationRepository;
@@ -143,6 +147,7 @@ export async function selectStorage(
         notifications: createPostgresNotifications(postgres.pool),
         applications: createPostgresApplications(postgres.pool),
         deliveryAddresses: createPostgresDeliveryAddresses(postgres.pool),
+        applicationReviews: createPostgresApplicationReviews(postgres.pool),
         health: async (signal: AbortSignal) =>
           (await postgres.probe(signal, postgresReadinessSql)) &&
           !signal.aborted &&
@@ -171,6 +176,12 @@ export async function selectStorage(
     undefined,
     security,
   );
+  const applicationReviews = createJsonApplicationReviews(security);
+  await applicationReviews
+    .recover()
+    .catch(() =>
+      options.logger("error", { event: "application_reviews.recovery_failed" }),
+    );
   await applications
     .recover()
     .catch(() =>
@@ -214,6 +225,7 @@ export async function selectStorage(
     notifications: createJsonNotifications(options.jsonDirectory),
     applications,
     deliveryAddresses: createJsonDeliveryAddresses(security),
+    applicationReviews,
     health,
     close: () => retirement,
   });
