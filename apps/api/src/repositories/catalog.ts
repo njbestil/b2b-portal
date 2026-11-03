@@ -8,6 +8,7 @@ import type {
 
 /** ERP-owned reference data, already filtered for this company's eligibility. */
 export interface CatalogProduct {
+  readonly metadata?: CatalogMetadata;
   readonly id: EntityId;
   readonly sku: string;
   readonly name: string;
@@ -20,6 +21,21 @@ export interface CatalogProduct {
   } | null;
 }
 
+export interface CatalogMetadata {
+  readonly category: string | null;
+  readonly brand: string | null;
+  readonly availableQuantity: string | null;
+}
+
+export interface CatalogFilters {
+  readonly name?: string;
+  readonly sku?: string;
+  readonly category?: string;
+  readonly brand?: string;
+  readonly search?: string;
+  readonly availability?: "available" | "unavailable" | "unknown";
+}
+
 export interface CatalogRepository {
   /** Ineligible, inactive and missing products all return null. */
   findEligibleById(
@@ -30,5 +46,6 @@ export interface CatalogRepository {
   listEligible(
     scope: CompanyScope,
     page: PageRequest,
+    filters?: CatalogFilters,
   ): Promise<Page<CatalogProduct>>;
 }

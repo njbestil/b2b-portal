@@ -82,7 +82,8 @@ the note service with a real object/assignment authorizer; customer roles are de
 
 Public Pending-only [customer application intake](../../docs/customer-applications.md) is a separate selected-provider capability with a private complete-bundle handoff to later admin review.
 
-# Own-company Customer User management
+# Customer catalog
 
-See [Customer User management](../../docs/customer-user-management.md) for the
-Customer Admin-only creation/deactivation API and temporary-password flow.
+See [the customer catalog contract](../../docs/customer-catalog-api.md) for
+authenticated own-company list/detail reads and the explicit Mock catalog sync
+mode.

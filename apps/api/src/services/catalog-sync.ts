@@ -50,6 +50,15 @@ function price(v: unknown): CachePrice {
     return fail();
   return { amount: decimal(p.amount), currency, validFrom, validTo };
 }
+function metadata(v: unknown) {
+  const m = object(v);
+  return {
+    category: m.category === null ? null : text(m.category),
+    brand: m.brand === null ? null : text(m.brand),
+    availableQuantity:
+      m.availableQuantity === null ? null : decimal(m.availableQuantity),
+  };
+}
 function rows<T>(
   v: unknown,
   parse: (r: Record<string, unknown>) => T,
@@ -75,6 +84,7 @@ export function checkedCatalog(value: unknown): CatalogSnapshot {
   const products = rows(
     input.products,
     (r) => ({
+      ...(r.metadata === undefined ? {} : { metadata: metadata(r.metadata) }),
       reference: text(r.reference),
       sku: text(r.sku),
       name: text(r.name),
@@ -147,6 +157,7 @@ function buildCache(
       .map((p) => [p.productReference, p.price]),
   );
   const current = source.products.map((p) => ({
+    ...(p.metadata === undefined ? {} : { metadata: p.metadata }),
     id:
       existing.get(p.reference) ??
       context.products.find(

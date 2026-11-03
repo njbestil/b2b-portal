@@ -142,11 +142,14 @@ function parse(input: unknown): Submission {
 }
 export function parseSubmissionScenario(
   value: string | undefined,
-): SubmissionScenario {
+): SubmissionScenario | "timeout" | "unavailable" | "temporary-server-failure" {
   if (value === undefined) return "success";
   if (
     ![
       "success",
+      "timeout",
+      "unavailable",
+      "temporary-server-failure",
       "validation",
       "credit-hold",
       "insufficient-stock",
@@ -154,7 +157,8 @@ export function parseSubmissionScenario(
     ].includes(value)
   )
     throw new OrderError(400, "INVALID_SCENARIO", "Unknown Mock ERP scenario.");
-  return value as SubmissionScenario;
+  return value as
+    SubmissionScenario | "timeout" | "unavailable" | "temporary-server-failure";
 }
 
 /** Terminal receipts are immutable for the process lifetime, with no hidden retry policy. */
@@ -185,6 +189,14 @@ export function createSubmissionService(orders: OrderService) {
     return { parsed, fingerprint, existing };
   }
   return {
+    correlation(input: unknown) {
+      const { parsed } = inspect(input);
+      return {
+        externalRequestReference: parsed.externalRequestReference,
+        portalOrderId: parsed.portalOrderId,
+        customerId: parsed.customerId,
+      };
+    },
     replay(input: unknown): Receipt | null {
       return structuredClone(inspect(input).existing?.receipt ?? null);
     },

@@ -33,3 +33,13 @@ export interface PortalPage<T> {
   readonly items: readonly T[];
   readonly total: number;
 }
+export interface CustomerCatalogProduct extends PortalProduct {
+  category: string | null;
+  brand: string | null;
+  /** Exact decimal stock; null means unknown, zero means unavailable. */
+  availableQuantity: string | null;
+}
+export interface CustomerCatalogPage extends PortalPage<CustomerCatalogProduct> {
+  offset: number;
+  limit: number;
+}
