@@ -142,7 +142,22 @@ const parsers: {
   },
   products(value) {
     const row = object(value);
+    const metadata =
+      row.metadata === undefined ? undefined : object(row.metadata);
     return {
+      ...(metadata === undefined
+        ? {}
+        : {
+            metadata: {
+              category:
+                metadata.category === null ? null : text(metadata.category),
+              brand: metadata.brand === null ? null : text(metadata.brand),
+              availableQuantity:
+                metadata.availableQuantity === null
+                  ? null
+                  : decimal(metadata.availableQuantity),
+            },
+          }),
       ...(row.erpProductReference === undefined
         ? {}
         : { erpProductReference: text(row.erpProductReference) }),

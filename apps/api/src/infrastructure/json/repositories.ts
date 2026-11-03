@@ -10,6 +10,10 @@ import type {
 import type { OrderRepository } from "../../repositories/orders.js";
 import type { CompanyScope, PageRequest } from "../../repositories/common.js";
 import { checkedPage, checkedScope } from "../../services/query-input.js";
+import {
+  checkedCatalogFilters,
+  matchesCatalog,
+} from "../../services/catalog-filters.js";
 import type { JsonPrice, JsonUser } from "./models.js";
 import type { JsonFileStore } from "./store.js";
 
@@ -82,6 +86,7 @@ export function createJsonRepositories(
             ? row.defaultPrice
             : null;
         return {
+          ...(row.metadata === undefined ? {} : { metadata: row.metadata }),
           id: row.id,
           sku: row.sku,
           name: row.name,
@@ -129,10 +134,16 @@ export function createJsonRepositories(
           ) ?? null
         );
       },
-      async listEligible(scope, page) {
+      async listEligible(scope, page, filters) {
         const companyId = companyScope(scope);
         const request = checkedPage(page);
-        return pageOf((await catalog(companyId)).sort(ascending), request);
+        const checked = checkedCatalogFilters(filters);
+        return pageOf(
+          (await catalog(companyId))
+            .filter((row) => matchesCatalog(row, checked))
+            .sort(ascending),
+          request,
+        );
       },
     },
     orders: {
