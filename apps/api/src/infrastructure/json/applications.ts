@@ -27,6 +27,8 @@ import { JsonSecurityCoordinator } from "./security.js";
 import type { JsonCompany, JsonUser } from "./models.js";
 
 interface Address {
+  contactName?: string | null;
+  contactPhone?: string | null;
   id: string;
   companyId: string;
   label: string;
@@ -102,8 +104,10 @@ export function createJsonApplications(
       if (
         !r ||
         typeof r !== "object" ||
-        Object.keys(r).sort().join(",") !==
-          "active,address,companyId,id,isDefault,label" ||
+        Object.keys(r)
+          .filter((k) => k !== "contactName" && k !== "contactPhone")
+          .sort()
+          .join(",") !== "active,address,companyId,id,isDefault,label" ||
         typeof r.label !== "string" ||
         !r.label.trim() ||
         !r.address ||
@@ -121,6 +125,18 @@ export function createJsonApplications(
         throw new Error();
       ids.add(id);
       if (r.isDefault) defaults.add(companyId);
+      for (const [key, limit] of [
+        ["contactName", 160],
+        ["contactPhone", 40],
+      ] as const) {
+        const value = r[key];
+        if (
+          value !== undefined &&
+          value !== null &&
+          applicationText(value, limit) !== value
+        )
+          throw new Error();
+      }
       return {
         id,
         companyId,
@@ -128,6 +144,10 @@ export function createJsonApplications(
         address: { line1: applicationText(r.address.line1, 500) },
         active: r.active,
         isDefault: r.isDefault,
+        ...(r.contactName === undefined ? {} : { contactName: r.contactName }),
+        ...(r.contactPhone === undefined
+          ? {}
+          : { contactPhone: r.contactPhone }),
       };
     });
   }

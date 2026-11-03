@@ -45,6 +45,9 @@ import { createPostgresNotifications } from "./postgres-notifications.js";
 import { createJsonNotifications } from "./json/notifications.js";
 
 import type { ApplicationRepository } from "../repositories/applications.js";
+import type { DeliveryAddressRepository } from "../repositories/delivery-addresses.js";
+import { createPostgresDeliveryAddresses } from "./postgres-delivery-addresses.js";
+import { createJsonDeliveryAddresses } from "./json/delivery-addresses.js";
 import type { ApplicationReviewRepository } from "../repositories/application-reviews.js";
 import { createPostgresApplicationReviews } from "./postgres-application-reviews.js";
 import { createJsonApplicationReviews } from "./json/application-reviews.js";
@@ -52,6 +55,7 @@ import { createPostgresApplications } from "./postgres-applications.js";
 import { createJsonApplications } from "./json/applications.js";
 
 export interface StorageRuntime {
+  readonly deliveryAddresses: DeliveryAddressRepository;
   readonly customerUsers: CustomerUserRepository;
   readonly accountStatus: AccountStatusRepository;
   readonly salesAssignments: SalesAssignmentRepository;
@@ -142,6 +146,7 @@ export async function selectStorage(
         audit: createPostgresAudit(postgres.pool),
         notifications: createPostgresNotifications(postgres.pool),
         applications: createPostgresApplications(postgres.pool),
+        deliveryAddresses: createPostgresDeliveryAddresses(postgres.pool),
         applicationReviews: createPostgresApplicationReviews(postgres.pool),
         health: async (signal: AbortSignal) =>
           (await postgres.probe(signal, postgresReadinessSql)) &&
@@ -219,6 +224,7 @@ export async function selectStorage(
     audit: createJsonAudit(options.jsonDirectory),
     notifications: createJsonNotifications(options.jsonDirectory),
     applications,
+    deliveryAddresses: createJsonDeliveryAddresses(security),
     applicationReviews,
     health,
     close: () => retirement,

@@ -4,18 +4,20 @@ The frozen requirements sections 2.2–2.3 define four roles. Backend permission
 come from #28's current validated principal, never the role-preview UI, role
 headers, company headers or a serialized login profile.
 
-| Operation             | Internal Admin | Sales Staff   | Customer Admin   | Customer User    |
-| --------------------- | -------------- | ------------- | ---------------- | ---------------- |
-| profile.read          | yes            | yes           | yes              | yes              |
-| company.read          | yes            | yes, assigned | yes, own company | yes, own company |
-| catalog.read          | yes            | yes, assigned | yes, own company | yes, own company |
-| orders.read           | yes            | yes, assigned | yes, own company | yes, own company |
-| customer-users.read   | yes            | yes, assigned | yes, own company | no               |
-| customer-users.manage | no             | no            | yes, own company | no               |
-| applications.read     | yes            | no            | no               | no               |
-| accounts.status.read  | yes            | no            | no               | no               |
-| accounts.status.write | yes            | no            | no               | no               |
-| sales.companies.read  | no             | yes, assigned | no               | no               |
+| Operation                 | Internal Admin | Sales Staff          | Customer Admin   | Customer User    |
+| ------------------------- | -------------- | -------------------- | ---------------- | ---------------- |
+| profile.read              | yes            | yes                  | yes              | yes              |
+| company.read              | yes            | yes, assigned        | yes, own company | yes, own company |
+| catalog.read              | yes            | yes, assigned        | yes, own company | yes, own company |
+| orders.read               | yes            | yes, assigned        | yes, own company | yes, own company |
+| customer-users.read       | yes            | yes, assigned        | yes, own company | no               |
+| customer-users.manage     | no             | no                   | yes, own company | no               |
+| applications.read         | yes            | no                   | no               | no               |
+| accounts.status.read      | yes            | no                   | no               | no               |
+| accounts.status.write     | yes            | no                   | no               | no               |
+| sales.companies.read      | no             | yes, assigned        | no               | no               |
+| delivery-addresses.read   | yes            | yes, assigned/active | yes, own company | yes, own active  |
+| delivery-addresses.manage | no             | no                   | yes, own company | no               |
 
 These cover existing read projections, bounded #42 status transitions and #41's
 own-company Customer User creation/deactivation. The customer-scoped management
@@ -75,3 +77,5 @@ immutable capability/serialized-profile refusal, actual PostgreSQL and JSON
 sessions, live role changes, first-login/inactive/expiry/revocation, header
 spoofing, unavailable producer/repository, redacted responses/logs and existing
 session regressions. Self-review does not replace independent acceptance.
+
+#40 address routes additionally recheck current company/session/assignment authority in the provider. Customer User and Sales reads return active addresses only; management remains Customer Admin own-company only. See [delivery address API](delivery-address-api.md).
