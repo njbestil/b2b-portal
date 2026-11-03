@@ -12,9 +12,14 @@ import { useAuth } from "../authentication/AuthContext";
 import { Page } from "../../shell/pages";
 import { Badge, Button } from "../../shared/ui";
 import { RemoteFailure, useRemote } from "../../shared/remote-ui";
-import { safeText, type RemoteState } from "../../shared/remote";
+import {
+  safeText,
+  createApiTransport,
+  type RemoteState,
+} from "../../shared/remote";
 import {
   ReviewClient,
+  reviewHttpAdapter,
   type ReviewAdapter,
   type ReviewApplication,
 } from "./api";
@@ -310,7 +315,19 @@ export function ApplicationReviewEntry({
 }: {
   adapter?: ReviewAdapter;
 }) {
-  const { user } = useAuth();
+  const { user, client } = useAuth();
+  const liveAdapter = useMemo(
+    () =>
+      reviewHttpAdapter(
+        createApiTransport((path, init) => client.request(path, init)),
+        {
+          list: "/api/v1/admin/applications",
+          detail: (id) => `/api/v1/admin/applications/${id}`,
+          decision: (id) => `/api/v1/admin/applications/${id}/decision`,
+        },
+      ),
+    [client],
+  );
   if (!user || user.mustChangePassword || user.role !== "INTERNAL_ADMIN")
     return (
       <Page
@@ -321,5 +338,5 @@ export function ApplicationReviewEntry({
         <Link to="/login">Sign in</Link>
       </Page>
     );
-  return <ReviewScreen key={user.id} adapter={adapter} />;
+  return <ReviewScreen key={user.id} adapter={adapter ?? liveAdapter} />;
 }
