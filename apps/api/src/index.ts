@@ -50,6 +50,7 @@ try {
     startupTimeoutMs: storageConfig.startupTimeoutMs,
     logger,
     requireSessions: sessionConfig !== undefined,
+    requireSalesAssignments: sessionConfig !== undefined,
     requirePasswordResets: true,
   });
   const selectedStorage = storage;
@@ -86,6 +87,7 @@ try {
       resetProofs,
     ),
     companyRepositories: selectedStorage.repositories,
+    salesAssignments: selectedStorage.salesAssignments,
     pendingApplication: selectedStorage.applications.pending,
     passwordChange: sessions
       ? createPasswordChange(

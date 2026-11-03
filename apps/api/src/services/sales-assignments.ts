@@ -3,6 +3,8 @@ import type {
   SalesAssignmentRepository,
 } from "../repositories/sales-assignments.js";
 import type { CompanyScope } from "../repositories/common.js";
+import type { PageRequest } from "../repositories/common.js";
+import { checkedPage } from "./query-input.js";
 import {
   requirePermission,
   AuthorizationError,
@@ -10,9 +12,18 @@ import {
   type Permission,
 } from "./authorization.js";
 export class SalesAssignmentError extends Error {
-  constructor(readonly code: "invalid_input" | "unavailable") {
+  constructor(readonly code: "invalid_input" | "unavailable" | "forbidden") {
     super("Sales assignment could not be confirmed.");
     this.name = "SalesAssignmentError";
+  }
+}
+export function checkedSalesPage(input?: PageRequest): PageRequest {
+  try {
+    const page = checkedPage(input);
+    if (page.offset > 100000) throw new Error();
+    return page;
+  } catch {
+    throw new SalesAssignmentError("invalid_input");
   }
 }
 export function assignmentId(value: unknown): string {

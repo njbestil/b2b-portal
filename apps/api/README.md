@@ -81,6 +81,9 @@ not a customer order DTO extension or a new HTTP route. Internal callers must us
 the note service with a real object/assignment authorizer; customer roles are denied.
 
 Public Pending-only [customer application intake](../../docs/customer-applications.md) is a separate selected-provider capability with a private complete-bundle handoff to later admin review.
+Sales Staff can use the authenticated
+[assigned-company list](../../docs/sales-company-list.md); identity and current
+assignment filtering are enforced before totals/pagination.
 
 # Customer catalog
 

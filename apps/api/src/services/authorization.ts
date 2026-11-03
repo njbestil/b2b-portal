@@ -35,6 +35,7 @@ export const permissions = Object.freeze({
     "CUSTOMER_ADMIN",
   ]),
   "applications.read": Object.freeze(["INTERNAL_ADMIN"]),
+  "sales.companies.read": Object.freeze(["SALES_STAFF"]),
 } satisfies Record<string, readonly Role[]>);
 export type Permission = keyof typeof permissions;
 const brand: unique symbol = Symbol("backend-authorized-actor");

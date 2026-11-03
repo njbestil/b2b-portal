@@ -31,6 +31,7 @@ const expected = {
   "orders.read": roles,
   "customer-users.read": roles.slice(0, 3),
   "applications.read": roles.slice(0, 1),
+  "sales.companies.read": roles.slice(1, 2),
 };
 const forbidden = (e) => e.name === "AuthorizationError";
 test("declared operation/four-role matrix denies unknown permissions/roles and copied profiles by default", async () => {

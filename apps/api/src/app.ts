@@ -30,6 +30,8 @@ import {
   createApplicationRouter,
   type ApplicationHandler,
 } from "./application-route.js";
+import { createSalesCompaniesRouter } from "./sales-companies-route.js";
+import type { SalesAssignmentRepository } from "./repositories/sales-assignments.js";
 
 interface AppOptions {
   customerUsers?: CustomerUserService;
@@ -46,6 +48,7 @@ interface AppOptions {
   healthChecks?: HealthChecks;
   healthTimeoutMs?: number;
   storageProvider?: StorageProvider;
+  salesAssignments?: SalesAssignmentRepository;
 }
 
 export function createApp(options: AppOptions = {}) {
@@ -73,6 +76,9 @@ export function createApp(options: AppOptions = {}) {
   app.use(createCustomerUsersRouter(options.sessions, options.customerUsers));
   app.use(express.json());
   app.use(createTenantRouter(options.sessions, options.companyRepositories));
+  app.use(
+    createSalesCompaniesRouter(options.sessions, options.salesAssignments),
+  );
 
   app.get("/", (_request, response) => {
     sendSuccess(response, { service: "b2b-portal-api" });
