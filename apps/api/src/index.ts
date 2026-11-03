@@ -15,6 +15,8 @@ import { randomUUID } from "node:crypto";
 import { createAudit } from "./services/audit.js";
 import { createLogin, createVerifiedLogin } from "./services/login.js";
 import { createApplications } from "./services/applications.js";
+import { createApplicationDecisions } from "./services/application-decisions.js";
+import { createNotifications } from "./services/notifications.js";
 import { parseSessionConfiguration } from "./infrastructure/session-config.js";
 import { createAccessTokens } from "./infrastructure/access-tokens.js";
 import { createSessions } from "./services/sessions.js";
@@ -55,6 +57,10 @@ try {
   });
   const selectedStorage = storage;
   const audit = createAudit(selectedStorage.audit, randomUUID);
+  const notifications = createNotifications(
+    selectedStorage.notifications,
+    randomUUID,
+  );
   const record = (input: Parameters<typeof audit.record>[0]) =>
     audit.record(input);
   const sessions = sessionConfig
@@ -89,6 +95,11 @@ try {
     companyRepositories: selectedStorage.repositories,
     salesAssignments: selectedStorage.salesAssignments,
     pendingApplication: selectedStorage.applications.pending,
+    applicationReview: createApplicationDecisions(
+      selectedStorage.applicationReviews,
+      record,
+      (input) => notifications.create(input),
+    ),
     passwordChange: sessions
       ? createPasswordChange(
           selectedStorage.passwordChanges,

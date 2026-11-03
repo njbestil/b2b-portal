@@ -59,6 +59,7 @@ async function checkedDirectory(directory: string) {
         name !== "user_sessions.json" &&
         name !== "password_reset_tokens.json" &&
         name !== "customer_sales_assignments.json" &&
+        name !== "application_reviews.json" &&
         !files.includes(name as (typeof files)[number]),
     )
   )
@@ -197,6 +198,9 @@ export async function seedPostgres(
     );
     const managedTables = [
       ...tables,
+      ...(rows.some((row) => row.name === "application_reviews")
+        ? ["application_reviews"]
+        : []),
       ...(rows.some((row) => row.name === "order_internal_notes")
         ? ["order_internal_notes"]
         : []),

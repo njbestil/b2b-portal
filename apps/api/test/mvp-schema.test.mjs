@@ -31,7 +31,11 @@ const coreTables = [
   "user_sessions",
   "password_reset_tokens",
 ].sort();
-const tables = [...coreTables, "order_internal_notes"].sort();
+const tables = [
+  ...coreTables,
+  "order_internal_notes",
+  "application_reviews",
+].sort();
 const options = {
   skip:
     !process.env.B2B_TEST_MIGRATIONS_DATABASE_URL &&
@@ -185,8 +189,15 @@ test(
     WHERE n.nspname=$1 AND k.contype='p' AND c.relname <> 'schema_migrations'`,
       [schema],
     );
-    assert.equal(keys.rows.length, 18);
-    assert.ok(keys.rows.every((r) => r.attname === "id" && r.type === "uuid"));
+    assert.equal(keys.rows.length, tables.length);
+    assert.ok(
+      keys.rows.every(
+        (r) =>
+          r.attname ===
+            (r.table_name === "application_reviews" ? "company_id" : "id") &&
+          r.type === "uuid",
+      ),
+    );
     const foreignKeys = await client.query(
       "SELECT convalidated FROM pg_constraint k JOIN pg_namespace n ON n.oid=k.connamespace WHERE n.nspname=$1 AND contype='f'",
       [schema],
