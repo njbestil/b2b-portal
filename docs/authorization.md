@@ -18,6 +18,8 @@ headers, company headers or a serialized login profile.
 | sales.companies.read      | no             | yes, assigned        | no               | no               |
 | delivery-addresses.read   | yes            | yes, assigned/active | yes, own company | yes, own active  |
 | delivery-addresses.manage | no             | no                   | yes, own company | no               |
+| company-profile.read      | yes            | yes, assigned        | yes, own company | yes, own company |
+| company-profile.manage    | no             | no                   | yes, own company | no               |
 
 These cover existing read projections, bounded #42 status transitions and #41's
 own-company Customer User creation/deactivation. The customer-scoped management
@@ -79,3 +81,5 @@ spoofing, unavailable producer/repository, redacted responses/logs and existing
 session regressions. Self-review does not replace independent acceptance.
 
 #40 address routes additionally recheck current company/session/assignment authority in the provider. Customer User and Sales reads return active addresses only; management remains Customer Admin own-company only. See [delivery address API](delivery-address-api.md).
+
+#39 adds company-profile.read for all four roles with own-company/current-assigned/internal scope checks, and company-profile.manage for Customer Admin own-company portal fields only. It grants no legal/licence/lifecycle/ERP writes. See [company profile API](company-profile-api.md).
