@@ -14,6 +14,7 @@ import { RemoteFailure, useRemote } from "../../shared/remote-ui";
 import { RemoteError, type RemoteState } from "../../shared/remote";
 import {
   CompanyClient,
+  authenticatedCompanyAdapter,
   profileFields,
   profileInput,
   profileErrors,
@@ -43,11 +44,15 @@ export function CompanyView({
   save: (draft: Record<string, unknown>) => void;
 }) {
   const [errors, setErrors] = useState<Record<string, string>>({}),
-    summary = useRef<HTMLDivElement>(null);
+    summary = useRef<HTMLDivElement>(null),
+    result = useRef<HTMLParagraphElement>(null);
   const invalid = Object.keys(errors).length > 0;
   useEffect(() => {
     if (invalid) summary.current?.focus();
   }, [errors, invalid]);
+  useEffect(() => {
+    if (state.saved) result.current?.focus();
+  }, [state.saved, state.data?.version]);
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (state.busy || state.needsReload || !canEdit) return;
@@ -69,7 +74,7 @@ export function CompanyView({
   const profile = state.data;
   return (
     <>
-      <p role="status">
+      <p role="status" tabIndex={-1} ref={result}>
         {state.busy
           ? "Loading or saving company information…"
           : state.saved
@@ -256,7 +261,7 @@ function CompanyScreen({
   );
 }
 export function CompanyEntry({ adapter }: { adapter?: CompanyAdapter }) {
-  const { user } = useAuth(),
+  const { user, client: session } = useAuth(),
     { scopedCompanyId } = useParams();
   const role = user?.role,
     companyId = user?.companyId ?? null,
@@ -266,7 +271,7 @@ export function CompanyEntry({ adapter }: { adapter?: CompanyAdapter }) {
       return role
         ? new CompanyClient(
             { role, companyId, mustChangePassword: restricted },
-            adapter,
+            adapter ?? authenticatedCompanyAdapter(session),
             scopedCompanyId,
           )
         : null;
@@ -274,7 +279,7 @@ export function CompanyEntry({ adapter }: { adapter?: CompanyAdapter }) {
       if (!(error instanceof RemoteError)) throw error;
       return null;
     }
-  }, [role, companyId, restricted, adapter, scopedCompanyId]);
+  }, [role, companyId, restricted, adapter, scopedCompanyId, session]);
   if (!client || !user)
     return (
       <Page

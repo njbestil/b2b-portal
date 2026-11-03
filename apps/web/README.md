@@ -130,7 +130,7 @@ and #40 children will consume the shared helpers. Full API/tenant/event and brow
 keyboard/responsive integration are still pending; fixtures only verify the UI
 port and local state, not backend authorization or persistence parity.
 
-## Staged company profile (#39)
+## Company profile client binding (#39)
 
 `/company` provides own-company viewing for normal Customer Users/Admins.
 Only Customer Admin can edit an active company's portal trading name, primary
@@ -146,19 +146,29 @@ checks remain mandatory server-side. Customers cannot select another company
 through this route; their adapter receives only `{kind:own}`, not an override.
 The Customer User menu now exposes the read screen; it grants no management.
 
-`CompanyAdapter` and its explicit-route HTTP mapper are injectable normalized UI
-ports. Production defaults to unavailable. Loaded scope/version and exactly five
+`CompanyAdapter` remains injectable for testing. Its default binding uses the
+authenticated `SessionClient.request`: GET/PATCH `/api/v1/company-profile` for
+customers and read-only GET `/api/v1/companies/:companyId/profile` internally.
+Only a 200 standard JSON envelope with `data.company` is accepted. Loaded
+scope/version and exactly five
 portal fields define a save; status/actor/legal/licence/ERP fields are rejected.
 Only a validated canonical same-company response marks saved. Conflict/uncertain
 failures require reload, with no optimistic changes or automatic write replay.
 Company changes remount resource state, and missing contacts/commercial values
-remain not supplied. No API mutation or SQL/JSON parity is claimed by fixtures.
+remain not supplied. Optional blank values clear to null; business email is
+trimmed, validated and lowercased. The `company-<64 hex>` version is opaque;
+canonical no-op saves may retain it. No API mutation or SQL/JSON parity is claimed
+by fixtures.
 
-This is a child of #149 (#38), consuming its shared async/HTTP helpers. The company
-section navigation is preserved; address functionality is delivered by the #40
-child, not claimed here. The exact routes/DTO/version/null/billing JSON mapping
-and server bounds are handoff questions in #39. The combined issue remains open
-until API authorization/persistence integration and browser/review gates pass.
+The #39 issue records the API/Web contract. The PATCH body is exactly
+`{version,tradeName,primaryContact,businessEmail,phone,billingAddress}`; internal
+saves are refused. Missing routes and unsafe responses remain errors rather than
+offline success. Contact-only saves focus the confirmation after the canonical
+form remount. HTTP tests cover requests, read-only roles, clearing/normalization,
+stale and uncertain outcomes, malformed data and cancelled writes. Mocked browser
+checks cover save/error focus, validation, Customer User viewing and 320px reflow.
+These are Web self-checks; the combined issue remains open pending both layer
+merges, real integration/provider verification and independent review.
 
 ## Delivery address client binding (#40)
 
