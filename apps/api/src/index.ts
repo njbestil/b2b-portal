@@ -15,6 +15,7 @@ import { randomUUID } from "node:crypto";
 import { createAudit } from "./services/audit.js";
 import { createLogin, createVerifiedLogin } from "./services/login.js";
 import { createApplications } from "./services/applications.js";
+import { createDeliveryAddresses } from "./services/delivery-addresses.js";
 import { parseSessionConfiguration } from "./infrastructure/session-config.js";
 import { createAccessTokens } from "./infrastructure/access-tokens.js";
 import { createSessions } from "./services/sessions.js";
@@ -72,6 +73,9 @@ try {
       )
     : undefined;
   const app = createApp({
+    deliveryAddresses: createDeliveryAddresses(
+      selectedStorage.deliveryAddresses,
+    ),
     accountStatus: createAccountStatus(selectedStorage.accountStatus, record),
     customerUsers: createCustomerUsers(
       selectedStorage.customerUsers,

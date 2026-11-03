@@ -45,10 +45,14 @@ import { createPostgresNotifications } from "./postgres-notifications.js";
 import { createJsonNotifications } from "./json/notifications.js";
 
 import type { ApplicationRepository } from "../repositories/applications.js";
+import type { DeliveryAddressRepository } from "../repositories/delivery-addresses.js";
+import { createPostgresDeliveryAddresses } from "./postgres-delivery-addresses.js";
+import { createJsonDeliveryAddresses } from "./json/delivery-addresses.js";
 import { createPostgresApplications } from "./postgres-applications.js";
 import { createJsonApplications } from "./json/applications.js";
 
 export interface StorageRuntime {
+  readonly deliveryAddresses: DeliveryAddressRepository;
   readonly customerUsers: CustomerUserRepository;
   readonly accountStatus: AccountStatusRepository;
   readonly salesAssignments: SalesAssignmentRepository;
@@ -138,6 +142,7 @@ export async function selectStorage(
         audit: createPostgresAudit(postgres.pool),
         notifications: createPostgresNotifications(postgres.pool),
         applications: createPostgresApplications(postgres.pool),
+        deliveryAddresses: createPostgresDeliveryAddresses(postgres.pool),
         health: async (signal: AbortSignal) =>
           (await postgres.probe(signal, postgresReadinessSql)) &&
           !signal.aborted &&
@@ -208,6 +213,7 @@ export async function selectStorage(
     audit: createJsonAudit(options.jsonDirectory),
     notifications: createJsonNotifications(options.jsonDirectory),
     applications,
+    deliveryAddresses: createJsonDeliveryAddresses(security),
     health,
     close: () => retirement,
   });
