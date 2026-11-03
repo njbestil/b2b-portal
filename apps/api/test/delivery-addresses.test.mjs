@@ -488,3 +488,12 @@ test(
     assert.deepEqual(after, current);
   },
 );
+
+test("corrupt address fields are unavailable provider state rather than invalid caller input", async (t) => {
+  const f = await fixture(t, "json");
+  await fs.writeFile(
+    join(f.directory, "delivery_addresses.json"),
+    JSON.stringify([{ ...f.legacy, label: "" }, f.foreign]),
+  );
+  await assert.rejects(f.service.own(f.ca), (e) => e.code === "unavailable");
+});

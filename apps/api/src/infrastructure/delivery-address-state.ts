@@ -52,24 +52,28 @@ export function addressActor(
   if (companyStatus === null) throw new AddressError("not_found");
 }
 export function checkedAddress(value: DeliveryAddress): DeliveryAddress {
-  const fields = addressFields({
-    label: value.label,
-    address: value.address,
-    contactName: value.contactName ?? null,
-    contactPhone: value.contactPhone ?? null,
-  });
-  if (
-    typeof value.active !== "boolean" ||
-    typeof value.isDefault !== "boolean" ||
-    (value.isDefault && !value.active)
-  )
+  try {
+    const fields = addressFields({
+      label: value.label,
+      address: value.address,
+      contactName: value.contactName ?? null,
+      contactPhone: value.contactPhone ?? null,
+    });
+    if (
+      typeof value.active !== "boolean" ||
+      typeof value.isDefault !== "boolean" ||
+      (value.isDefault && !value.active)
+    )
+      throw new AddressError("unavailable");
+    return {
+      id: addressId(value.id),
+      ...fields,
+      active: value.active,
+      isDefault: value.isDefault,
+    };
+  } catch {
     throw new AddressError("unavailable");
-  return {
-    id: addressId(value.id),
-    ...fields,
-    active: value.active,
-    isDefault: value.isDefault,
-  };
+  }
 }
 export function addressCollection(
   companyId: string,

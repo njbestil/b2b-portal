@@ -72,7 +72,11 @@ export function createJsonDeliveryAddresses(
         )
       )
         throw new AddressError("unavailable");
-      return { ...checkedAddress(r), companyId: addressId(r.companyId) };
+      try {
+        return { ...checkedAddress(r), companyId: addressId(r.companyId) };
+      } catch {
+        throw new AddressError("unavailable");
+      }
     });
     if (new Set(result.map((r) => r.id)).size !== result.length)
       throw new AddressError("unavailable");
