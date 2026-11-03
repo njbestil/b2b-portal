@@ -3,6 +3,8 @@ import type { PasswordResetService } from "./services/password-reset.js";
 import { createApplicationReviewRouter } from "./application-review-route.js";
 import type { ApplicationRepository } from "./repositories/applications.js";
 import express from "express";
+import { createCustomerUsersRouter } from "./customer-users-route.js";
+import type { CustomerUserService } from "./services/customer-users.js";
 import { createTenantRouter } from "./tenant-route.js";
 import type { RepositoryPorts } from "./repositories/index.js";
 import { createAccountStatusRouter } from "./account-status-route.js";
@@ -32,6 +34,7 @@ import { createSalesCompaniesRouter } from "./sales-companies-route.js";
 import type { SalesAssignmentRepository } from "./repositories/sales-assignments.js";
 
 interface AppOptions {
+  customerUsers?: CustomerUserService;
   accountStatus?: AccountStatusService;
   passwordReset?: PasswordResetService;
   companyRepositories?: RepositoryPorts;
@@ -70,6 +73,7 @@ export function createApp(options: AppOptions = {}) {
     createApplicationReviewRouter(options.sessions, options.pendingApplication),
   );
   app.use(createAccountStatusRouter(options.sessions, options.accountStatus));
+  app.use(createCustomerUsersRouter(options.sessions, options.customerUsers));
   app.use(express.json());
   app.use(createTenantRouter(options.sessions, options.companyRepositories));
   app.use(

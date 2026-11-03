@@ -10,6 +10,7 @@ import type {
   PageRequest,
 } from "../repositories/common.js";
 import { checkedScope, checkedPage } from "../services/query-input.js";
+import { checkedCatalogFilters } from "../services/catalog-filters.js";
 
 export class PostgresStorageError extends Error {
   constructor() {
@@ -26,6 +27,7 @@ const orderSql = `SELECT id, company_id AS "companyId", order_number AS "orderNu
   created_by_user_id AS "createdByUserId", created_at AS "createdAt",
   order_status AS status, integration_status AS "integrationStatus" FROM orders WHERE company_id=$1`;
 const catalogSql = `SELECT p.id, p.sku, p.name, p.selling_uom AS "sellingUom",
+  p.category,p.brand,p.available_quantity::text AS "availableQuantity",
   p.minimum_order_quantity::text AS "minimumOrderQuantity",
   CASE WHEN cp.id IS NOT NULL THEN cp.amount
     WHEN (p.price_valid_from IS NULL OR p.price_valid_from <= $2::timestamptz)
@@ -52,10 +54,24 @@ export const postgresReadinessSql = `SELECT c.id, c.legal_name, c.trade_name, c.
   FROM companies c, users u, products p, customer_product_access a, customer_product_prices cp, orders o LIMIT 0`;
 
 type RawCatalog = Omit<CatalogProduct, "price"> & {
+  category: string | null;
+  brand: string | null;
+  availableQuantity: string | null;
   priceAmount: string | null;
   priceCurrency: string | null;
 };
 const catalogProduct = (row: RawCatalog): CatalogProduct => ({
+  ...(row.category === null &&
+  row.brand === null &&
+  row.availableQuantity === null
+    ? {}
+    : {
+        metadata: {
+          category: row.category,
+          brand: row.brand,
+          availableQuantity: row.availableQuantity,
+        },
+      }),
   id: row.id,
   sku: row.sku,
   name: row.name,
@@ -154,13 +170,32 @@ export function createPostgresRepositories(
         )[0];
         return row ? catalogProduct(row) : null;
       },
-      async listEligible(scope, page) {
-        const result = await list<RawCatalog>(
-          catalogSql,
-          [companyId(scope), at()],
-          page,
-          "id ASC",
-        );
+      async listEligible(scope, page, filters) {
+        const checked = checkedCatalogFilters(filters);
+        const values: unknown[] = [companyId(scope), at()];
+        let sql = catalogSql;
+        const fold = (column: string) =>
+          `translate(${column},'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz') COLLATE "C"`;
+        for (const key of ["name", "sku", "category", "brand"] as const) {
+          if (checked[key] === undefined) continue;
+          values.push(checked[key]);
+          const parameter = `$${values.length}::text COLLATE "C"`;
+          sql += ["name", "sku"].includes(key)
+            ? ` AND strpos(${fold("p." + key)},${parameter})>0`
+            : ` AND ${fold("p." + key)}=${parameter}`;
+        }
+        if (checked.search !== undefined) {
+          values.push(checked.search);
+          sql += ` AND (strpos(${fold("p.name")},$${values.length}::text COLLATE "C")>0 OR strpos(${fold("p.sku")},$${values.length}::text COLLATE "C")>0)`;
+        }
+        if (checked.availability !== undefined)
+          sql +=
+            checked.availability === "unknown"
+              ? " AND p.available_quantity IS NULL"
+              : checked.availability === "available"
+                ? " AND p.available_quantity>0"
+                : " AND p.available_quantity=0";
+        const result = await list<RawCatalog>(sql, values, page, "id ASC");
         return { total: result.total, items: result.items.map(catalogProduct) };
       },
     },

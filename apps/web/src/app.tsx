@@ -40,6 +40,8 @@ import {
 import { AuthPage } from "./features/authentication/AuthPages";
 import { LogoutButton } from "./features/authentication/LogoutButton";
 import { SessionClient, type ApiRole } from "./features/authentication/session";
+import { CatalogEntry } from "./features/catalog/CatalogPage";
+import type { CatalogAdapter } from "./features/catalog/api";
 import { ApplicationReviewEntry } from "./features/application-review/ReviewPage";
 import type { ReviewAdapter } from "./features/application-review/api";
 import { CompanyEntry } from "./features/company-profile/CompanyPage";
@@ -75,6 +77,7 @@ export function App({
   initialRole,
   sessionClient,
   passwords,
+  catalog,
   applicationReview,
   companyProfile,
   deliveryAddresses,
@@ -82,6 +85,7 @@ export function App({
   initialRole?: Role;
   sessionClient?: SessionClient;
   passwords?: PasswordFlows;
+  catalog?: CatalogAdapter;
   applicationReview?: ReviewAdapter;
   companyProfile?: CompanyAdapter;
   deliveryAddresses?: AddressAdapter;
@@ -90,6 +94,7 @@ export function App({
     <AuthProvider client={sessionClient} passwords={passwords}>
       <AppRoutes
         initialRole={initialRole}
+        catalog={catalog}
         applicationReview={applicationReview}
         companyProfile={companyProfile}
         deliveryAddresses={deliveryAddresses}
@@ -105,11 +110,13 @@ const roleNames: Record<ApiRole, Role> = {
 };
 function AppRoutes({
   initialRole,
+  catalog,
   applicationReview,
   companyProfile,
   deliveryAddresses,
 }: {
   initialRole?: Role;
+  catalog?: CatalogAdapter;
   applicationReview?: ReviewAdapter;
   companyProfile?: CompanyAdapter;
   deliveryAddresses?: AddressAdapter;
@@ -180,6 +187,8 @@ function AppRoutes({
                 <UnavailablePage />
               ) : page.path === "/dashboard" ? (
                 <Dashboard role={role} preview={!user} />
+              ) : page.path === "/catalog" ? (
+                <CatalogEntry adapter={catalog} />
               ) : page.path === "/customer-applications" ? (
                 <ApplicationReviewEntry adapter={applicationReview} />
               ) : page.path === "/company" ? (
@@ -193,6 +202,10 @@ function AppRoutes({
         <Route
           path="customer-applications/:companyId"
           element={<ApplicationReviewEntry adapter={applicationReview} />}
+        />
+        <Route
+          path="catalog/:productId"
+          element={<CatalogEntry adapter={catalog} />}
         />
         <Route path="design-system" element={<DesignSystem />} />
         <Route

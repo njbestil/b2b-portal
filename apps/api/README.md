@@ -84,3 +84,9 @@ Public Pending-only [customer application intake](../../docs/customer-applicatio
 Sales Staff can use the authenticated
 [assigned-company list](../../docs/sales-company-list.md); identity and current
 assignment filtering are enforced before totals/pagination.
+
+# Customer catalog
+
+See [the customer catalog contract](../../docs/customer-catalog-api.md) for
+authenticated own-company list/detail reads and the explicit Mock catalog sync
+mode.

@@ -1,4 +1,5 @@
 export type { ApiFailure, ApiResponse, ApiSuccess } from "./api.js";
+export type { CustomerUserResult } from "./customer-users.js";
 export type { AccountStatusResult } from "./account-status.js";
 export type {
   PortalCompany,
@@ -6,6 +7,8 @@ export type {
   PortalProduct,
   PortalOrder,
   PortalPage,
+  CustomerCatalogProduct,
+  CustomerCatalogPage,
 } from "./portal-reads.js";
 export type {
   PasswordResetRequestResult,

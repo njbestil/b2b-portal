@@ -1,4 +1,5 @@
 import { createAccountStatus } from "./services/account-status.js";
+import { createCustomerUsers } from "./services/customer-users.js";
 import { createPasswordReset } from "./services/password-reset.js";
 import { resetProofs } from "./infrastructure/reset-crypto.js";
 import { sessionProofs } from "./infrastructure/session-crypto.js";
@@ -72,6 +73,12 @@ try {
     : undefined;
   const app = createApp({
     accountStatus: createAccountStatus(selectedStorage.accountStatus, record),
+    customerUsers: createCustomerUsers(
+      selectedStorage.customerUsers,
+      hashPassword,
+      record,
+      randomUUID,
+    ),
     passwordReset: createPasswordReset(
       selectedStorage.passwordResets,
       hashPassword,
