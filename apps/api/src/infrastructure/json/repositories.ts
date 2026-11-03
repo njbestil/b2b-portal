@@ -8,6 +8,7 @@ import type {
   UserRepository,
 } from "../../repositories/users.js";
 import type { OrderRepository } from "../../repositories/orders.js";
+import type { OrderSummary } from "../../repositories/orders.js";
 import type { CompanyScope, PageRequest } from "../../repositories/common.js";
 import { checkedPage, checkedScope } from "../../services/query-input.js";
 import {
@@ -28,6 +29,23 @@ const pageOf = <T>(rows: T[], page: PageRequest) => ({
 });
 const customer = (row: JsonUser): row is CustomerUserProfile =>
   row.role === "CUSTOMER_ADMIN" || row.role === "CUSTOMER_USER";
+const orderSummary = ({
+  id,
+  companyId,
+  orderNumber,
+  createdByUserId,
+  createdAt,
+  status,
+  integrationStatus,
+}: OrderSummary): OrderSummary => ({
+  id,
+  companyId,
+  orderNumber,
+  createdByUserId,
+  createdAt,
+  status,
+  integrationStatus,
+});
 
 export function createJsonRepositories(
   store: JsonFileStore,
@@ -149,11 +167,11 @@ export function createJsonRepositories(
     orders: {
       async findById(scope, orderId) {
         const companyId = companyScope(scope);
-        return (
+        const row =
           (await companyOrders(companyId)).find(
             (row) => row.id === orderId.toLowerCase(),
-          ) ?? null
-        );
+          ) ?? null;
+        return row ? orderSummary(row) : null;
       },
       async list(scope, page) {
         const companyId = companyScope(scope);
@@ -161,7 +179,7 @@ export function createJsonRepositories(
         const rows = (await companyOrders(companyId)).sort(
           (a, b) => b.createdAt.localeCompare(a.createdAt) || ascending(a, b),
         );
-        return pageOf(rows, request);
+        return pageOf(rows.map(orderSummary), request);
       },
     },
   };
