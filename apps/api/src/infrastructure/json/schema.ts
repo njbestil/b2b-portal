@@ -9,6 +9,10 @@ import {
   applicationText,
 } from "../../services/applications.js";
 import { normalizedEmail } from "../../services/login.js";
+import {
+  portalCompanyFields,
+  profileText,
+} from "../../services/company-profiles.js";
 
 export const collectionFiles = Object.freeze({
   companies: "companies.json",
@@ -90,6 +94,21 @@ const parsers: {
 } = {
   companies(value) {
     const row = object(value);
+    let portalProfile;
+    if (row.portalProfile !== undefined) {
+      const source = object(row.portalProfile);
+      if (
+        Object.keys(source).sort().join(",") !==
+        "billingAddress,businessEmail,phone,primaryContact"
+      )
+        return invalid();
+      const { tradeName: _name, ...fields } = portalCompanyFields({
+        tradeName: row.tradeName,
+        ...source,
+      });
+      void _name;
+      portalProfile = fields;
+    }
     if (
       row.application !== undefined &&
       checkedPending(row.application).companyId !== id(row.id)
@@ -97,6 +116,22 @@ const parsers: {
       return invalid();
     return {
       id: id(row.id),
+      ...(portalProfile === undefined ? {} : { portalProfile }),
+      ...(row.tradeLicenseReference === undefined
+        ? {}
+        : {
+            tradeLicenseReference: profileText(
+              row.tradeLicenseReference,
+              100,
+              true,
+            ),
+          }),
+      ...(row.paymentTerms === undefined
+        ? {}
+        : { paymentTerms: profileText(row.paymentTerms, 200, true) }),
+      ...(row.creditStatus === undefined
+        ? {}
+        : { creditStatus: profileText(row.creditStatus, 100, true) }),
       ...(row.application === undefined
         ? {}
         : { application: checkedPending(row.application) }),

@@ -2,6 +2,13 @@ import type { AuthenticatedPrincipal } from "./sessions.js";
 import { requireNormalAccess } from "./session-state.js";
 type Role = AuthenticatedPrincipal["role"];
 export const permissions = Object.freeze({
+  "company-profile.read": Object.freeze([
+    "INTERNAL_ADMIN",
+    "SALES_STAFF",
+    "CUSTOMER_ADMIN",
+    "CUSTOMER_USER",
+  ]),
+  "company-profile.manage": Object.freeze(["CUSTOMER_ADMIN"]),
   "delivery-addresses.read": Object.freeze([
     "INTERNAL_ADMIN",
     "SALES_STAFF",

@@ -16,6 +16,13 @@ export interface JsonProduct extends Omit<CatalogProduct, "price"> {
   readonly defaultPrice: JsonPrice | null;
 }
 export interface JsonCompany extends CompanyProfile {
+  readonly portalProfile?: Omit<
+    import("../../repositories/company-profiles.js").PortalCompanyFields,
+    "tradeName"
+  >;
+  readonly tradeLicenseReference?: string | null;
+  readonly paymentTerms?: string | null;
+  readonly creditStatus?: string | null;
   readonly application?: import("../../repositories/applications.js").PendingApplication;
 }
 export interface JsonUser {
