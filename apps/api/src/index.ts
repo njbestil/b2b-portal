@@ -15,6 +15,7 @@ import { randomUUID } from "node:crypto";
 import { createAudit } from "./services/audit.js";
 import { createLogin, createVerifiedLogin } from "./services/login.js";
 import { createApplications } from "./services/applications.js";
+import { createOrderDrafts } from "./services/order-drafts.js";
 import { createCompanyProfiles } from "./services/company-profiles.js";
 import { createDeliveryAddresses } from "./services/delivery-addresses.js";
 import { createApplicationDecisions } from "./services/application-decisions.js";
@@ -80,6 +81,7 @@ try {
       )
     : undefined;
   const app = createApp({
+    orderDrafts: createOrderDrafts(selectedStorage.orderDrafts, record),
     companyProfiles: createCompanyProfiles(selectedStorage.companyProfiles),
     deliveryAddresses: createDeliveryAddresses(
       selectedStorage.deliveryAddresses,

@@ -22,6 +22,8 @@ const roles = [
   "CUSTOMER_USER",
 ];
 const expected = {
+  "order-drafts.read": roles.slice(2),
+  "order-drafts.manage": roles.slice(2),
   "company-profile.read": roles,
   "company-profile.manage": roles.slice(2, 3),
   "delivery-addresses.read": roles,

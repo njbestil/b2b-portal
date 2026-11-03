@@ -4,6 +4,8 @@ import { createApplicationReviewRouter } from "./application-review-route.js";
 import type { ApplicationRepository } from "./repositories/applications.js";
 import type { ApplicationDecisionService } from "./services/application-decisions.js";
 import express from "express";
+import { createOrderDraftRouter } from "./order-draft-route.js";
+import type { OrderDraftService } from "./services/order-drafts.js";
 import { createCompanyProfileRouter } from "./company-profile-route.js";
 import type { CompanyProfileService } from "./services/company-profiles.js";
 import { createDeliveryAddressRouter } from "./delivery-address-route.js";
@@ -39,6 +41,7 @@ import { createSalesCompaniesRouter } from "./sales-companies-route.js";
 import type { SalesAssignmentRepository } from "./repositories/sales-assignments.js";
 
 interface AppOptions {
+  orderDrafts?: OrderDraftService;
   companyProfiles?: CompanyProfileService;
   deliveryAddresses?: DeliveryAddressService;
   customerUsers?: CustomerUserService;
@@ -92,6 +95,7 @@ export function createApp(options: AppOptions = {}) {
   app.use(
     createCompanyProfileRouter(options.sessions, options.companyProfiles),
   );
+  app.use(createOrderDraftRouter(options.sessions, options.orderDrafts));
   app.use(express.json());
   app.use(createTenantRouter(options.sessions, options.companyRepositories));
   app.use(
