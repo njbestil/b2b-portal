@@ -5,12 +5,14 @@ import {
 } from "../../shared/company-scope";
 import {
   RemoteError,
+  createApiTransport,
   entityId,
   object,
   safeText,
   unavailable,
   type ApiTransport,
 } from "../../shared/remote";
+import { AuthError, type SessionClient } from "../authentication/session";
 export interface AddressFields {
   label: string;
   address: { line1: string };
@@ -346,7 +348,42 @@ export function addressHttpAdapter(
   return {
     read: (scope, signal) =>
       transport({ path: path(scope), method: "GET" }, signal),
-    change: (scope, command, signal) =>
-      transport({ path: path(scope), method: "POST", body: command }, signal),
+    change: async (scope, command, signal) => {
+      if (scope.kind !== "own") throw new RemoteError("forbidden");
+      return transport(
+        { path: path(scope), method: "POST", body: command },
+        signal,
+      );
+    },
   };
+}
+
+/** Uses the normal session requester; a submitted command is never retried. */
+export function authenticatedAddressAdapter(
+  session: Pick<SessionClient, "request">,
+  routes: { own: string; internal: (companyId: string) => string } = {
+    own: "/api/v1/delivery-addresses",
+    internal: (id) =>
+      `/api/v1/companies/${encodeURIComponent(id)}/delivery-addresses`,
+  },
+): AddressAdapter {
+  return addressHttpAdapter(
+    createApiTransport(async (path, init) => {
+      try {
+        const response = await session.request(path, init);
+        if (response.ok && response.status !== 200)
+          throw new RemoteError("unavailable");
+        return response;
+      } catch (error) {
+        if (error instanceof AuthError)
+          throw new RemoteError(
+            error.code === "session" || error.code === "restricted"
+              ? "session"
+              : "unavailable",
+          );
+        throw error;
+      }
+    }),
+    routes,
+  );
 }

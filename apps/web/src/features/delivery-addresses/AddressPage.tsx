@@ -6,6 +6,7 @@ import {
   useRef,
   useState,
   type FormEvent,
+  type Ref,
 } from "react";
 import { Link, useParams } from "react-router";
 import { useAuth } from "../authentication/AuthContext";
@@ -16,6 +17,7 @@ import { RemoteFailure, useRemote } from "../../shared/remote-ui";
 import { RemoteError, type RemoteState } from "../../shared/remote";
 import {
   AddressClient,
+  authenticatedAddressAdapter,
   addressErrors,
   addressFields,
   addressInput,
@@ -240,6 +242,7 @@ export function AddressView({
   activate,
   setDefault,
   select,
+  statusRef,
 }: {
   state: RemoteState<AddressCollection>;
   canManage: boolean;
@@ -250,6 +253,7 @@ export function AddressView({
   activate: (id: string) => void;
   setDefault: (id: string) => void;
   select: (id: string) => DeliveryAddress;
+  statusRef?: Ref<HTMLParagraphElement>;
 }) {
   const groupId = useId(),
     summary = useRef<HTMLDivElement>(null),
@@ -285,7 +289,7 @@ export function AddressView({
   }
   return (
     <>
-      <p role="status">
+      <p role="status" tabIndex={-1} ref={statusRef}>
         {state.busy
           ? "Loading or saving addresses…"
           : state.saved
@@ -490,14 +494,22 @@ function AddressScreen({
     ),
     { state, model, reload } = useRemote(read),
     [editor, setEditor] = useState<Editor | null>(null),
-    returnFocus = useRef<HTMLButtonElement | null>(null);
+    returnFocus = useRef<HTMLButtonElement | null>(null),
+    resultFocus = useRef<HTMLParagraphElement>(null),
+    restoreFocus = useRef(false);
+  useEffect(() => {
+    if (editor || !restoreFocus.current) return;
+    restoreFocus.current = false;
+    if (returnFocus.current?.isConnected) returnFocus.current.focus();
+    else resultFocus.current?.focus();
+  }, [editor]);
   const current =
     editor && editor.kind !== "create"
       ? state.data?.items.find((item) => item.id === editor.id)
       : undefined;
   const close = () => {
+    restoreFocus.current = true;
     setEditor(null);
-    returnFocus.current?.focus();
   };
   async function commit(draft: Record<string, unknown>, makeDefault: boolean) {
     if (!editor) return;
@@ -516,6 +528,7 @@ function AddressScreen({
     >
       <CompanySections companyId={companyId} />
       <AddressView
+        statusRef={resultFocus}
         state={state}
         canManage={client.access.canEdit}
         canSelect={client.access.canSelect}
@@ -574,7 +587,7 @@ function AddressScreen({
   );
 }
 export function AddressEntry({ adapter }: { adapter?: AddressAdapter }) {
-  const { user } = useAuth(),
+  const { user, client: session } = useAuth(),
     { scopedCompanyId } = useParams(),
     role = user?.role,
     companyId = user?.companyId ?? null,
@@ -584,7 +597,7 @@ export function AddressEntry({ adapter }: { adapter?: AddressAdapter }) {
       return role
         ? new AddressClient(
             { role, companyId, mustChangePassword: restricted },
-            adapter,
+            adapter ?? authenticatedAddressAdapter(session),
             scopedCompanyId,
           )
         : null;
@@ -592,7 +605,7 @@ export function AddressEntry({ adapter }: { adapter?: AddressAdapter }) {
       if (!(error instanceof RemoteError)) throw error;
       return null;
     }
-  }, [role, companyId, restricted, adapter, scopedCompanyId]);
+  }, [role, companyId, restricted, adapter, scopedCompanyId, session]);
   if (!client || !user)
     return (
       <Page
