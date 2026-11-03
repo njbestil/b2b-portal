@@ -34,12 +34,13 @@ export function createJsonOrderDrafts(
     write =
       options.writeOrders ??
       ((rows: readonly JsonOrder[]) => security.store.replace("orders", rows));
-  async function publish(rows: readonly JsonOrder[]) {
+  async function publish(rows: readonly JsonOrder[], check: () => void) {
     if (
       Buffer.byteLength(JSON.stringify(rows, null, 2) + "\n") >
       10 * 1024 * 1024
     )
       throw new DraftError("unavailable");
+    check();
     await write(rows);
   }
   async function file(name: string): Promise<unknown | null> {
@@ -62,7 +63,7 @@ export function createJsonOrderDrafts(
   }
   async function run<T>(
     actor: DraftActor,
-    work: (rows: JsonOrder[]) => Promise<T>,
+    work: (rows: JsonOrder[], check: () => void) => Promise<T>,
   ): Promise<T> {
     return security.run(async () => {
       try {
@@ -72,7 +73,8 @@ export function createJsonOrderDrafts(
           session =
             (await sessions.read()).find((r) => r.id === actor.sessionId) ??
             null;
-        draftActor(actor, account, session, now());
+        const check = () => draftActor(actor, account, session, now());
+        check();
         // This writer must not discard unsupported future private order fields.
         const raw = await file("orders.json");
         if (
@@ -100,8 +102,8 @@ export function createJsonOrderDrafts(
         )
           throw new DraftError("unavailable");
         const rows = await security.store.read("orders");
-        draftActor(actor, account, session, now());
-        return await work(rows);
+        check();
+        return await work(rows, check);
       } catch (e) {
         if (e instanceof DraftError || e instanceof SessionError) throw e;
         throw new DraftError("unavailable");
@@ -157,7 +159,7 @@ export function createJsonOrderDrafts(
   }
   return {
     create: (actor, addressId) =>
-      run(actor, async (rows) => {
+      run(actor, async (rows, check) => {
         await address(actor, addressId);
         let id: string;
         try {
@@ -179,7 +181,7 @@ export function createJsonOrderDrafts(
           integrationStatus: "NOT_SENT",
         };
         const result = view(row);
-        await publish([...rows, row]);
+        await publish([...rows, row], check);
         return result;
       }),
     find: (actor, id) =>
@@ -188,7 +190,7 @@ export function createJsonOrderDrafts(
         return row && editable(row) ? view(row) : null;
       }),
     update: (actor, id, version, addressId) =>
-      run(actor, async (rows) => {
+      run(actor, async (rows, check) => {
         const row = owned(rows, actor, id);
         if (!row) throw new DraftError("not_found");
         if (!editable(row) || view(row).version !== version)
@@ -200,11 +202,14 @@ export function createJsonOrderDrafts(
             updatedAt: nextDraftTime(row.updatedAt ?? row.createdAt, now()),
           },
           result = view(next);
-        await publish(rows.map((r) => (r.id === id ? next : r)));
+        await publish(
+          rows.map((r) => (r.id === id ? next : r)),
+          check,
+        );
         return result;
       }),
     remove: (actor, id, version) =>
-      run(actor, async (rows) => {
+      run(actor, async (rows, check) => {
         const row = owned(rows, actor, id);
         if (!row) throw new DraftError("not_found");
         if (!editable(row) || view(row).version !== version)
@@ -218,7 +223,10 @@ export function createJsonOrderDrafts(
           if (notes.some((n) => n.orderId === id))
             throw new DraftError("conflict");
         }
-        await publish(rows.filter((r) => r.id !== id));
+        await publish(
+          rows.filter((r) => r.id !== id),
+          check,
+        );
       }),
   };
 }

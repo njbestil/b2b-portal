@@ -844,3 +844,21 @@ test("public service rejects misrouted repository results and never projects pri
   );
   assert.deepEqual((await service.find(f.ca, draft.id)).draft, draft);
 });
+
+test("JSON rechecks expiry after address reads and before publishing a draft", async (t) => {
+  const f = await fixture(t, "json"),
+    before = await f.orders(),
+    read = f.security.store.read.bind(f.security.store);
+  let companies = 0;
+  f.security.store.read = async (name) => {
+    const result = await read(name);
+    if (name === "companies" && ++companies === 2)
+      f.clock.value = Date.parse(f.ca.accessExpiresAt) + 1;
+    return result;
+  };
+  await assert.rejects(
+    f.create(f.ca, { deliveryAddressId: f.addresses[0].id }),
+    denied,
+  );
+  assert.deepEqual(await f.orders(), before);
+});
