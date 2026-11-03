@@ -5,12 +5,14 @@ import {
 } from "../../shared/company-scope";
 import {
   RemoteError,
+  createApiTransport,
   entityId,
   object,
   safeText,
   unavailable,
   type ApiTransport,
 } from "../../shared/remote";
+import { AuthError, type SessionClient } from "../authentication/session";
 export interface PortalFields {
   tradeName: string;
   primaryContact: string | null;
@@ -109,6 +111,8 @@ export function profileInput(value: Record<string, unknown>): PortalFields {
     !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(result.businessEmail)
   )
     throw new RemoteError("invalid");
+  if (result.businessEmail)
+    result.businessEmail = result.businessEmail.toLowerCase();
   return result as unknown as PortalFields;
 }
 export function profileErrors(
@@ -197,6 +201,7 @@ export function companyHttpAdapter(
       return object(data) ? data.company : undefined;
     },
     async save(scope, input, signal) {
+      if (scope.kind !== "own") throw new RemoteError("forbidden");
       const data = await transport(
         {
           path: path(scope),
@@ -208,4 +213,33 @@ export function companyHttpAdapter(
       return object(data) ? data.company : undefined;
     },
   };
+}
+
+/** Normal session request; writes are submitted once and never replayed. */
+export function authenticatedCompanyAdapter(
+  session: Pick<SessionClient, "request">,
+  routes: { own: string; internal: (companyId: string) => string } = {
+    own: "/api/v1/company-profile",
+    internal: (id) => `/api/v1/companies/${encodeURIComponent(id)}/profile`,
+  },
+): CompanyAdapter {
+  return companyHttpAdapter(
+    createApiTransport(async (path, init) => {
+      try {
+        const response = await session.request(path, init);
+        if (response.ok && response.status !== 200)
+          throw new RemoteError("unavailable");
+        return response;
+      } catch (error) {
+        if (error instanceof AuthError)
+          throw new RemoteError(
+            error.code === "session" || error.code === "restricted"
+              ? "session"
+              : "unavailable",
+          );
+        throw error;
+      }
+    }),
+    routes,
+  );
 }
