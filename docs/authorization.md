@@ -11,14 +11,17 @@ headers, company headers or a serialized login profile.
 | catalog.read          | yes            | yes, assigned | yes, own company | yes, own company |
 | orders.read           | yes            | yes, assigned | yes, own company | yes, own company |
 | customer-users.read   | yes            | yes, assigned | yes, own company | no               |
+| customer-users.manage | no             | no            | yes, own company | no               |
 | applications.read     | yes            | no            | no               | no               |
 | accounts.status.read  | yes            | no            | no               | no               |
 | accounts.status.write | yes            | no            | no               | no               |
 
-These cover existing read projections and the bounded #42 status transitions.
-They do not grant user provisioning, ERP commercial writes, integration retries, application
-decisions or order mutations. Unlisted operations/unknown roles deny by default.
-Customer User directory management is not exposed. The customer directory
+These cover existing read projections, bounded #42 status transitions and #41's
+own-company Customer User creation/deactivation. The customer-scoped management
+permission does not grant Internal Admin lifecycle operations, role changes,
+ERP commercial writes, integration retries, application decisions or order
+mutations. Unlisted operations/unknown roles deny by default.
+Customer User cannot manage the directory. The customer directory
 projection includes only customer-role profiles, never credentials/internal staff.
 
 Role permission is necessary but does not grant company, object or Sales
@@ -50,7 +53,9 @@ Standard no-store envelopes apply. Unauthenticated/bad/expired/revoked/ineligibl
 sessions return 401 INVALID_SESSION; first-login restriction 403
 PASSWORD_CHANGE_REQUIRED; role denial 403 FORBIDDEN; required admission failure
 503 AUTH_UNAVAILABLE. Missing configured producer/capability never grants access.
-Already-admitted work may finish; each new HTTP request rechecks backend state.
+Already-admitted reads may finish; each new HTTP request rechecks backend state.
+#41 additionally rechecks current authority inside provider write ownership,
+including access expiry after SQL statement waits.
 
 Anonymous Pending application intake and purpose-specific login/refresh/password/
 logout flows retain their existing independent validation. Root service identity
