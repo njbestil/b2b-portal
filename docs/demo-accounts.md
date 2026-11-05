@@ -81,7 +81,7 @@ a normal NODE_ENV=production service refuses this opt-in. The Web continues to
 use normal login and authenticated role flows.
 
 JSON provisioning requires --offline and an exclusive sibling lock. Wrong
-markers, unknown files, symlinks/junction ancestry or non-owned records refuse.
+markers, unknown files or noncanonical user fields, symlinks/junction ancestry or non-owned records refuse.
 A complete snapshot stages before directory swap; failed publication restores
 the old directory. Never blindly delete stale locks/recovery backups.
 

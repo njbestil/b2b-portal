@@ -53,6 +53,25 @@ async function inspect(directory: string, target: string) {
   const store = new JsonFileStore(path),
     users = await store.read("users"),
     companies = await store.read("companies");
+  // Refuse unknown or noncanonical user data before a normalized read could
+  // erase/alter fields on an unrelated record during whole-file publication.
+  const wireUsers: unknown = JSON.parse(
+    await fs.readFile(join(path, "users.json"), "utf8"),
+  );
+  if (
+    !Array.isArray(wireUsers) ||
+    wireUsers.length !== users.length ||
+    wireUsers.some((value: unknown, index: number) => {
+      if (!value || typeof value !== "object" || Array.isArray(value))
+        return true;
+      const raw = value as Record<string, unknown>;
+      const parsed = users[index]! as unknown as Record<string, unknown>;
+      return Object.keys(raw).some(
+        (key) => !Object.hasOwn(parsed, key) || raw[key] !== parsed[key],
+      );
+    })
+  )
+    throw new DemoAccountsError();
   const assignments = names.includes("customer_sales_assignments.json")
     ? JSON.parse(
         await fs.readFile(

@@ -776,3 +776,30 @@ test(
     await off.stop();
   },
 );
+
+test("unrecognized user fields refuse provisioning without changing unrelated data", async (t) => {
+  const f = await fixture(t),
+    path = join(f.directory, "users.json");
+  const rows = JSON.parse(await fs.readFile(path, "utf8"));
+  rows.push({
+    id: randomUUID(),
+    companyId: demoId(2),
+    displayName: "Unrelated synthetic profile",
+    role: "CUSTOMER_USER",
+    status: "ACTIVE",
+    operatorNote: "preserve",
+  });
+  const before = JSON.stringify(rows);
+  await fs.writeFile(path, before);
+  await assert.rejects(
+    provisionJsonAccounts(
+      f.directory,
+      target,
+      "internal-admin",
+      { DEMO_INTERNAL_ADMIN_PASSWORD: privatePassword() },
+      true,
+    ),
+    (e) => e.name === "DemoAccountsError",
+  );
+  assert.equal((await fs.readFile(path, "utf8")) === before, true);
+});
