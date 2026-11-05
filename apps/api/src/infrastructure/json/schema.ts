@@ -223,7 +223,20 @@ const parsers: {
   },
   orders(value) {
     const row = object(value);
+    if ((row.deliveryAddressId === undefined) !== (row.updatedAt === undefined))
+      return invalid();
+    const updatedAt =
+      row.updatedAt === undefined ? undefined : timestamp(row.updatedAt);
+    if (updatedAt !== undefined && updatedAt < timestamp(row.createdAt))
+      return invalid();
     return {
+      ...(updatedAt === undefined
+        ? {}
+        : {
+            updatedAt,
+            deliveryAddressId:
+              row.deliveryAddressId === null ? null : id(row.deliveryAddressId),
+          }),
       id: id(row.id),
       companyId: id(row.companyId),
       orderNumber: row.orderNumber === null ? null : text(row.orderNumber),

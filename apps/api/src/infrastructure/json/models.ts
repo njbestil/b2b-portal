@@ -48,13 +48,18 @@ export interface JsonCustomerPrice {
   readonly productId: string;
   readonly price: JsonPrice;
 }
+/** Legacy summary-only rows remain readable; current draft writes retain both fields. */
+export interface JsonOrder extends OrderSummary {
+  readonly deliveryAddressId?: string | null;
+  readonly updatedAt?: Timestamp;
+}
 export interface JsonCollections {
   companies: JsonCompany;
   users: JsonUser;
   products: JsonProduct;
   customer_product_access: JsonProductAccess;
   customer_product_prices: JsonCustomerPrice;
-  orders: OrderSummary;
+  orders: JsonOrder;
 }
 export type JsonCollection = keyof JsonCollections;
 

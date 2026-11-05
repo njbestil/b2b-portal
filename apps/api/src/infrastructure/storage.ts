@@ -45,6 +45,9 @@ import { createPostgresNotifications } from "./postgres-notifications.js";
 import { createJsonNotifications } from "./json/notifications.js";
 
 import type { ApplicationRepository } from "../repositories/applications.js";
+import type { OrderDraftRepository } from "../repositories/order-drafts.js";
+import { createPostgresOrderDrafts } from "./postgres-order-drafts.js";
+import { createJsonOrderDrafts } from "./json/order-drafts.js";
 import type { CompanyProfileRepository } from "../repositories/company-profiles.js";
 import { createPostgresCompanyProfiles } from "./postgres-company-profiles.js";
 import { createJsonCompanyProfiles } from "./json/company-profiles.js";
@@ -58,6 +61,7 @@ import { createPostgresApplications } from "./postgres-applications.js";
 import { createJsonApplications } from "./json/applications.js";
 
 export interface StorageRuntime {
+  readonly orderDrafts: OrderDraftRepository;
   readonly companyProfiles: CompanyProfileRepository;
   readonly deliveryAddresses: DeliveryAddressRepository;
   readonly customerUsers: CustomerUserRepository;
@@ -150,6 +154,7 @@ export async function selectStorage(
         audit: createPostgresAudit(postgres.pool),
         notifications: createPostgresNotifications(postgres.pool),
         applications: createPostgresApplications(postgres.pool),
+        orderDrafts: createPostgresOrderDrafts(postgres.pool),
         companyProfiles: createPostgresCompanyProfiles(postgres.pool),
         deliveryAddresses: createPostgresDeliveryAddresses(postgres.pool),
         applicationReviews: createPostgresApplicationReviews(postgres.pool),
@@ -225,10 +230,11 @@ export async function selectStorage(
     salesAssignments,
     repositories: createJsonRepositories(store),
     authentication: createJsonAuthentication(store),
-    internalNotes: createJsonInternalNotes(options.jsonDirectory),
+    internalNotes: createJsonInternalNotes(options.jsonDirectory, security),
     audit: createJsonAudit(options.jsonDirectory),
     notifications: createJsonNotifications(options.jsonDirectory),
     applications,
+    orderDrafts: createJsonOrderDrafts(security),
     companyProfiles: createJsonCompanyProfiles(security),
     deliveryAddresses: createJsonDeliveryAddresses(security),
     applicationReviews,

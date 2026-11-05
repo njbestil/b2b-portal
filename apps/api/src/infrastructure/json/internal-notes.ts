@@ -14,18 +14,24 @@ import {
 } from "../../services/internal-notes.js";
 import { checkedPage } from "../../services/query-input.js";
 import { JsonFileStore } from "./store.js";
+import type { JsonSecurityCoordinator } from "./security.js";
 
 /** One instance/process per trusted directory, offline from seed/reset. This
  * separate private file is never added to customer/master-data collections. */
 export function createJsonInternalNotes(
   directory: string,
+  security?: JsonSecurityCoordinator,
 ): InternalNotesRepository {
   const root = resolve(directory),
     path = join(root, "order_internal_notes.json"),
-    store = new JsonFileStore(root);
+    store = security?.store ?? new JsonFileStore(root);
+  if (security && security.directory !== root)
+    throw new InternalNoteError("storage_failed");
   let queue = Promise.resolve();
   async function ordered<T>(operation: () => Promise<T>): Promise<T> {
-    const result = queue.then(operation);
+    const result = queue.then(() =>
+      security ? security.run(operation) : operation(),
+    );
     queue = result.then(
       () => {},
       () => {},
