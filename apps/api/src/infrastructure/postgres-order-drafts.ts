@@ -9,6 +9,11 @@ import type { LoginCredential } from "../repositories/authentication.js";
 import { DraftError } from "../services/order-drafts.js";
 import { SessionError } from "../services/session-state.js";
 import {
+  checkedDraftItems,
+  draftQuantity,
+  requireMinimum,
+} from "../services/draft-quantities.js";
+import {
   draftActor,
   canonicalDraft,
   nextDraftTime,
@@ -127,7 +132,88 @@ export function createPostgresOrderDrafts(
     )
       throw new DraftError("not_found");
   }
+  async function items(client: PoolClient, actor: DraftActor, id: string) {
+    return checkedDraftItems(
+      (
+        await client.query(
+          'SELECT id,product_id AS "productId",quantity::text FROM order_items WHERE order_id=$1 AND company_id=$2 ORDER BY id LIMIT 101',
+          [id, actor.companyId],
+        )
+      ).rows,
+    );
+  }
   return {
+    items: (actor, id) =>
+      run(actor, async (client) => {
+        const row = await owned(client, actor, id);
+        if (!row || !editable(row)) throw new DraftError("not_found");
+        return { draft: view(row), items: await items(client, actor, id) };
+      }),
+    changeItem: (actor, id, version, change) =>
+      run(actor, async (client) => {
+        const row = await owned(client, actor, id);
+        if (!row) throw new DraftError("not_found");
+        if (!editable(row) || view(row).version !== version)
+          throw new DraftError("conflict");
+        const current = await items(client, actor, id);
+        const item =
+          change.kind === "add"
+            ? null
+            : current.find((r) => r.id === change.itemId);
+        if (change.kind !== "add" && !item) throw new DraftError("not_found");
+        if (
+          change.kind === "add" &&
+          (current.length >= 100 ||
+            current.some((r) => r.productId === change.productId))
+        )
+          throw new DraftError("conflict");
+        // Retain legacy/private line evidence rather than overwrite or delete it.
+        if (
+          change.kind !== "add" &&
+          (
+            await client.query(
+              "SELECT id FROM order_items WHERE id=$1 AND order_id=$2 AND company_id=$3 AND (item_snapshot IS NOT NULL OR unit_price IS NOT NULL OR line_total IS NOT NULL)",
+              [change.itemId, id, actor.companyId],
+            )
+          ).rows.length
+        )
+          throw new DraftError("conflict");
+        if (change.kind !== "remove") {
+          const productId =
+            change.kind === "add" ? change.productId : item!.productId;
+          const product = (
+            await client.query(
+              "SELECT p.minimum_order_quantity::text AS minimum FROM products p JOIN customer_product_access a ON a.product_id=p.id AND a.company_id=$2 AND a.eligible WHERE p.id=$1 AND p.active FOR SHARE OF p,a",
+              [productId, actor.companyId],
+            )
+          ).rows[0];
+          if (!product) throw new DraftError("not_found");
+          const quantity = draftQuantity(change.quantity);
+          requireMinimum(quantity, product.minimum);
+          if (change.kind === "add")
+            await client.query(
+              "INSERT INTO order_items(id,company_id,order_id,product_id,quantity) VALUES($1,$2,$3,$4,$5)",
+              [newId(), actor.companyId, id, productId, quantity],
+            );
+          else
+            await client.query(
+              "UPDATE order_items SET quantity=$1 WHERE id=$2 AND order_id=$3 AND company_id=$4",
+              [quantity, change.itemId, id, actor.companyId],
+            );
+        } else
+          await client.query(
+            "DELETE FROM order_items WHERE id=$1 AND order_id=$2 AND company_id=$3",
+            [change.itemId, id, actor.companyId],
+          );
+        const updated = (
+          await client.query<Row>(
+            `UPDATE orders SET updated_at=$1 WHERE id=$2 RETURNING ${projection}`,
+            [nextDraftTime(row.updatedAt.toISOString(), now()), id],
+          )
+        ).rows[0];
+        if (!updated) throw new DraftError("unavailable");
+        return { draft: view(updated), items: await items(client, actor, id) };
+      }),
     create: (actor, addressId) =>
       run(actor, async (client) => {
         await address(client, actor, addressId);

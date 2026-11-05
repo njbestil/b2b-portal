@@ -1,4 +1,7 @@
+import { draftQuantity, checkedDraftItems } from "./draft-quantities.js";
 import type {
+  DraftItems,
+  DraftItemChange,
   DraftActor,
   OrderDraft,
   OrderDraftRepository,
@@ -8,7 +11,12 @@ import { requirePermission, type AuthorizedActor } from "./authorization.js";
 export class DraftError extends Error {
   constructor(
     readonly code:
-      "invalid_input" | "forbidden" | "not_found" | "conflict" | "unavailable",
+      | "invalid_quantity"
+      | "invalid_input"
+      | "forbidden"
+      | "not_found"
+      | "conflict"
+      | "unavailable",
   ) {
     super("Draft order operation could not be confirmed.");
     this.name = "DraftError";
@@ -94,7 +102,71 @@ export function createOrderDrafts(
       throw new DraftError("unavailable");
     }
   }
+  const itemView = (
+    result: DraftItems,
+    who: DraftActor,
+    id: string,
+  ): DraftItems => ({
+    draft: view(result.draft, who, id),
+    items: checkedDraftItems(result.items),
+  });
   return {
+    async items(actor: AuthorizedActor, key: unknown) {
+      const who = identity(actor, true),
+        id = draftId(key);
+      return itemView(await repository.items(who, id), who, id);
+    },
+    async changeItem(
+      actor: AuthorizedActor,
+      key: unknown,
+      itemKey: unknown,
+      kind: "add" | "update" | "remove",
+      input: unknown,
+      requestId: string,
+    ) {
+      const who = identity(actor),
+        id = draftId(key),
+        body = object(input);
+      const keys =
+        kind === "add"
+          ? "productId,quantity,version"
+          : kind === "update"
+            ? "quantity,version"
+            : "version";
+      if (Object.keys(body).sort().join(",") !== keys)
+        throw new DraftError("invalid_input");
+      const change: DraftItemChange =
+        kind === "add"
+          ? {
+              kind,
+              productId: draftId(body.productId),
+              quantity: draftQuantity(body.quantity),
+            }
+          : kind === "update"
+            ? {
+                kind,
+                itemId: draftId(itemKey),
+                quantity: draftQuantity(body.quantity),
+              }
+            : { kind, itemId: draftId(itemKey) };
+      const result = itemView(
+        await repository.changeItem(who, id, version(body.version), change),
+        who,
+        id,
+      );
+      await record(
+        who,
+        id,
+        "order.draft_item_" +
+          (kind === "add"
+            ? "added"
+            : kind === "update"
+              ? "updated"
+              : "removed"),
+        requestId,
+      );
+      return result;
+    },
     async create(actor: AuthorizedActor, input: unknown, requestId: string) {
       const who = identity(actor),
         body = object(input);

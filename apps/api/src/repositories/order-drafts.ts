@@ -17,8 +17,36 @@ export interface OrderDraft {
   readonly deliveryAddressId: string | null;
   readonly version: string;
 }
-/** Private customer-owned draft port. No item/submission/ERP mutation capability. */
+export interface DraftItem {
+  readonly id: string;
+  readonly productId: string;
+  readonly quantity: string;
+}
+export interface DraftItems {
+  readonly draft: OrderDraft;
+  readonly items: readonly DraftItem[];
+}
+export type DraftItemChange =
+  | {
+      readonly kind: "add";
+      readonly productId: string;
+      readonly quantity: string;
+    }
+  | {
+      readonly kind: "update";
+      readonly itemId: string;
+      readonly quantity: string;
+    }
+  | { readonly kind: "remove"; readonly itemId: string };
+/** Private customer-owned draft port. No submission/ERP mutation capability. */
 export interface OrderDraftRepository {
+  items(actor: DraftActor, id: string): Promise<DraftItems>;
+  changeItem(
+    actor: DraftActor,
+    id: string,
+    version: string,
+    change: DraftItemChange,
+  ): Promise<DraftItems>;
   create(
     actor: DraftActor,
     deliveryAddressId: string | null,
