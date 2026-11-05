@@ -1392,3 +1392,41 @@ select,
     padding: 1rem;
   }
 }
+
+.draft-layout {
+  display: grid;
+  grid-template-columns: minmax(14rem, 1fr) minmax(0, 2fr);
+  gap: 1rem;
+  align-items: start;
+}
+.draft-panel {
+  padding: 1.5rem;
+  min-width: 0;
+}
+.draft-panel ul {
+  list-style: none;
+  padding: 0;
+}
+.draft-panel select {
+  display: block;
+  max-width: 100%;
+  margin-top: 0.5rem;
+}
+.draft-lines {
+  display: grid;
+  gap: 1rem;
+}
+.draft-line {
+  padding: 1rem;
+}
+.draft-line form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: end;
+}
+@media (max-width: 48rem) {
+  .draft-layout {
+    grid-template-columns: 1fr;
+  }
+}

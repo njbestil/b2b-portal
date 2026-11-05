@@ -40,6 +40,7 @@ import {
 import { AuthPage } from "./features/authentication/AuthPages";
 import { LogoutButton } from "./features/authentication/LogoutButton";
 import { SessionClient, type ApiRole } from "./features/authentication/session";
+import { DraftEntry } from "./features/order-drafts/DraftPage";
 import { CatalogEntry } from "./features/catalog/CatalogPage";
 import type { CatalogAdapter } from "./features/catalog/api";
 import { ApplicationReviewEntry } from "./features/application-review/ReviewPage";
@@ -187,6 +188,9 @@ function AppRoutes({
                 <UnavailablePage />
               ) : page.path === "/dashboard" ? (
                 <Dashboard role={role} preview={!user} />
+              ) : page.path === "/orders" &&
+                (role === "Customer Admin" || role === "Customer User") ? (
+                <DraftEntry />
               ) : page.path === "/catalog" ? (
                 <CatalogEntry adapter={catalog} />
               ) : page.path === "/customer-applications" ? (

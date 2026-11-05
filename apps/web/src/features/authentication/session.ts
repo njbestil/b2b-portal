@@ -441,14 +441,14 @@ export class SessionClient {
   async request(
     path: string,
     init: {
-      method: "GET" | "POST" | "PATCH";
+      method: "GET" | "POST" | "PATCH" | "DELETE";
       body?: string;
       signal?: AbortSignal;
     },
   ): Promise<Response> {
     if (this.#logout) throw new AuthError("session");
     if (
-      !["GET", "POST", "PATCH"].includes(init.method) ||
+      !["GET", "POST", "PATCH", "DELETE"].includes(init.method) ||
       (init.method === "GET" && init.body !== undefined) ||
       !path.startsWith("/api/v1/") ||
       path.startsWith("/api/v1/auth/") ||
