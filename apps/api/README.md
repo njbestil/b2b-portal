@@ -90,3 +90,5 @@ assignment filtering are enforced before totals/pagination.
 See [the customer catalog contract](../../docs/customer-catalog-api.md) for
 authenticated own-company list/detail reads and the explicit Mock catalog sync
 mode.
+
+For explicit isolated demo/dev sign-in provisioning, see [demo account setup and rotation](../../docs/demo-accounts.md). The default seed and normal production remain disabled for these demo identities.

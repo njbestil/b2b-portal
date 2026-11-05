@@ -12,6 +12,7 @@
     "format:check": "prettier . --ignore-path ../../.prettierignore --check",
     "start": "node --env-file-if-exists=../../.env dist/index.js",
     "migrate": "npm run build && node --env-file-if-exists=../../.env dist/migrate.js",
+    "demo:accounts": "npm run build && node --env-file-if-exists=../../.env dist/demo-accounts.js",
     "demo": "npm run build && node --env-file-if-exists=../../.env dist/demo.js",
     "reset:issue": "npm run build && node --env-file-if-exists=../../.env dist/reset-password-operator.js",
     "sync:catalog": "npm run build && node --env-file-if-exists=../../.env dist/sync-catalog.js",

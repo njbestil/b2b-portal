@@ -1,3 +1,9 @@
+import { demoMode } from "./demo/accounts.js";
+import {
+  inspectDemoStore,
+  protectDemoAuthentication,
+  protectDemoTokens,
+} from "./demo/accounts-runtime.js";
 import { createAccountStatus } from "./services/account-status.js";
 import { createCustomerUsers } from "./services/customer-users.js";
 import { createPasswordReset } from "./services/password-reset.js";
@@ -45,6 +51,7 @@ try {
   const erpConfig = parseErpEnvironment(process.env);
   const storageConfig = parseStorageEnvironment(process.env);
   const sessionConfig = parseSessionConfiguration(process.env);
+  const demoTarget = demoMode(process.env);
   storage = await selectStorage({
     postgres: postgresConfig,
     jsonDirectory: resolve(
@@ -58,6 +65,20 @@ try {
     requirePasswordResets: true,
   });
   const selectedStorage = storage;
+  if (demoTarget) {
+    await inspectDemoStore(
+      demoTarget,
+      postgresConfig,
+      resolve(
+        fileURLToPath(new URL("../", import.meta.url)),
+        storageConfig.jsonDataDir ?? "data/runtime",
+      ),
+    );
+  }
+  const authentication = protectDemoAuthentication(
+    selectedStorage.authentication,
+    demoTarget !== undefined,
+  );
   const audit = createAudit(selectedStorage.audit, randomUUID);
   const notifications = createNotifications(
     selectedStorage.notifications,
@@ -68,14 +89,14 @@ try {
   const sessions = sessionConfig
     ? createSessions(
         selectedStorage.sessions,
-        createVerifiedLogin(
-          selectedStorage.authentication,
-          verifyPassword,
-          record,
-        ),
+        createVerifiedLogin(authentication, verifyPassword, record),
         record,
         sessionConfig,
-        createAccessTokens(sessionConfig),
+        protectDemoTokens(
+          createAccessTokens(sessionConfig),
+          selectedStorage.authentication,
+          demoTarget !== undefined,
+        ),
         sessionProofs,
       )
     : undefined;
@@ -127,10 +148,8 @@ try {
       (async () => {
         throw new SessionError("unavailable");
       }),
-    login: createLogin(
-      selectedStorage.authentication,
-      verifyPassword,
-      (input) => audit.record(input),
+    login: createLogin(authentication, verifyPassword, (input) =>
+      audit.record(input),
     ),
     logger,
     storageProvider: selectedStorage.provider,
