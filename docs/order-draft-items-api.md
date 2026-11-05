@@ -1,0 +1,18 @@
+# Customer draft item API (#52)
+
+Normal active Customer Admin and Customer User sessions may manage lines on their own editable draft. The existing draft ownership, active account/session, lifecycle, no-store, request envelope, JSON body limit, rate limit and audit uncertainty rules in [the draft API](order-draft-api.md) apply. Internal roles and other customers cannot access a creator's draft through this API.
+
+| Method and route                                | Exact JSON body                | Success data        |
+| ----------------------------------------------- | ------------------------------ | ------------------- |
+| GET `/api/v1/order-drafts/:id/items`            | none                           | 200 `{draft,items}` |
+| POST `/api/v1/order-drafts/:id/items`           | `{version,productId,quantity}` | 201 `{draft,items}` |
+| PATCH `/api/v1/order-drafts/:id/items/:itemId`  | `{version,quantity}`           | 200 `{draft,items}` |
+| DELETE `/api/v1/order-drafts/:id/items/:itemId` | `{version}`                    | 200 `{draft,items}` |
+
+`items` is the canonical list sorted by item ID. A line contains only server-generated `id`, portal `productId`, and exact decimal-string `quantity`. Current catalog display data is available from the existing catalog API; client prices, totals and snapshots are not accepted. A draft supports at most 100 distinct products. Add of an existing product conflicts; PATCH replaces the absolute quantity; DELETE removes a line, including if its product is no longer available. Missing or inaccessible drafts, lines and products share the safe 404 response. Deleting a draft with lines remains a conflict: remove lines first. Existing notes and other child history remain protected.
+
+Quantities must be positive decimal strings with canonical unsigned integer syntax, at most 12 integer and six fractional digits; exponent notation, signs, leading zeroes, zero and excess precision are rejected without rounding. The response removes insignificant fractional zeroes. The selected quantity must meet the current eligible active product's MOQ in its selling UOM on add and update. MOQ is a minimum, not an increment or a required multiple. Fractional quantities are allowed for every UOM because the catalog supplies no increment rules. Exact comparison avoids floating-point conversion. This is the explicitly delegated #52 decision; future selling increments require an explicit product contract. Submit-time revalidation remains #54.
+
+Every successful item mutation, including a no-op replacement, advances the same opaque version used by header edits. The item and version change atomically. A stale version, duplicate product or full draft returns 409 `ORDER_DRAFT_CONFLICT`; invalid quantity or below-MOQ returns 400 `INVALID_ORDER_ITEM_QUANTITY`; invalid bodies return 400 `INVALID_ORDER_DRAFT_REQUEST`. Reload the item list after a conflict or an uncertain 503 before deciding on another action; do not automatically replay an uncertain write. Audit publication occurs after persistence and can produce an unconfirmed 503 even when the operation committed.
+
+SQL serializes on the same account/session and owned order locks as header operations and preserves line snapshots/prices when they already exist. JSON stores lines with the order in one atomic replacement under the existing shared security coordinator, rejects unsupported private item fields, and retains the existing single-process/offline-maintenance constraints. Existing submitted records and child history are not rewritten. No ERP calls, submission snapshots, submission idempotency or Web behavior are introduced.

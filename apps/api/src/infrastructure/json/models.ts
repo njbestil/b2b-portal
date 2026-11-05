@@ -50,6 +50,7 @@ export interface JsonCustomerPrice {
 }
 /** Legacy summary-only rows remain readable; current draft writes retain both fields. */
 export interface JsonOrder extends OrderSummary {
+  readonly items?: readonly import("../../repositories/order-drafts.js").DraftItem[];
   readonly deliveryAddressId?: string | null;
   readonly updatedAt?: Timestamp;
 }

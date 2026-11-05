@@ -1,3 +1,4 @@
+import { checkedDraftItems } from "../../services/draft-quantities.js";
 import {
   JsonStorageError,
   type JsonCollection,
@@ -223,6 +224,13 @@ const parsers: {
   },
   orders(value) {
     const row = object(value);
+    let items;
+    try {
+      items =
+        row.items === undefined ? undefined : checkedDraftItems(row.items);
+    } catch {
+      return invalid();
+    }
     if ((row.deliveryAddressId === undefined) !== (row.updatedAt === undefined))
       return invalid();
     const updatedAt =
@@ -230,6 +238,7 @@ const parsers: {
     if (updatedAt !== undefined && updatedAt < timestamp(row.createdAt))
       return invalid();
     return {
+      ...(items === undefined ? {} : { items }),
       ...(updatedAt === undefined
         ? {}
         : {

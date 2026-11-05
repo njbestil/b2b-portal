@@ -9,6 +9,11 @@ import type { JsonOrder } from "./models.js";
 import type { JsonSecurityCoordinator } from "./security.js";
 import { DraftError, draftId } from "../../services/order-drafts.js";
 import { SessionError } from "../../services/session-state.js";
+import {
+  checkedDraftItems,
+  draftQuantity,
+  requireMinimum,
+} from "../../services/draft-quantities.js";
 import { checkedNote } from "../../services/internal-notes.js";
 import {
   checkedAddress,
@@ -96,6 +101,7 @@ export function createJsonOrderDrafts(
                     "integrationStatus",
                     "deliveryAddressId",
                     "updatedAt",
+                    "items",
                   ].includes(k),
               ),
           )
@@ -158,6 +164,81 @@ export function createJsonOrderDrafts(
       throw new DraftError("not_found");
   }
   return {
+    items: (actor, id) =>
+      run(actor, async (rows, check) => {
+        const row = owned(rows, actor, id);
+        if (!row || !editable(row)) throw new DraftError("not_found");
+        const result = {
+          draft: view(row),
+          items: checkedDraftItems(row.items ?? []),
+        };
+        check();
+        return result;
+      }),
+    changeItem: (actor, id, version, change) =>
+      run(actor, async (rows, check) => {
+        const row = owned(rows, actor, id);
+        if (!row) throw new DraftError("not_found");
+        if (!editable(row) || view(row).version !== version)
+          throw new DraftError("conflict");
+        let items = checkedDraftItems(row.items ?? []);
+        const item =
+          change.kind === "add"
+            ? null
+            : items.find((r) => r.id === change.itemId);
+        if (change.kind !== "add" && !item) throw new DraftError("not_found");
+        if (
+          change.kind === "add" &&
+          (items.length >= 100 ||
+            items.some((r) => r.productId === change.productId))
+        )
+          throw new DraftError("conflict");
+        if (change.kind !== "remove") {
+          const productId =
+            change.kind === "add" ? change.productId : item!.productId;
+          const products = await security.store.read("products"),
+            access = await security.store.read("customer_product_access");
+          const product = products.find((r) => r.id === productId && r.active);
+          if (
+            !product ||
+            !access.some(
+              (r) =>
+                r.productId === productId &&
+                r.companyId === actor.companyId &&
+                r.eligible,
+            )
+          )
+            throw new DraftError("not_found");
+          const quantity = draftQuantity(change.quantity);
+          requireMinimum(quantity, product.minimumOrderQuantity);
+          if (change.kind === "add") {
+            let itemId;
+            try {
+              itemId = draftId(newId());
+            } catch {
+              throw new DraftError("unavailable");
+            }
+            if (rows.some((r) => r.items?.some((i) => i.id === itemId)))
+              throw new DraftError("conflict");
+            items.push({ id: itemId, productId, quantity });
+          } else
+            items = items.map((r) =>
+              r.id === change.itemId ? { ...r, quantity } : r,
+            );
+        } else items = items.filter((r) => r.id !== change.itemId);
+        const next: JsonOrder = {
+          ...row,
+          items: checkedDraftItems(items),
+          deliveryAddressId: row.deliveryAddressId ?? null,
+          updatedAt: nextDraftTime(row.updatedAt ?? row.createdAt, now()),
+        };
+        const result = { draft: view(next), items: next.items! };
+        await publish(
+          rows.map((r) => (r.id === id ? next : r)),
+          check,
+        );
+        return result;
+      }),
     create: (actor, addressId) =>
       run(actor, async (rows, check) => {
         await address(actor, addressId);
@@ -214,6 +295,7 @@ export function createJsonOrderDrafts(
         if (!row) throw new DraftError("not_found");
         if (!editable(row) || view(row).version !== version)
           throw new DraftError("conflict");
+        if (row.items?.length) throw new DraftError("conflict");
         const raw = await file("order_internal_notes.json");
         if (raw !== null) {
           if (!Array.isArray(raw)) throw new DraftError("unavailable");

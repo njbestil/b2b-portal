@@ -14,7 +14,7 @@ Envelopes are `{success:true,data,requestId}` or `{success:false,error:{code,mes
 
 Draft: `{id,companyId,createdByUserId,orderNumber,createdAt,updatedAt,status, integrationStatus,deliveryAddressId,version}`. New IDs/owner/timestamps are server-owned; new orderNumber is null, status DRAFT, integrationStatus NOT_SENT. The optional address is never implicitly replaced by a default. The supplied address must exist, be same-company and currently active on create/update. Read does not silently replace an address later deactivated; the owner can explicitly clear/change it. Submit-time business validation remains #54.
 
-Only deliveryAddressId is mutable here. No items, prices/totals, role/tenant/actor/status/timestamp fields, snapshots, idempotency keys, notes or ERP actions are accepted. Caller-generated IDs and extra properties are invalid. Item writes remain #52; UI #53; validation/snapshots/idempotency #54–#57.
+Only deliveryAddressId is mutable through the header routes. No items, prices/totals, role/tenant/actor/status/timestamp fields, snapshots, idempotency keys, notes or ERP actions are accepted there. Caller-generated IDs and extra properties are invalid. Item writes use the separate [draft item API](order-draft-items-api.md); UI #53 and validation/snapshots/idempotency #54–#57 remain separate.
 
 Version is opaque `draft-` plus SHA-256 of the canonical draft representation. Every successful update advances the server updatedAt by at least one millisecond, even if the address is unchanged, so stale writes conflict. Create is not replay-idempotent. Do not automatically retry writes after uncertain transport/audit failures.
 
@@ -28,7 +28,7 @@ Version is opaque `draft-` plus SHA-256 of the canonical draft representation. E
 | 413 / 415 / 429 | PAYLOAD_TOO_LARGE / UNSUPPORTED_MEDIA_TYPE / RATE_LIMITED                                                                                     |
 | 503             | ORDER_DRAFT_UNAVAILABLE or admission AUTH_UNAVAILABLE; result may already be committed, reload before another action                          |
 
-Own non-DRAFT/sent records cannot be mutated; draft reads return 404 for them. SQL additionally protects legacy DRAFT rows carrying submission snapshots/timestamps, ERP identity or reserved idempotency evidence. Delete never cascades into line items, notes, confirmations, integration history or invoices: existing references conflict and remain intact. #52 must define atomic item cleanup/version changes when introducing item writes; it must not bypass this preservation rule.
+Own non-DRAFT/sent records cannot be mutated; draft reads return 404 for them. SQL additionally protects legacy DRAFT rows carrying submission snapshots/timestamps, ERP identity or reserved idempotency evidence. Delete never cascades into line items, notes, confirmations, integration history or invoices: existing references conflict and remain intact. Remove draft lines explicitly before deleting the draft; item changes advance the same version atomically.
 
 SQL uses existing orders/delivery-address schema and a transaction, locking company -> actor user/session -> owned order -> supplied address. Version and dynamic authority are checked under ownership; access expiry is rechecked after statement waits. No migration.
 
