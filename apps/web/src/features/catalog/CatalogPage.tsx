@@ -217,6 +217,15 @@ export function CatalogView({
                       </h2>
                       <ProductFacts product={product} />
                       <Link
+                        className="button button-primary"
+                        to={`/orders?product=${product.id}`}
+                      >
+                        Add to draft
+                        <span className="visually-hidden">
+                          : {product.name}
+                        </span>
+                      </Link>
+                      <Link
                         className="button button-secondary"
                         to={{
                           pathname: `/catalog/${product.id}`,
@@ -261,8 +270,8 @@ export function CatalogView({
       )}
       <p className="catalog-disclaimer">
         Browsing does not reserve stock. Prices, availability and account
-        eligibility must be checked before ordering. Ordering is not available
-        from this screen yet.
+        eligibility must be checked before ordering. Choose a draft to add
+        products.
       </p>
     </>
   );
@@ -302,9 +311,15 @@ export function ProductView({
               </div>
             </dl>
             <ProductFacts product={state.data} />
+            <Link
+              className="button button-primary"
+              to={`/orders?product=${state.data.id}`}
+            >
+              Add to draft
+            </Link>
             <p className="catalog-disclaimer">
               Cached browsing information does not confirm stock or pricing for
-              an order. Ordering is not available from this screen yet.
+              an order. Choose a draft to add this product.
             </p>
           </div>
         </article>
