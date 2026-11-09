@@ -112,6 +112,29 @@ export interface ErpEnvironment {
   readonly timeoutMs: number;
 }
 
+/** Global submission minimum; omission makes submission validation unavailable. */
+export function parseSubmissionMinimum(
+  environment: Readonly<Record<string, string | undefined>>,
+): { readonly amount: string; readonly currency: string } | undefined {
+  const amount = environment.SUBMISSION_MINIMUM_AMOUNT;
+  const currency = environment.SUBMISSION_MINIMUM_CURRENCY;
+  if (amount === undefined && currency === undefined) return undefined;
+  const problems: string[] = [];
+  if (
+    typeof amount !== "string" ||
+    !/^(?:0|[1-9]\d{0,23})(?:\.\d{1,18})?$/.test(amount)
+  )
+    problems.push(
+      "SUBMISSION_MINIMUM_AMOUNT must be a nonnegative decimal string with at most 24 integer and 18 fractional digits",
+    );
+  if (typeof currency !== "string" || !/^[A-Z]{3}$/.test(currency))
+    problems.push(
+      "SUBMISSION_MINIMUM_CURRENCY must be a three-letter uppercase currency code",
+    );
+  if (problems.length) throw new EnvironmentConfigurationError(problems);
+  return { amount: amount!, currency: currency! };
+}
+
 /** Backend-only outbound adapter settings; never accepted from HTTP callers. */
 export function parseErpEnvironment(
   environment: Readonly<Record<string, string | undefined>>,

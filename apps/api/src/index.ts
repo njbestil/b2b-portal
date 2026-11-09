@@ -15,6 +15,7 @@ import {
   parsePostgresEnvironment,
   parseServerEnvironment,
   parseStorageEnvironment,
+  parseSubmissionMinimum,
 } from "@b2b-portal/config/server";
 import { createApp } from "./app.js";
 import { randomUUID } from "node:crypto";
@@ -22,6 +23,7 @@ import { createAudit } from "./services/audit.js";
 import { createLogin, createVerifiedLogin } from "./services/login.js";
 import { createApplications } from "./services/applications.js";
 import { createOrderDrafts } from "./services/order-drafts.js";
+import { createMockCustomerCatalogSource } from "./infrastructure/mock-customer-catalog-adapter.js";
 import { createCompanyProfiles } from "./services/company-profiles.js";
 import { createDeliveryAddresses } from "./services/delivery-addresses.js";
 import { createApplicationDecisions } from "./services/application-decisions.js";
@@ -50,6 +52,7 @@ try {
   const config = parseServerEnvironment("api", process.env);
   const postgresConfig = parsePostgresEnvironment(process.env);
   const erpConfig = parseErpEnvironment(process.env);
+  const submissionMinimum = parseSubmissionMinimum(process.env);
   const storageConfig = parseStorageEnvironment(process.env);
   const sessionConfig = parseSessionConfiguration(process.env);
   const demoTarget = demoMode(process.env);
@@ -102,7 +105,16 @@ try {
       )
     : undefined;
   const app = createApp({
-    orderDrafts: createOrderDrafts(selectedStorage.orderDrafts, record),
+    orderDrafts: createOrderDrafts(
+      selectedStorage.orderDrafts,
+      record,
+      config.nodeEnv !== "production" && erpConfig && submissionMinimum
+        ? {
+            minimum: submissionMinimum,
+            source: createMockCustomerCatalogSource(erpConfig),
+          }
+        : undefined,
+    ),
     companyProfiles: createCompanyProfiles(selectedStorage.companyProfiles),
     deliveryAddresses: createDeliveryAddresses(
       selectedStorage.deliveryAddresses,

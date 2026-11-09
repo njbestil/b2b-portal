@@ -143,6 +143,45 @@ export function createPostgresOrderDrafts(
     );
   }
   return {
+    validationContext: (actor, id, version) =>
+      run(actor, async (client) => {
+        const row = await owned(client, actor, id);
+        if (!row) throw new DraftError("not_found");
+        if (!editable(row)) throw new DraftError("conflict");
+        const draft = view(row);
+        if (draft.version !== version) throw new DraftError("conflict");
+        const customer = (
+          await client.query(
+            'SELECT erp_customer_reference AS "reference" FROM companies WHERE id=$1',
+            [actor.companyId],
+          )
+        ).rows[0];
+        const addressEligible =
+          row.deliveryAddressId !== null &&
+          (
+            await client.query(
+              "SELECT id FROM delivery_addresses WHERE id=$1 AND company_id=$2 AND active FOR SHARE",
+              [row.deliveryAddressId, actor.companyId],
+            )
+          ).rows.length > 0;
+        const lines = await items(client, actor, id);
+        const refs = (
+          await client.query(
+            'SELECT id, erp_product_reference AS "reference" FROM products WHERE id=ANY($1::uuid[]) FOR SHARE',
+            [lines.map((line) => line.productId)],
+          )
+        ).rows;
+        return {
+          draft,
+          customerReference: customer?.reference ?? null,
+          addressEligible,
+          lines: lines.map((line) => ({
+            ...line,
+            productReference:
+              refs.find((ref) => ref.id === line.productId)?.reference ?? null,
+          })),
+        };
+      }),
     items: (actor, id) =>
       run(actor, async (client) => {
         const row = await owned(client, actor, id);
