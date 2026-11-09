@@ -164,6 +164,36 @@ export function createJsonOrderDrafts(
       throw new DraftError("not_found");
   }
   return {
+    validationContext: (actor, id, version) =>
+      run(actor, async (rows, check) => {
+        const row = owned(rows, actor, id);
+        if (!row) throw new DraftError("not_found");
+        if (!editable(row)) throw new DraftError("conflict");
+        const draft = view(row);
+        if (draft.version !== version) throw new DraftError("conflict");
+        const companies = await security.store.read("companies"),
+          products = await security.store.read("products");
+        const customerReference =
+          companies.find((c) => c.id === actor.companyId)
+            ?.erpCustomerReference ?? null;
+        let addressEligible = false;
+        if (draft.deliveryAddressId !== null) {
+          try {
+            await address(actor, draft.deliveryAddressId);
+            addressEligible = true;
+          } catch (e) {
+            if (!(e instanceof DraftError && e.code === "not_found")) throw e;
+          }
+        }
+        const lines = checkedDraftItems(row.items ?? []).map((line) => ({
+          ...line,
+          productReference:
+            products.find((p) => p.id === line.productId)
+              ?.erpProductReference ?? null,
+        }));
+        check();
+        return { draft, customerReference, addressEligible, lines };
+      }),
     items: (actor, id) =>
       run(actor, async (rows, check) => {
         const row = owned(rows, actor, id);

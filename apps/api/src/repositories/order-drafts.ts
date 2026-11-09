@@ -26,6 +26,15 @@ export interface DraftItems {
   readonly draft: OrderDraft;
   readonly items: readonly DraftItem[];
 }
+/** Private, server-derived provider references; never returned to the client. */
+export interface DraftValidationContext {
+  readonly draft: OrderDraft;
+  readonly customerReference: string | null;
+  readonly addressEligible: boolean;
+  readonly lines: readonly (DraftItem & {
+    readonly productReference: string | null;
+  })[];
+}
 export type DraftItemChange =
   | {
       readonly kind: "add";
@@ -40,6 +49,11 @@ export type DraftItemChange =
   | { readonly kind: "remove"; readonly itemId: string };
 /** Private customer-owned draft port. No submission/ERP mutation capability. */
 export interface OrderDraftRepository {
+  validationContext(
+    actor: DraftActor,
+    id: string,
+    version: string,
+  ): Promise<DraftValidationContext>;
   items(actor: DraftActor, id: string): Promise<DraftItems>;
   changeItem(
     actor: DraftActor,

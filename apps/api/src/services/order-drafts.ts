@@ -1,4 +1,6 @@
 import { draftQuantity, checkedDraftItems } from "./draft-quantities.js";
+import { validateSubmission } from "./submission-validation.js";
+import type { CatalogSource } from "../repositories/catalog-sync.js";
 import type {
   DraftItems,
   DraftItemChange,
@@ -81,6 +83,10 @@ function view(row: OrderDraft, actor: DraftActor, id?: string): OrderDraft {
 export function createOrderDrafts(
   repository: OrderDraftRepository,
   audit: (input: AuditInput) => Promise<unknown>,
+  validation?: {
+    readonly minimum: { readonly amount: string; readonly currency: string };
+    readonly source: CatalogSource;
+  },
 ) {
   async function record(
     actor: DraftActor,
@@ -111,6 +117,83 @@ export function createOrderDrafts(
     items: checkedDraftItems(result.items),
   });
   return {
+    async validate(actor: AuthorizedActor, key: unknown, input: unknown) {
+      const who = identity(actor),
+        id = draftId(key),
+        body = object(input);
+      if (Object.keys(body).join(",") !== "version")
+        throw new DraftError("invalid_input");
+      const expected = version(body.version);
+      const context = await repository.validationContext(who, id, expected);
+      if (
+        !validation ||
+        !context.customerReference ||
+        context.lines.some((line) => !line.productReference)
+      )
+        throw new DraftError("unavailable");
+      let snapshot;
+      try {
+        snapshot = await validation.source.readSnapshot(
+          new AbortController().signal,
+        );
+      } catch {
+        throw new DraftError("unavailable");
+      }
+      const current = await repository.validationContext(who, id, expected);
+      if (JSON.stringify(context) !== JSON.stringify(current))
+        throw new DraftError("conflict");
+      const at = Date.now(),
+        customer = context.customerReference;
+      const valid = (p: { validFrom: string | null; validTo: string | null }) =>
+        (p.validFrom === null || Date.parse(p.validFrom) <= at) &&
+        (p.validTo === null || at < Date.parse(p.validTo));
+      try {
+        const issues = validateSubmission({
+          minimum: validation.minimum,
+          accountEligible: snapshot.customers.some(
+            (c) => c.reference === customer && c.active,
+          ),
+          addressEligible: context.addressEligible,
+          lines: context.lines.map((line) => {
+            const product = snapshot.products.find(
+              (p) => p.reference === line.productReference && p.active,
+            );
+            const eligible = snapshot.access.some(
+              (a) =>
+                a.customerReference === customer &&
+                a.productReference === line.productReference &&
+                a.eligible,
+            );
+            if (!product || !eligible)
+              return { id: line.id, quantity: line.quantity, product: null };
+            const prices = snapshot.prices.filter(
+              (p) =>
+                p.productReference === line.productReference && valid(p.price),
+            );
+            const price =
+              prices.find((p) => p.customerReference === customer)?.price ??
+              prices.find((p) => p.customerReference === null)?.price ??
+              null;
+            return {
+              id: line.id,
+              quantity: line.quantity,
+              product: {
+                sellingUom: product.sellingUom,
+                minimumOrderQuantity: product.minimumOrderQuantity,
+                availableQuantity: product.metadata?.availableQuantity ?? null,
+                price: price && {
+                  amount: price.amount,
+                  currency: price.currency,
+                },
+              },
+            };
+          }),
+        });
+        return { draftVersion: expected, valid: issues.length === 0, issues };
+      } catch {
+        throw new DraftError("unavailable");
+      }
+    },
     async items(actor: AuthorizedActor, key: unknown) {
       const who = identity(actor, true),
         id = draftId(key);

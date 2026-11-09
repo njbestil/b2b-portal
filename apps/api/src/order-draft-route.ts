@@ -109,6 +109,29 @@ export function createOrderDraftRouter(
     response.once("close", release);
     next();
   };
+  router.post(
+    "/api/v1/order-drafts/:id/validate",
+    authorize("order-drafts.manage", sessions),
+    guard,
+    json({ limit: "8kb", inflate: false }),
+    async (request, response, next) => {
+      try {
+        if (Object.keys(request.query).length)
+          throw new DraftError("invalid_input");
+        if (!service) throw new DraftError("unavailable");
+        sendSuccess(
+          response,
+          await service.validate(
+            actorFor(request),
+            request.params.id,
+            request.body,
+          ),
+        );
+      } catch (e) {
+        next(error(e));
+      }
+    },
+  );
   for (const method of ["post", "patch", "delete"] as const) {
     router[method](
       method === "post" ? "/api/v1/order-drafts" : "/api/v1/order-drafts/:id",
