@@ -2,6 +2,11 @@
 
 An npm monorepo for the B2B Portal web app, API, Mock ERP, and shared packages.
 
+For a fresh local environment, follow [the local developer guide](docs/local-development.md):
+native Web/API/Mock ERP, explicit disposable JSON seed, optional Docker Compose
+PostgreSQL, health checks, repeat startup and safe shutdown. Service startup alone
+does not seed data, configure authentication or provision accounts.
+
 ## Build
 
 Use Node.js 24 LTS and npm 11. From the repository root:
@@ -59,9 +64,9 @@ Or preview the built web app with:
 npm run preview --workspace=@b2b-portal/web
 ```
 
-See [the web README](apps/web/README.md) for shell routes, role previews,
-design-reference scope, and static-host routing requirements. The shell has no
-live authentication or business data; its role selector is not authorization.
+See [the web README](apps/web/README.md) for routes, design-reference scope,
+and static-host routing requirements. Operational login and catalog flows require
+the configured API; any design role preview is not authorization.
 
 ## Environment configuration
 
@@ -85,7 +90,9 @@ address such as `0.0.0.0` when the deployment requires it.
 
 The API optionally consumes `DATABASE_URL` and bounded pool settings described in
 [PostgreSQL infrastructure](docs/postgresql.md). Without a URL, database-free
-startup remains supported. The web shell consumes no custom connection variables.
+startup remains supported. The Web dev/preview server uses the server-only
+`PORTAL_API_PROXY_TARGET` environment variable to route `/api` to the API
+(default `http://127.0.0.1:3000`); it is not a browser credential or Web build setting.
 The optional backend-only `ERP_BASE_URL` connects the ERP gateway to the Mock ERP;
 see [ERP gateway configuration and scope](docs/erp-gateway.md). Authentication
 settings belong to their consuming feature. Keep real `.env` files untracked;

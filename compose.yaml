@@ -1,0 +1,30 @@
+# Optional local storage only. Web, API and Mock ERP run natively; see docs/local-development.md.
+services:
+  postgres:
+    image: postgres:17-bookworm
+    profiles: [postgres]
+    environment:
+      POSTGRES_USER: b2b_local
+      POSTGRES_DB: b2b_demo_local
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
+      POSTGRES_INITDB_ARGS: --auth-host=scram-sha-256
+    secrets:
+      - postgres_password
+    ports:
+      - "127.0.0.1:${LOCAL_PG_PORT:-5433}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: [CMD-SHELL, "pg_isready -U b2b_local -d b2b_demo_local"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+      start_period: 5s
+    stop_grace_period: 15s
+
+secrets:
+  postgres_password:
+    file: ${LOCAL_PG_PASSWORD_FILE:-./.local/postgres-password}
+
+volumes:
+  postgres_data:
