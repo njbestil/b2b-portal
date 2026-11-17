@@ -105,6 +105,7 @@ export function createJsonOrderDrafts(
                     "items",
                     "commercialBaseline",
                     "erpOrderReference",
+                    "submittedSnapshot",
                   ].includes(k),
               ),
           )
