@@ -104,6 +104,7 @@ export function createJsonOrderDrafts(
                     "updatedAt",
                     "items",
                     "commercialBaseline",
+                    "submittedSnapshot",
                   ].includes(k),
               ),
           )
