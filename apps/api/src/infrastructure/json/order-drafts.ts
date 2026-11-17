@@ -104,6 +104,7 @@ export function createJsonOrderDrafts(
                     "updatedAt",
                     "items",
                     "commercialBaseline",
+                    "erpOrderReference",
                   ].includes(k),
               ),
           )
@@ -132,7 +133,9 @@ export function createJsonOrderDrafts(
         r.createdByUserId === actor.userId,
     ) ?? null;
   const editable = (row: JsonOrder) =>
-    row.status === "DRAFT" && row.integrationStatus === "NOT_SENT";
+    row.status === "DRAFT" &&
+    row.integrationStatus === "NOT_SENT" &&
+    row.erpOrderReference === undefined;
   async function address(actor: DraftActor, id: string | null) {
     if (id === null) return;
     const raw = await file("delivery_addresses.json");

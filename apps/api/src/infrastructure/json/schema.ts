@@ -244,6 +244,9 @@ const parsers: {
     if (updatedAt !== undefined && updatedAt < timestamp(row.createdAt))
       return invalid();
     return {
+      ...(row.erpOrderReference === undefined
+        ? {}
+        : { erpOrderReference: id(row.erpOrderReference) }),
       ...(commercialBaseline === undefined ? {} : { commercialBaseline }),
       ...(items === undefined ? {} : { items }),
       ...(updatedAt === undefined

@@ -1,3 +1,5 @@
+import { createPostgresInvoices } from "./postgres-invoices.js";
+import { createJsonInvoices } from "./json/invoices.js";
 import type { AccountStatusRepository } from "../repositories/account-status.js";
 import type { CustomerUserRepository } from "../repositories/customer-users.js";
 import { createPostgresCustomerUsers } from "./postgres-customer-users.js";
@@ -61,6 +63,7 @@ import { createPostgresApplications } from "./postgres-applications.js";
 import { createJsonApplications } from "./json/applications.js";
 
 export interface StorageRuntime {
+  readonly invoices: import("../repositories/invoices.js").InvoiceRepository;
   readonly orderDrafts: OrderDraftRepository;
   readonly companyProfiles: CompanyProfileRepository;
   readonly deliveryAddresses: DeliveryAddressRepository;
@@ -141,6 +144,7 @@ export async function selectStorage(
         reason: "postgres_reachable",
       });
       return Object.freeze({
+        invoices: createPostgresInvoices(postgres.pool),
         provider: "postgresql",
         sessions,
         passwordChanges: createPostgresPasswordChange(postgres.pool),
@@ -221,6 +225,7 @@ export async function selectStorage(
     reason: options.postgres ? "postgres_unavailable" : "postgres_unconfigured",
   });
   return Object.freeze({
+    invoices: createJsonInvoices(security),
     provider: "json",
     sessions,
     passwordChanges: createJsonPasswordChange(security),
