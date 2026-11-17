@@ -25,3 +25,4 @@ export type {
   HealthResponse,
 } from "./health.js";
 export type { SalesCompanyPage } from "./sales-companies.js";
+export type { PortalInvoice, PortalInvoicePage } from "./invoices.js";
