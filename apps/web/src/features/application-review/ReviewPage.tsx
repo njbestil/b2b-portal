@@ -191,9 +191,11 @@ export function ReviewDetail({
 function Detail({
   client,
   companyId,
+  refreshQueue,
 }: {
   client: ReviewClient;
   companyId: string;
+  refreshQueue: () => void;
 }) {
   const read = useCallback(
     (signal: AbortSignal) => client.detail(companyId, signal),
@@ -203,11 +205,16 @@ function Detail({
   return (
     <ReviewDetail
       state={state}
-      reload={reload}
+      reload={() => {
+        reload();
+        refreshQueue();
+      }}
       decide={(decision, reason) => {
-        void model.write((current, signal) =>
-          client.decide(current, decision, reason, signal),
-        );
+        void model
+          .write((current, signal) =>
+            client.decide(current, decision, reason, signal),
+          )
+          .then(() => refreshQueue());
       }}
     />
   );
@@ -233,7 +240,12 @@ function ReviewScreen({ adapter }: { adapter?: ReviewAdapter }) {
     >
       <div className="account-review-layout">
         {companyId ? (
-          <Detail key={companyId} client={client} companyId={companyId} />
+          <Detail
+            key={companyId}
+            client={client}
+            companyId={companyId}
+            refreshQueue={reload}
+          />
         ) : (
           <article className="panel account-form-card">
             <h2>Select an application</h2>
