@@ -13,6 +13,10 @@ import { createPostgresRepositories } from "../dist/infrastructure/postgres-repo
 import { createOrderSnapshot } from "../dist/services/order-snapshot.js";
 import { commitJsonOrderSnapshot } from "../dist/infrastructure/json/order-snapshots.js";
 import { withPostgresOrderSnapshot } from "../dist/infrastructure/postgres-order-snapshots.js";
+import {
+  submitIdempotently,
+  SubmissionKeyConflict,
+} from "../dist/infrastructure/postgres-submission-idempotency.js";
 async function fixture(t, provider) {
   const f = await authFixture(t, provider);
   for (let i = 0; i < f.data.users.length; i++)
@@ -141,6 +145,116 @@ async function fixture(t, provider) {
         });
   return f;
 }
+test(
+  "postgresql: submission reservation commits with snapshot, serializes concurrent requests and replays",
+  {
+    skip:
+      !process.env.B2B_TEST_MIGRATIONS_DATABASE_URL &&
+      "PostgreSQL URL required",
+  },
+  async (t) => {
+    const f = await fixture(t, "postgresql");
+    const request = {
+      key: "test-key",
+      companyId: f.companyId,
+      userId: f.actor.userId,
+      orderId: f.draft.id,
+      canonicalRequest: "version-1",
+    };
+    let transitions = 0;
+    const transition = async (client) => {
+      transitions++;
+      await client.query(
+        "UPDATE orders SET order_status='SUBMITTED',submitted_at=$1 WHERE id=$2",
+        [f.snapshot.submittedAt, f.draft.id],
+      );
+      return f.snapshot;
+    };
+    const submit = (r = request, auth = async () => {}) =>
+      submitIdempotently(f.pool, r, auth, transition);
+    const values = await Promise.all([submit(), submit()]);
+    assert.equal(transitions, 1);
+    assert.deepEqual(values.map((v) => v.replayed).sort(), [false, true]);
+    assert.equal(values[0].outboundReference, values[1].outboundReference);
+    assert.deepEqual(values[0].snapshot, values[1].snapshot);
+    await assert.rejects(
+      submit({ ...request, canonicalRequest: "different" }),
+      SubmissionKeyConflict,
+    );
+    await assert.rejects(
+      submit({ ...request, key: "different" }),
+      SubmissionKeyConflict,
+    );
+    await assert.rejects(
+      submit({ ...request, userId: f.data.users[0].id }),
+      SubmissionKeyConflict,
+    );
+    await assert.rejects(submit({ ...request, key: "bad key" }), TypeError);
+    await assert.rejects(
+      submit(request, async () => {
+        throw Error("AUTH");
+      }),
+      /AUTH/,
+    );
+    assert.equal(
+      (
+        await f.pool.query(
+          "SELECT count(*)::int AS n FROM submission_idempotency",
+        )
+      ).rows[0].n,
+      1,
+    );
+  },
+);
+test(
+  "postgresql: failed transition rolls back its reservation",
+  {
+    skip:
+      !process.env.B2B_TEST_MIGRATIONS_DATABASE_URL &&
+      "PostgreSQL URL required",
+  },
+  async (t) => {
+    const f = await fixture(t, "postgresql");
+    const request = {
+      key: "test-key",
+      companyId: f.companyId,
+      userId: f.actor.userId,
+      orderId: f.draft.id,
+      canonicalRequest: "version-1",
+    };
+    await assert.rejects(
+      submitIdempotently(
+        f.pool,
+        request,
+        async () => {},
+        async (client) => {
+          await client.query(
+            "UPDATE orders SET order_status='SUBMITTED',submitted_at=$1 WHERE id=$2",
+            [f.snapshot.submittedAt, f.draft.id],
+          );
+          throw Error("FAIL");
+        },
+      ),
+      /FAIL/,
+    );
+    assert.equal(
+      (
+        await f.pool.query(
+          "SELECT count(*)::int AS n FROM submission_idempotency",
+        )
+      ).rows[0].n,
+      0,
+    );
+    assert.equal(
+      (
+        await f.pool.query("SELECT order_status FROM orders WHERE id=$1", [
+          f.draft.id,
+        ])
+      ).rows[0].order_status,
+      "DRAFT",
+    );
+  },
+);
 for (const provider of ["json", "postgresql"]) {
   const opts = {
     skip:

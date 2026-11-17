@@ -1,0 +1,9 @@
+# Submission idempotency component
+
+Issue #57 supplies an internal PostgreSQL component for the submission service in #62. It does not create a submission endpoint or send orders to ERP. A key is globally reserved by its SHA-256 hash; it is bound to the company, user, order and a hash of the server-defined canonical request. A repeated matching request returns the committed immutable snapshot and the same outbound reference. A changed request or another key for the same order conflicts. The caller must authorize every request, including replay, and define and version the canonical representation so every material submission input is included. Keys must be 1–128 printable ASCII characters without spaces. Reservations are retained with the order; there is no expiry or key reuse.
+
+The reservation, transition and snapshot commit in one PostgreSQL transaction. A failed validation or transition rolls them all back. The callback must not perform external I/O or commit its transaction. The component does not persist failed validation responses; they may be retried. #62 must map conflicts and responses, perform current authorization and validation, and persist the exact outbound payload and integration outcomes before issuing external requests.
+
+The outbound reference is stable, but it alone cannot guarantee ERP deduplication. #62 must require a provider with durable idempotency or reliable reconciliation, and fail closed on an unknown outcome where neither is available. Mock ERP is suitable for development/testing only: its process-local ledger does not survive restarts. A real provider is required before production submission.
+
+JSON storage has no durable, cross-process submission reservation. #62 must fail closed for JSON submission until an equivalent atomic reservation and recovery mechanism is implemented. This component is not wired to a route and does not by itself satisfy the issue's end-to-end portal and ERP acceptance criterion.

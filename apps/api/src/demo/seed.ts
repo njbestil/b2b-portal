@@ -204,6 +204,9 @@ export async function seedPostgres(
       ...(rows.some((row) => row.name === "order_internal_notes")
         ? ["order_internal_notes"]
         : []),
+      ...(rows.some((row) => row.name === "submission_idempotency")
+        ? ["submission_idempotency"]
+        : []),
     ];
     if (
       rows.length !== managedTables.length + 1 ||
