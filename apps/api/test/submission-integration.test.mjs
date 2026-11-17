@@ -107,6 +107,18 @@ async function fixture(t, provider) {
     minimum: { amount: "27.5", currency: "AED" },
     source: f.source,
   });
+  f.unacknowledged = f.draft;
+  const quote = await f.service.terms(f.ca, f.draft.id, {
+    version: f.draft.version,
+  });
+  f.draft = (
+    await f.service.acknowledgeTerms(
+      f.ca,
+      f.draft.id,
+      { version: f.draft.version, token: quote.token },
+      randomUUID(),
+    )
+  ).draft;
   return f;
 }
 for (const provider of ["json", "postgresql"]) {
@@ -116,6 +128,127 @@ for (const provider of ["json", "postgresql"]) {
         ? "PostgreSQL URL required"
         : false,
   };
+  test(
+    provider +
+      ": explicit acknowledgement binds customer-visible prices; price changes conflict and sufficient stock changes do not",
+    opts,
+    async (t) => {
+      const f = await fixture(t, provider);
+      const snap = await f.source.readSnapshot(new AbortController().signal);
+      let current = structuredClone(snap);
+      const service = createOrderDrafts(f.repo, f.record, {
+        minimum: { amount: "0", currency: "AED" },
+        source: { readSnapshot: async () => structuredClone(current) },
+      });
+      const unbased = await f.base.create(f.ca, {}, randomUUID());
+      const added = await f.base.changeItem(
+        f.ca,
+        unbased.draft.id,
+        undefined,
+        "add",
+        {
+          version: unbased.draft.version,
+          productId: f.data.products[0].id,
+          quantity: "1",
+        },
+        randomUUID(),
+      );
+      assert.ok(
+        (
+          await service.validate(f.ca, added.draft.id, {
+            version: added.draft.version,
+          })
+        ).issues.some((i) => i.code === "COMMERCIAL_TERMS_REQUIRED"),
+      );
+      const quote = await service.terms(f.ca, f.draft.id, {
+        version: f.draft.version,
+      });
+      const customerPrice = () =>
+        current.prices.find(
+          (p) =>
+            p.productReference === "DEMO-P001" &&
+            p.customerReference === "DEMO-C001",
+        ).price;
+      customerPrice().amount = "27.5000";
+      assert.equal(
+        (await service.validate(f.ca, f.draft.id, { version: f.draft.version }))
+          .valid,
+        true,
+      );
+      current.products.find(
+        (p) => p.reference === "DEMO-P001",
+      ).metadata.availableQuantity = "2";
+      assert.equal(
+        (await service.validate(f.ca, f.draft.id, { version: f.draft.version }))
+          .valid,
+        true,
+      );
+      current.products.find(
+        (p) => p.reference === "DEMO-P001",
+      ).metadata.availableQuantity = "0.5";
+      assert.ok(
+        (
+          await service.validate(f.ca, f.draft.id, { version: f.draft.version })
+        ).issues.some((i) => i.code === "INSUFFICIENT_STOCK"),
+      );
+      current.products.find(
+        (p) => p.reference === "DEMO-P001",
+      ).metadata.availableQuantity = null;
+      assert.ok(
+        (
+          await service.validate(f.ca, f.draft.id, { version: f.draft.version })
+        ).issues.some((i) => i.code === "STOCK_UNKNOWN"),
+      );
+      current = structuredClone(snap);
+      customerPrice().amount = "29";
+      const changed = await service.validate(f.ca, f.draft.id, {
+        version: f.draft.version,
+      });
+      assert.deepEqual(
+        changed.issues.filter((i) => i.code === "PRICE_CHANGED"),
+        [{ code: "PRICE_CHANGED", itemId: quote.terms[0].itemId }],
+      );
+      await assert.rejects(
+        service.acknowledgeTerms(
+          f.ca,
+          f.draft.id,
+          { version: f.draft.version, token: quote.token },
+          randomUUID(),
+        ),
+        isCode("conflict"),
+      );
+      const fresh = await service.terms(f.ca, f.draft.id, {
+        version: f.draft.version,
+      });
+      assert.equal(fresh.terms[0].amount, "29");
+      const accepted = (
+        await service.acknowledgeTerms(
+          f.ca,
+          f.draft.id,
+          { version: f.draft.version, token: fresh.token },
+          randomUUID(),
+        )
+      ).draft;
+      assert.notEqual(accepted.version, f.draft.version);
+      assert.equal(
+        (
+          await service.validate(f.ca, accepted.id, {
+            version: accepted.version,
+          })
+        ).valid,
+        true,
+      );
+      await assert.rejects(
+        service.acknowledgeTerms(
+          f.cu,
+          accepted.id,
+          { version: accepted.version, token: fresh.token },
+          randomUUID(),
+        ),
+        isCode("not_found"),
+      );
+    },
+  );
   test(
     provider +
       ": actual Mock source validates current customer price and stock, ownership, address and minimum",
@@ -151,6 +284,83 @@ for (const provider of ["json", "postgresql"]) {
       await assert.rejects(
         disabled.validate(f.ca, f.draft.id, input),
         isCode("unavailable"),
+      );
+    },
+  );
+  test(
+    provider +
+      ": acknowledgement and edits serialize, preserve terms on restart and reject uncertain writes",
+    opts,
+    async (t) => {
+      const f = await fixture(t, provider),
+        before = f.draft;
+      const quote = await f.service.terms(f.ca, before.id, {
+        version: before.version,
+      });
+      const results = await Promise.allSettled([
+        f.service.acknowledgeTerms(
+          f.ca,
+          before.id,
+          { version: before.version, token: quote.token },
+          randomUUID(),
+        ),
+        f.base.update(
+          f.ca,
+          before.id,
+          { version: before.version, deliveryAddressId: null },
+          randomUUID(),
+        ),
+      ]);
+      assert.equal(results.filter((r) => r.status === "fulfilled").length, 1);
+      assert.equal(
+        results.find((r) => r.status === "rejected").reason.code,
+        "conflict",
+      );
+      let current = (await f.base.find(f.ca, before.id)).draft;
+      const reopened =
+        provider === "json"
+          ? createJsonOrderDrafts(f.security, f.now)
+          : createPostgresOrderDrafts(f.pool, f.now);
+      const reopenedService = createOrderDrafts(reopened, f.record, {
+        minimum: { amount: "27.5", currency: "AED" },
+        source: f.source,
+      });
+      assert.ok(
+        !(
+          await reopenedService.validate(f.ca, current.id, {
+            version: current.version,
+          })
+        ).issues.some((i) => i.code === "COMMERCIAL_TERMS_REQUIRED"),
+      );
+      const nextQuote = await reopenedService.terms(f.ca, current.id, {
+        version: current.version,
+      });
+      const uncertain = createOrderDrafts(
+        reopened,
+        async () => {
+          throw Error("PRIVATE");
+        },
+        { minimum: { amount: "27.5", currency: "AED" }, source: f.source },
+      );
+      await assert.rejects(
+        uncertain.acknowledgeTerms(
+          f.ca,
+          current.id,
+          { version: current.version, token: nextQuote.token },
+          randomUUID(),
+        ),
+        isCode("unavailable"),
+      );
+      const changed = (await f.base.find(f.ca, current.id)).draft;
+      assert.notEqual(changed.version, current.version);
+      await assert.rejects(
+        reopenedService.acknowledgeTerms(
+          f.ca,
+          current.id,
+          { version: current.version, token: nextQuote.token },
+          randomUUID(),
+        ),
+        isCode("conflict"),
       );
     },
   );
@@ -277,8 +487,8 @@ for (const provider of ["json", "postgresql"]) {
           f.draft.id +
           "/validate",
         token = (await f.login(2)).accessToken;
-      const send = (body) =>
-        fetch(url, {
+      const send = (body, target = url) =>
+        fetch(target, {
           method: "POST",
           headers: {
             authorization: "Bearer " + token,
@@ -294,6 +504,18 @@ for (const provider of ["json", "postgresql"]) {
       assert.ok(!JSON.stringify(body).includes("DEMO-C001"));
       res = await send({ version: f.draft.version, currency: "USD" });
       assert.equal(res.status, 400);
+      const termsUrl = url.replace(/\/validate$/, "/terms");
+      res = await send({ version: f.draft.version }, termsUrl);
+      assert.equal(res.status, 200);
+      const quote = (await res.json()).data;
+      assert.equal(quote.terms[0].amount, "27.50");
+      assert.equal(quote.stock[0].availableQuantity, "100");
+      res = await send(
+        { version: f.draft.version, token: quote.token },
+        termsUrl + "/acknowledge",
+      );
+      assert.equal(res.status, 200);
+      assert.notEqual((await res.json()).data.draft.version, f.draft.version);
     },
   );
 }

@@ -9,6 +9,7 @@ import type { JsonOrder } from "./models.js";
 import type { JsonSecurityCoordinator } from "./security.js";
 import { DraftError, draftId } from "../../services/order-drafts.js";
 import { SessionError } from "../../services/session-state.js";
+import { checkedCommercialTerms } from "../../services/draft-commercial.js";
 import {
   checkedDraftItems,
   draftQuantity,
@@ -102,6 +103,7 @@ export function createJsonOrderDrafts(
                     "deliveryAddressId",
                     "updatedAt",
                     "items",
+                    "commercialBaseline",
                   ].includes(k),
               ),
           )
@@ -164,6 +166,37 @@ export function createJsonOrderDrafts(
       throw new DraftError("not_found");
   }
   return {
+    acknowledgeTerms: (actor, id, version, terms) =>
+      run(actor, async (rows, check) => {
+        const row = owned(rows, actor, id);
+        if (!row) throw new DraftError("not_found");
+        if (!editable(row) || view(row).version !== version)
+          throw new DraftError("conflict");
+        const checked = checkedCommercialTerms(terms),
+          lines = checkedDraftItems(row.items ?? []);
+        if (
+          checked.length !== lines.length ||
+          checked.some(
+            (term, i) =>
+              term.itemId !== lines[i]?.id ||
+              term.productId !== lines[i]?.productId ||
+              term.quantity !== lines[i]?.quantity,
+          )
+        )
+          throw new DraftError("conflict");
+        const next: JsonOrder = {
+          ...row,
+          commercialBaseline: checked,
+          deliveryAddressId: row.deliveryAddressId ?? null,
+          updatedAt: nextDraftTime(row.updatedAt ?? row.createdAt, now()),
+        };
+        const result = view(next);
+        await publish(
+          rows.map((r) => (r.id === id ? next : r)),
+          check,
+        );
+        return result;
+      }),
     validationContext: (actor, id, version) =>
       run(actor, async (rows, check) => {
         const row = owned(rows, actor, id);
@@ -192,7 +225,13 @@ export function createJsonOrderDrafts(
               ?.erpProductReference ?? null,
         }));
         check();
-        return { draft, customerReference, addressEligible, lines };
+        return {
+          draft,
+          customerReference,
+          addressEligible,
+          commercialBaseline: row.commercialBaseline ?? null,
+          lines,
+        };
       }),
     items: (actor, id) =>
       run(actor, async (rows, check) => {

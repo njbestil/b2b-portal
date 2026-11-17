@@ -8,6 +8,7 @@ import type { OrderSummary } from "../repositories/orders.js";
 import type { LoginCredential } from "../repositories/authentication.js";
 import { DraftError } from "../services/order-drafts.js";
 import { SessionError } from "../services/session-state.js";
+import { checkedCommercialTerms } from "../services/draft-commercial.js";
 import {
   checkedDraftItems,
   draftQuantity,
@@ -24,8 +25,9 @@ type Row = Omit<OrderSummary, "createdAt"> & {
   updatedAt: Date;
   deliveryAddressId: string | null;
   protected: boolean;
+  commercialBaseline: unknown;
 };
-const projection = `id,company_id AS "companyId",order_number AS "orderNumber",created_by_user_id AS "createdByUserId",created_at AS "createdAt",updated_at AS "updatedAt",order_status AS status,integration_status AS "integrationStatus",delivery_address_id AS "deliveryAddressId",(submitted_at IS NOT NULL OR order_snapshot IS NOT NULL OR erp_order_reference IS NOT NULL OR idempotency_key IS NOT NULL) AS protected`;
+const projection = `id,company_id AS "companyId",order_number AS "orderNumber",created_by_user_id AS "createdByUserId",created_at AS "createdAt",updated_at AS "updatedAt",order_status AS status,integration_status AS "integrationStatus",delivery_address_id AS "deliveryAddressId",draft_commercial_baseline AS "commercialBaseline",(submitted_at IS NOT NULL OR order_snapshot IS NOT NULL OR erp_order_reference IS NOT NULL OR idempotency_key IS NOT NULL) AS protected`;
 const view = (row: Row) =>
   canonicalDraft({
     ...row,
@@ -143,6 +145,37 @@ export function createPostgresOrderDrafts(
     );
   }
   return {
+    acknowledgeTerms: (actor, id, version, terms) =>
+      run(actor, async (client) => {
+        const row = await owned(client, actor, id);
+        if (!row) throw new DraftError("not_found");
+        if (!editable(row) || view(row).version !== version)
+          throw new DraftError("conflict");
+        const checked = checkedCommercialTerms(terms),
+          lines = await items(client, actor, id);
+        if (
+          checked.length !== lines.length ||
+          checked.some(
+            (term, i) =>
+              term.itemId !== lines[i]?.id ||
+              term.productId !== lines[i]?.productId ||
+              term.quantity !== lines[i]?.quantity,
+          )
+        )
+          throw new DraftError("conflict");
+        const updated = (
+          await client.query<Row>(
+            `UPDATE orders SET draft_commercial_baseline=$1::jsonb,updated_at=$2 WHERE id=$3 RETURNING ${projection}`,
+            [
+              JSON.stringify(checked),
+              nextDraftTime(row.updatedAt.toISOString(), now()),
+              id,
+            ],
+          )
+        ).rows[0];
+        if (!updated) throw new DraftError("unavailable");
+        return view(updated);
+      }),
     validationContext: (actor, id, version) =>
       run(actor, async (client) => {
         const row = await owned(client, actor, id);
@@ -175,6 +208,10 @@ export function createPostgresOrderDrafts(
           draft,
           customerReference: customer?.reference ?? null,
           addressEligible,
+          commercialBaseline:
+            row.commercialBaseline === null
+              ? null
+              : checkedCommercialTerms(row.commercialBaseline),
           lines: lines.map((line) => ({
             ...line,
             productReference:

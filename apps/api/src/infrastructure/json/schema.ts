@@ -1,4 +1,5 @@
 import { checkedDraftItems } from "../../services/draft-quantities.js";
+import { checkedCommercialTerms } from "../../services/draft-commercial.js";
 import {
   JsonStorageError,
   type JsonCollection,
@@ -225,9 +226,14 @@ const parsers: {
   orders(value) {
     const row = object(value);
     let items;
+    let commercialBaseline;
     try {
       items =
         row.items === undefined ? undefined : checkedDraftItems(row.items);
+      commercialBaseline =
+        row.commercialBaseline === undefined
+          ? undefined
+          : checkedCommercialTerms(row.commercialBaseline);
     } catch {
       return invalid();
     }
@@ -238,6 +244,7 @@ const parsers: {
     if (updatedAt !== undefined && updatedAt < timestamp(row.createdAt))
       return invalid();
     return {
+      ...(commercialBaseline === undefined ? {} : { commercialBaseline }),
       ...(items === undefined ? {} : { items }),
       ...(updatedAt === undefined
         ? {}
