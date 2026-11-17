@@ -1,5 +1,6 @@
 import { checkedDraftItems } from "../../services/draft-quantities.js";
 import { checkedCommercialTerms } from "../../services/draft-commercial.js";
+import { checkedOrderSnapshot } from "../../services/order-snapshot.js";
 import {
   JsonStorageError,
   type JsonCollection,
@@ -225,8 +226,9 @@ const parsers: {
   },
   orders(value) {
     const row = object(value);
-    let items;
+    let items: ReturnType<typeof checkedDraftItems> | undefined;
     let commercialBaseline;
+    let submittedSnapshot;
     try {
       items =
         row.items === undefined ? undefined : checkedDraftItems(row.items);
@@ -234,6 +236,32 @@ const parsers: {
         row.commercialBaseline === undefined
           ? undefined
           : checkedCommercialTerms(row.commercialBaseline);
+      submittedSnapshot =
+        row.submittedSnapshot === undefined
+          ? undefined
+          : checkedOrderSnapshot(
+              row.submittedSnapshot as import("../../repositories/order-snapshots.js").OrderSnapshot,
+            );
+      if (
+        submittedSnapshot &&
+        (submittedSnapshot.orderId !== id(row.id) ||
+          submittedSnapshot.companyId !== id(row.companyId) ||
+          submittedSnapshot.submittedBy.id !== id(row.createdByUserId) ||
+          submittedSnapshot.delivery.id !== id(row.deliveryAddressId) ||
+          row.status === "DRAFT" ||
+          !items ||
+          submittedSnapshot.items.length !== items.length ||
+          submittedSnapshot.items.some(
+            (item) =>
+              !items!.some(
+                (line) =>
+                  line.id === item.itemId &&
+                  line.productId === item.productId &&
+                  line.quantity === item.quantity,
+              ),
+          ))
+      )
+        return invalid();
     } catch {
       return invalid();
     }
@@ -244,6 +272,7 @@ const parsers: {
     if (updatedAt !== undefined && updatedAt < timestamp(row.createdAt))
       return invalid();
     return {
+      ...(submittedSnapshot === undefined ? {} : { submittedSnapshot }),
       ...(commercialBaseline === undefined ? {} : { commercialBaseline }),
       ...(items === undefined ? {} : { items }),
       ...(updatedAt === undefined
