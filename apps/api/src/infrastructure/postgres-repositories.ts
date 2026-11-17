@@ -50,7 +50,7 @@ export const postgresReadinessSql = `SELECT c.id, c.legal_name, c.trade_name, c.
   p.default_price, p.currency, p.price_valid_from, p.price_valid_to,
   a.company_id, a.product_id, a.eligible,
   cp.id, cp.company_id, cp.product_id, cp.amount, cp.currency, cp.valid_from, cp.valid_to,
-  o.id, o.company_id, o.order_number, o.created_by_user_id, o.created_at, o.order_status, o.integration_status
+  o.id, o.company_id, o.order_number, o.created_by_user_id, o.created_at, o.order_status, o.integration_status, o.draft_commercial_baseline
   FROM companies c, users u, products p, customer_product_access a, customer_product_prices cp, orders o LIMIT 0`;
 
 type RawCatalog = Omit<CatalogProduct, "price"> & {

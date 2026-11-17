@@ -109,6 +109,37 @@ export function createOrderDraftRouter(
     response.once("close", release);
     next();
   };
+  for (const action of ["terms", "terms/acknowledge"] as const) {
+    router.post(
+      `/api/v1/order-drafts/:id/${action}`,
+      authorize("order-drafts.manage", sessions),
+      guard,
+      json({ limit: "8kb", inflate: false }),
+      async (request, response, next) => {
+        try {
+          if (Object.keys(request.query).length)
+            throw new DraftError("invalid_input");
+          if (!service) throw new DraftError("unavailable");
+          const result =
+            action === "terms"
+              ? await service.terms(
+                  actorFor(request),
+                  request.params.id,
+                  request.body,
+                )
+              : await service.acknowledgeTerms(
+                  actorFor(request),
+                  request.params.id,
+                  request.body,
+                  requestIdFor(response),
+                );
+          sendSuccess(response, result);
+        } catch (e) {
+          next(error(e));
+        }
+      },
+    );
+  }
   router.post(
     "/api/v1/order-drafts/:id/validate",
     authorize("order-drafts.manage", sessions),
