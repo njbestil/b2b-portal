@@ -255,6 +255,71 @@ test(
     );
   },
 );
+test("JSON snapshot publication preserves other ERP links and invoice synchronization preserves submitted snapshots", async (t) => {
+  const f = await fixture(t, "json"),
+    erpOrderReference = randomUUID();
+  const rows = await f.security.store.read("orders"),
+    historical = rows.find((r) => r.status === "CONFIRMED");
+  await f.security.store.replace(
+    "orders",
+    rows.map((r) => (r.id === historical.id ? { ...r, erpOrderReference } : r)),
+  );
+  await f.commit();
+  const submitted = await f.security.store.read("orders");
+  assert.equal(
+    submitted.find((r) => r.id === historical.id).erpOrderReference,
+    erpOrderReference,
+  );
+  assert.deepEqual(
+    submitted.find((r) => r.id === f.draft.id).submittedSnapshot,
+    f.snapshot,
+  );
+  const linked = randomUUID();
+  await f.security.store.replace(
+    "orders",
+    submitted.map((r) =>
+      r.id === f.draft.id ? { ...r, erpOrderReference: linked } : r,
+    ),
+  );
+  const before = await fs.readFile(join(f.directory, "orders.json"), "utf8");
+  const { createJsonInvoices } =
+      await import("../dist/infrastructure/json/invoices.js"),
+    repository = createJsonInvoices(f.security),
+    link = await repository.link(f.draft.id);
+  await repository.save(link, {
+    id: randomUUID(),
+    companyId: link.companyId,
+    orderId: link.orderId,
+    erpInvoiceReference: "TEST-INVOICE",
+    invoiceNumber: "TEST-1",
+    status: "available",
+    amount: "100.00",
+    currency: "AED",
+    documentReference: `mock-invoice:${linked}`,
+    issuedAt: new Date(f.now()).toISOString(),
+    syncedAt: new Date(f.now()).toISOString(),
+  });
+  assert.equal(
+    await fs.readFile(join(f.directory, "orders.json"), "utf8"),
+    before,
+  );
+  assert.deepEqual(
+    (await f.security.store.read("orders")).find((r) => r.id === f.draft.id)
+      .submittedSnapshot,
+    f.snapshot,
+  );
+});
+test("JSON snapshot component refuses an already ERP-linked draft", async (t) => {
+  const f = await fixture(t, "json"),
+    rows = await f.security.store.read("orders");
+  await f.security.store.replace(
+    "orders",
+    rows.map((r) =>
+      r.id === f.draft.id ? { ...r, erpOrderReference: randomUUID() } : r,
+    ),
+  );
+  await assert.rejects(f.commit(), /state conflict/);
+});
 for (const provider of ["json", "postgresql"]) {
   const opts = {
     skip:

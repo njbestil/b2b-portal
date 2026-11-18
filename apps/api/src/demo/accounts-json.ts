@@ -22,6 +22,7 @@ const allowed = new Set([
   "audit_logs.json",
   "notifications.json",
   "application_reviews.json",
+  "invoices.json",
 ]);
 async function inspect(directory: string, target: string) {
   const path = resolve(directory),

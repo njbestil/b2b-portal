@@ -1,5 +1,9 @@
 # Portal API repository contracts
 
+The implemented [invoice cache/API](../../docs/invoices-api.md) provides explicit
+local ERP metadata synchronization and authenticated company-scoped customer
+list/detail reads. It does not implement order submission or document delivery.
+
 Account lifecycle: [suspension/reactivation contract](../../docs/account-suspension.md).
 
 Sales ownership: [current primary-assignment policy](../../docs/sales-assignment-authorization.md).

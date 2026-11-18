@@ -40,7 +40,10 @@ import {
 import { createSalesCompaniesRouter } from "./sales-companies-route.js";
 import type { SalesAssignmentRepository } from "./repositories/sales-assignments.js";
 
+import { createInvoiceRouter } from "./invoice-route.js";
+import type { InvoiceQueries } from "./services/invoices.js";
 interface AppOptions {
+  invoices?: InvoiceQueries;
   orderDrafts?: OrderDraftService;
   companyProfiles?: CompanyProfileService;
   deliveryAddresses?: DeliveryAddressService;
@@ -96,6 +99,7 @@ export function createApp(options: AppOptions = {}) {
     createCompanyProfileRouter(options.sessions, options.companyProfiles),
   );
   app.use(createOrderDraftRouter(options.sessions, options.orderDrafts));
+  app.use(createInvoiceRouter(options.sessions, options.invoices));
   app.use(express.json());
   app.use(createTenantRouter(options.sessions, options.companyRepositories));
   app.use(

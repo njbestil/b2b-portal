@@ -1,3 +1,4 @@
+import { createInvoiceQueries } from "./services/invoices.js";
 import { demoMode } from "./demo/accounts.js";
 import {
   inspectDemoStore,
@@ -105,6 +106,10 @@ try {
       )
     : undefined;
   const app = createApp({
+    invoices: createInvoiceQueries(
+      selectedStorage.invoices,
+      selectedStorage.repositories.companies,
+    ),
     orderDrafts: createOrderDrafts(
       selectedStorage.orderDrafts,
       record,

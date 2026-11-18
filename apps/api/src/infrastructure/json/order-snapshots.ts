@@ -57,6 +57,7 @@ export async function commitJsonOrderSnapshot(
       "items",
       "commercialBaseline",
       "submittedSnapshot",
+      "erpOrderReference",
     ];
     if (
       !Array.isArray(raw) ||
@@ -75,7 +76,8 @@ export async function commitJsonOrderSnapshot(
       !row ||
       row.status !== "DRAFT" ||
       row.integrationStatus !== "NOT_SENT" ||
-      row.submittedSnapshot !== undefined
+      row.submittedSnapshot !== undefined ||
+      row.erpOrderReference !== undefined
     )
       throw new Error("Snapshot order state conflict.");
     const draft = canonicalDraft({
