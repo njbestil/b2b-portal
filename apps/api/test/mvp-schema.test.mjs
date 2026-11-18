@@ -172,7 +172,7 @@ test(
     );
     assert.deepEqual(
       actual.rows.map((r) => r.table_name),
-      [...tables, "schema_migrations"].sort(),
+      [...tables, "schema_migrations", "submission_idempotency"].sort(),
     );
     for (const table of tables) {
       assert.equal(
@@ -189,14 +189,24 @@ test(
     WHERE n.nspname=$1 AND k.contype='p' AND c.relname <> 'schema_migrations'`,
       [schema],
     );
-    assert.equal(keys.rows.length, tables.length);
+    assert.equal(keys.rows.length, tables.length + 1);
+    assert.deepEqual(
+      keys.rows.find((r) => r.table_name === "submission_idempotency"),
+      {
+        table_name: "submission_idempotency",
+        attname: "key_hash",
+        type: "text",
+      },
+    );
     assert.ok(
-      keys.rows.every(
-        (r) =>
-          r.attname ===
-            (r.table_name === "application_reviews" ? "company_id" : "id") &&
-          r.type === "uuid",
-      ),
+      keys.rows
+        .filter((r) => r.table_name !== "submission_idempotency")
+        .every(
+          (r) =>
+            r.attname ===
+              (r.table_name === "application_reviews" ? "company_id" : "id") &&
+            r.type === "uuid",
+        ),
     );
     const foreignKeys = await client.query(
       "SELECT convalidated FROM pg_constraint k JOIN pg_namespace n ON n.oid=k.connamespace WHERE n.nspname=$1 AND contype='f'",
@@ -680,7 +690,7 @@ test(
       );
       assert.deepEqual(
         result.rows.map((r) => r.tablename),
-        [...tables, "schema_migrations"].sort(),
+        [...tables, "schema_migrations", "submission_idempotency"].sort(),
       );
     } finally {
       await inspect.end();
