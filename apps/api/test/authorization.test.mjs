@@ -29,6 +29,7 @@ const expected = {
   "company-profile.manage": roles.slice(2, 3),
   "delivery-addresses.read": roles,
   "delivery-addresses.manage": roles.slice(2, 3),
+  "sales-assignments.manage": roles.slice(0, 1),
   "sales-staff.manage": roles.slice(0, 1),
   "customer-users.manage": roles.slice(2, 3),
   "accounts.status.read": roles.slice(0, 1),
