@@ -8,6 +8,7 @@ import { createApplicationReviewRouter } from "./application-review-route.js";
 import type { ApplicationRepository } from "./repositories/applications.js";
 import type { ApplicationDecisionService } from "./services/application-decisions.js";
 import express from "express";
+import { createRequestGuard, securityHeaders } from "./security-middleware.js";
 import { createOrderDraftRouter } from "./order-draft-route.js";
 import type { OrderDraftService } from "./services/order-drafts.js";
 import { createCompanyProfileRouter } from "./company-profile-route.js";
@@ -86,8 +87,11 @@ export function createApp(options: AppOptions = {}) {
     options.storageProvider,
   );
   const app = express();
+  app.disable("x-powered-by");
   app.use(requestIdMiddleware);
   app.use(requestLogging(logger));
+  app.use(securityHeaders);
+  app.use(createRequestGuard());
   if (options.login)
     app.use(createLoginRouter(options.login, Date.now, options.sessionLogin));
   if (options.applications)
@@ -128,7 +132,7 @@ export function createApp(options: AppOptions = {}) {
     ),
   );
   app.use(createInvoiceRouter(options.sessions, options.invoices));
-  app.use(express.json());
+  app.use(express.json({ limit: "16kb", inflate: false }));
   app.use(createTenantRouter(options.sessions, options.companyRepositories));
   app.use(
     createSalesCompaniesRouter(options.sessions, options.salesAssignments),
