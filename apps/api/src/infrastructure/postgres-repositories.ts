@@ -200,6 +200,61 @@ export function createPostgresRepositories(
       },
     },
     orders: {
+      async findHistory(scope, id) {
+        const rows = await query<
+          RawOrder & {
+            snapshot:
+              import("../repositories/order-snapshots.js").OrderSnapshot | null;
+          }
+        >(
+          orderSql.replace(
+            " FROM orders",
+            ", order_snapshot AS snapshot FROM orders",
+          ) + " AND id=$2 AND order_status <> 'DRAFT'",
+          [companyId(scope), id.toLowerCase()],
+        );
+        const row = rows[0];
+        return row ? { ...orderSummary(row), snapshot: row.snapshot } : null;
+      },
+      async listHistory(scope, page, filters) {
+        const values: unknown[] = [companyId(scope)];
+        let sql = orderSql + " AND order_status <> 'DRAFT'";
+        if (filters.search) {
+          values.push(filters.search);
+          sql +=
+            ` AND strpos(translate(COALESCE(order_number,''),'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz') COLLATE "C", $` +
+            values.length +
+            '::text COLLATE "C")>0';
+        }
+        if (filters.status) {
+          values.push(filters.status);
+          sql += " AND order_status=$" + values.length;
+        }
+        if (filters.from) {
+          values.push(filters.from);
+          sql +=
+            " AND created_at >= $" +
+            values.length +
+            "::date::timestamp AT TIME ZONE 'UTC'";
+        }
+        if (filters.to) {
+          values.push(filters.to);
+          sql +=
+            " AND created_at < ($" +
+            values.length +
+            "::date + 1)::timestamp AT TIME ZONE 'UTC'";
+        }
+        const result = await list<RawOrder>(
+          sql,
+          values,
+          page,
+          '"createdAt" DESC, id ASC',
+        );
+        return {
+          total: result.total,
+          items: result.items.map(orderSummary),
+        };
+      },
       async findById(scope, id) {
         const row = (
           await query<RawOrder>(orderSql + " AND id=$2", [
