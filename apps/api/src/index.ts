@@ -1,3 +1,4 @@
+import { createSalesStaff } from "./services/sales-staff.js";
 import { createInvoiceQueries } from "./services/invoices.js";
 import { demoMode } from "./demo/accounts.js";
 import {
@@ -126,6 +127,12 @@ try {
       selectedStorage.deliveryAddresses,
     ),
     accountStatus: createAccountStatus(selectedStorage.accountStatus, record),
+    salesStaff: createSalesStaff(
+      selectedStorage.salesStaff,
+      hashPassword,
+      record,
+      randomUUID,
+    ),
     customerUsers: createCustomerUsers(
       selectedStorage.customerUsers,
       hashPassword,

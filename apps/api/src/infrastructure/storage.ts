@@ -1,3 +1,6 @@
+import type { SalesStaffRepository } from "../repositories/sales-staff.js";
+import { createPostgresSalesStaff } from "./postgres-sales-staff.js";
+import { createJsonSalesStaff } from "./json/sales-staff.js";
 import { createPostgresInvoices } from "./postgres-invoices.js";
 import { createJsonInvoices } from "./json/invoices.js";
 import type { AdminCompanyRepository } from "../repositories/admin-companies.js";
@@ -71,6 +74,7 @@ export interface StorageRuntime {
   readonly orderDrafts: OrderDraftRepository;
   readonly companyProfiles: CompanyProfileRepository;
   readonly deliveryAddresses: DeliveryAddressRepository;
+  readonly salesStaff: SalesStaffRepository;
   readonly customerUsers: CustomerUserRepository;
   readonly accountStatus: AccountStatusRepository;
   readonly salesAssignments: SalesAssignmentRepository;
@@ -155,6 +159,7 @@ export async function selectStorage(
         passwordChanges: createPostgresPasswordChange(postgres.pool),
         passwordResets,
         accountStatus: createPostgresAccountStatus(postgres.pool),
+        salesStaff: createPostgresSalesStaff(postgres.pool),
         customerUsers: createPostgresCustomerUsers(postgres.pool),
         salesAssignments,
         repositories: createPostgresRepositories(postgres.pool),
@@ -236,6 +241,7 @@ export async function selectStorage(
     sessions,
     passwordChanges: createJsonPasswordChange(security),
     accountStatus: createJsonAccountStatus(security),
+    salesStaff: createJsonSalesStaff(security),
     customerUsers: createJsonCustomerUsers(security),
     passwordResets,
     salesAssignments,
