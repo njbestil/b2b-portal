@@ -55,6 +55,7 @@ import { createJsonNotifications } from "./json/notifications.js";
 import type { ApplicationRepository } from "../repositories/applications.js";
 import type { OrderDraftRepository } from "../repositories/order-drafts.js";
 import { createPostgresOrderDrafts } from "./postgres-order-drafts.js";
+import { createPostgresOrderSubmission } from "./postgres-order-submission.js";
 import { createJsonOrderDrafts } from "./json/order-drafts.js";
 import type { CompanyProfileRepository } from "../repositories/company-profiles.js";
 import { createPostgresCompanyProfiles } from "./postgres-company-profiles.js";
@@ -69,6 +70,15 @@ import { createPostgresApplications } from "./postgres-applications.js";
 import { createJsonApplications } from "./json/applications.js";
 
 export interface StorageRuntime {
+  readonly createOrderSubmission?: (
+    source: import("../repositories/catalog-sync.js").CatalogSource,
+    minimum: { amount: string; currency: string },
+    gateway: {
+      send(
+        request: import("./mock-submission-adapter.js").MockSubmissionRequest,
+      ): Promise<import("./mock-submission-adapter.js").MockSubmissionResult>;
+    },
+  ) => import("./postgres-order-submission.js").OrderSubmission;
   readonly adminCompanies: AdminCompanyRepository;
   readonly invoices: import("../repositories/invoices.js").InvoiceRepository;
   readonly orderDrafts: OrderDraftRepository;
@@ -169,6 +179,23 @@ export async function selectStorage(
         notifications: createPostgresNotifications(postgres.pool),
         applications: createPostgresApplications(postgres.pool),
         orderDrafts: createPostgresOrderDrafts(postgres.pool),
+        createOrderSubmission: (
+          source: import("../repositories/catalog-sync.js").CatalogSource,
+          minimum: { amount: string; currency: string },
+          gateway: {
+            send(
+              request: import("./mock-submission-adapter.js").MockSubmissionRequest,
+            ): Promise<
+              import("./mock-submission-adapter.js").MockSubmissionResult
+            >;
+          },
+        ) =>
+          createPostgresOrderSubmission(
+            postgres.pool,
+            source,
+            minimum,
+            gateway,
+          ),
         companyProfiles: createPostgresCompanyProfiles(postgres.pool),
         deliveryAddresses: createPostgresDeliveryAddresses(postgres.pool),
         applicationReviews: createPostgresApplicationReviews(postgres.pool),

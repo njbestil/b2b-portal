@@ -12,6 +12,7 @@ import { HttpError, sendSuccess, requestIdFor } from "./http.js";
 export function createOrderDraftRouter(
   sessions?: SessionService,
   service?: OrderDraftService,
+  submit?: import("./infrastructure/postgres-order-submission.js").OrderSubmission,
 ) {
   const router = Router();
   const error = (e: unknown) =>
@@ -109,6 +110,37 @@ export function createOrderDraftRouter(
     response.once("close", release);
     next();
   };
+  router.post(
+    "/api/v1/order-drafts/:id/submit",
+    authorize("order-drafts.manage", sessions),
+    guard,
+    json({ limit: "8kb", inflate: false }),
+    async (request, response, next) => {
+      try {
+        if (Object.keys(request.query).length)
+          throw new DraftError("invalid_input");
+        const headers = request.rawHeaders.filter(
+          (_, i) =>
+            i % 2 === 0 &&
+            request.rawHeaders[i]?.toLowerCase() === "idempotency-key",
+        );
+        if (headers.length !== 1) throw new DraftError("invalid_input");
+        if (!submit) throw new DraftError("unavailable");
+        sendSuccess(
+          response,
+          await submit(
+            actorFor(request),
+            request.params.id,
+            request.get("Idempotency-Key"),
+            request.body,
+          ),
+          202,
+        );
+      } catch (e) {
+        next(error(e));
+      }
+    },
+  );
   for (const action of ["terms", "terms/acknowledge"] as const) {
     router.post(
       `/api/v1/order-drafts/:id/${action}`,
