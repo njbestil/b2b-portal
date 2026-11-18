@@ -1,3 +1,6 @@
+import type { AdminSalesAssignmentRepository } from "../repositories/admin-sales-assignments.js";
+import { createPostgresAdminSalesAssignments } from "./postgres-admin-sales-assignments.js";
+import { createJsonAdminSalesAssignments } from "./json/admin-sales-assignments.js";
 import type { SalesStaffRepository } from "../repositories/sales-staff.js";
 import { createPostgresSalesStaff } from "./postgres-sales-staff.js";
 import { createJsonSalesStaff } from "./json/sales-staff.js";
@@ -55,6 +58,7 @@ import { createJsonNotifications } from "./json/notifications.js";
 import type { ApplicationRepository } from "../repositories/applications.js";
 import type { OrderDraftRepository } from "../repositories/order-drafts.js";
 import { createPostgresOrderDrafts } from "./postgres-order-drafts.js";
+import { createPostgresOrderSubmission } from "./postgres-order-submission.js";
 import { createJsonOrderDrafts } from "./json/order-drafts.js";
 import type { CompanyProfileRepository } from "../repositories/company-profiles.js";
 import { createPostgresCompanyProfiles } from "./postgres-company-profiles.js";
@@ -71,11 +75,21 @@ import { createJsonApplications } from "./json/applications.js";
 export interface StorageRuntime {
   readonly databaseConfigured: boolean;
   readonly databaseHealth?: HealthProbe;
+  readonly createOrderSubmission?: (
+    source: import("../repositories/catalog-sync.js").CatalogSource,
+    minimum: { amount: string; currency: string },
+    gateway: {
+      send(
+        request: import("./mock-submission-adapter.js").MockSubmissionRequest,
+      ): Promise<import("./mock-submission-adapter.js").MockSubmissionResult>;
+    },
+  ) => import("./postgres-order-submission.js").OrderSubmission;
   readonly adminCompanies: AdminCompanyRepository;
   readonly invoices: import("../repositories/invoices.js").InvoiceRepository;
   readonly orderDrafts: OrderDraftRepository;
   readonly companyProfiles: CompanyProfileRepository;
   readonly deliveryAddresses: DeliveryAddressRepository;
+  readonly adminSalesAssignments: AdminSalesAssignmentRepository;
   readonly salesStaff: SalesStaffRepository;
   readonly customerUsers: CustomerUserRepository;
   readonly accountStatus: AccountStatusRepository;
@@ -163,6 +177,9 @@ export async function selectStorage(
         passwordChanges: createPostgresPasswordChange(postgres.pool),
         passwordResets,
         accountStatus: createPostgresAccountStatus(postgres.pool),
+        adminSalesAssignments: createPostgresAdminSalesAssignments(
+          postgres.pool,
+        ),
         salesStaff: createPostgresSalesStaff(postgres.pool),
         customerUsers: createPostgresCustomerUsers(postgres.pool),
         salesAssignments,
@@ -173,6 +190,23 @@ export async function selectStorage(
         notifications: createPostgresNotifications(postgres.pool),
         applications: createPostgresApplications(postgres.pool),
         orderDrafts: createPostgresOrderDrafts(postgres.pool),
+        createOrderSubmission: (
+          source: import("../repositories/catalog-sync.js").CatalogSource,
+          minimum: { amount: string; currency: string },
+          gateway: {
+            send(
+              request: import("./mock-submission-adapter.js").MockSubmissionRequest,
+            ): Promise<
+              import("./mock-submission-adapter.js").MockSubmissionResult
+            >;
+          },
+        ) =>
+          createPostgresOrderSubmission(
+            postgres.pool,
+            source,
+            minimum,
+            gateway,
+          ),
         companyProfiles: createPostgresCompanyProfiles(postgres.pool),
         deliveryAddresses: createPostgresDeliveryAddresses(postgres.pool),
         applicationReviews: createPostgresApplicationReviews(postgres.pool),
@@ -246,6 +280,7 @@ export async function selectStorage(
     sessions,
     passwordChanges: createJsonPasswordChange(security),
     accountStatus: createJsonAccountStatus(security),
+    adminSalesAssignments: createJsonAdminSalesAssignments(security),
     salesStaff: createJsonSalesStaff(security),
     customerUsers: createJsonCustomerUsers(security),
     passwordResets,

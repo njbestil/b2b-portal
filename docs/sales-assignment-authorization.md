@@ -42,9 +42,9 @@ duplicate data is unavailable. Read size is limited to 2 MiB/10000 rows.
 The private record fields mirror the table: id, companyId, salesStaffUserId,
 assignedByUserId, isPrimary, active, createdAt, endedAt.
 
-#84 owns future assignment writers. They must share the coordinator, validate
-references/constraints and publish one complete file; SQL writes must preserve
-transactional uniqueness. No write/provisioning shortcut is installed here.
+#84 adds a separate [assignment administration capability](sales-assignment-management.md)
+sharing this coordinator/model, atomic file publication and transactional SQL
+uniqueness. This read/policy interface remains unchanged.
 Offline catalog refresh preserves this known regular file; an explicitly
 confirmed demo reset clears it and still refuses unknown files/links. Selected
 providers never switch after a policy failure. Callers can require capability
