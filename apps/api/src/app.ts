@@ -50,6 +50,7 @@ interface AppOptions {
   adminCompanies?: AdminCompanyRepository;
   invoices?: InvoiceQueries;
   orderDrafts?: OrderDraftService;
+  orderSubmission?: import("./infrastructure/postgres-order-submission.js").OrderSubmission;
   companyProfiles?: CompanyProfileService;
   deliveryAddresses?: DeliveryAddressService;
   salesStaff?: SalesStaffService;
@@ -106,7 +107,13 @@ export function createApp(options: AppOptions = {}) {
   app.use(
     createCompanyProfileRouter(options.sessions, options.companyProfiles),
   );
-  app.use(createOrderDraftRouter(options.sessions, options.orderDrafts));
+  app.use(
+    createOrderDraftRouter(
+      options.sessions,
+      options.orderDrafts,
+      options.orderSubmission,
+    ),
+  );
   app.use(createInvoiceRouter(options.sessions, options.invoices));
   app.use(express.json());
   app.use(createTenantRouter(options.sessions, options.companyRepositories));

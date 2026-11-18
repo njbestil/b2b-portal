@@ -1,4 +1,5 @@
 import test from "node:test";
+import express from "express";
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import { once } from "node:events";
@@ -10,6 +11,8 @@ import { createOrderDrafts } from "../dist/services/order-drafts.js";
 import { createJsonOrderDrafts } from "../dist/infrastructure/json/order-drafts.js";
 import { createPostgresOrderDrafts } from "../dist/infrastructure/postgres-order-drafts.js";
 import { createMockCustomerCatalogSource } from "../dist/infrastructure/mock-customer-catalog-adapter.js";
+import { createMockSubmissionAdapter } from "../dist/infrastructure/mock-submission-adapter.js";
+import { createPostgresOrderSubmission } from "../dist/infrastructure/postgres-order-submission.js";
 import { createApp } from "../dist/app.js";
 import { createApp as createMock } from "../../mock-erp/dist/app.js";
 const isCode = (code) => (e) => e.code === code;
@@ -121,6 +124,602 @@ async function fixture(t, provider) {
   ).draft;
   return f;
 }
+test(
+  "postgresql: one submission commits snapshot and request, sends once, and replays",
+  {
+    skip:
+      !process.env.B2B_TEST_MIGRATIONS_DATABASE_URL &&
+      "PostgreSQL URL required",
+  },
+  async (t) => {
+    const f = await fixture(t, "postgresql");
+    const mock = createMockSubmissionAdapter({
+      baseUrl: `http://127.0.0.1:${f.server.address().port}/mock-erp/v1/`,
+      timeoutMs: 5000,
+    });
+    let sent = 0;
+    const submit = createPostgresOrderSubmission(
+      f.pool,
+      f.source,
+      { amount: "27.5", currency: "AED" },
+      {
+        async send(body) {
+          sent++;
+          return mock.send(body);
+        },
+      },
+    );
+    const body = { version: f.draft.version };
+    const results = await Promise.all([
+      submit(f.ca, f.draft.id, "stable-key", body),
+      submit(f.ca, f.draft.id, "stable-key", body),
+    ]);
+    assert.deepEqual(results, [
+      { orderId: f.draft.id },
+      { orderId: f.draft.id },
+    ]);
+    assert.equal(sent, 1);
+    const row = (
+      await f.pool.query(
+        "SELECT order_status,integration_status,erp_order_reference,order_snapshot FROM orders WHERE id=$1",
+        [f.draft.id],
+      )
+    ).rows[0];
+    assert.equal(row.order_status, "SUBMITTED");
+    assert.equal(row.integration_status, "SUCCESS");
+    assert.ok(row.erp_order_reference);
+    assert.equal(row.order_snapshot.orderId, f.draft.id);
+    const tx = (
+      await f.pool.query(
+        "SELECT idempotency_key,status,request_payload,response_payload FROM integration_transactions WHERE order_id=$1",
+        [f.draft.id],
+      )
+    ).rows;
+    assert.equal(tx.length, 1);
+    assert.equal(tx[0].status, "SUCCESS");
+    assert.equal(
+      tx[0].request_payload.externalRequestReference,
+      tx[0].idempotency_key,
+    );
+    const offlineReplay = createPostgresOrderSubmission(
+      f.pool,
+      {
+        async readSnapshot() {
+          throw Error("offline");
+        },
+      },
+      { amount: "27.5", currency: "AED" },
+      {
+        async send() {
+          throw Error("must not send");
+        },
+      },
+    );
+    assert.deepEqual(
+      await offlineReplay(f.ca, f.draft.id, "stable-key", body),
+      { orderId: f.draft.id },
+    );
+    await assert.rejects(
+      submit(f.ca, f.draft.id, "other-key", body),
+      isCode("conflict"),
+    );
+    await assert.rejects(submit(f.cu, f.draft.id, "stable-key", body));
+    assert.equal(sent, 1);
+  },
+);
+test(
+  "postgresql: an uncertain send is retained and never automatically sent again",
+  {
+    skip:
+      !process.env.B2B_TEST_MIGRATIONS_DATABASE_URL &&
+      "PostgreSQL URL required",
+  },
+  async (t) => {
+    const f = await fixture(t, "postgresql");
+    const snapshot = await f.source.readSnapshot(new AbortController().signal);
+    const mock = createMockSubmissionAdapter({
+      baseUrl: `http://127.0.0.1:${f.server.address().port}/mock-erp/v1/`,
+      timeoutMs: 5000,
+    });
+    let sent = 0;
+    const submit = createPostgresOrderSubmission(
+      f.pool,
+      { readSnapshot: async () => structuredClone(snapshot) },
+      { amount: "27.5", currency: "AED" },
+      {
+        async send(request) {
+          sent++;
+          assert.equal((await mock.send(request)).outcome, "accepted");
+          return { outcome: "uncertain" };
+        },
+      },
+    );
+    const body = { version: f.draft.version };
+    await submit(f.ca, f.draft.id, "unknown-key", body);
+    await new Promise((resolve) => {
+      f.server.closeAllConnections();
+      f.server.close(resolve);
+    });
+    f.server = createMock().listen(0, "127.0.0.1");
+    await once(f.server, "listening");
+    await submit(f.ca, f.draft.id, "unknown-key", body);
+    const row = (
+      await f.pool.query(
+        "SELECT status,retryable,error_code FROM integration_transactions WHERE order_id=$1",
+        [f.draft.id],
+      )
+    ).rows[0];
+    assert.deepEqual(row, {
+      status: "FAILED",
+      retryable: false,
+      error_code: "OUTCOME_UNKNOWN",
+    });
+    assert.equal(sent, 1);
+  },
+);
+test(
+  "postgresql: a lost worker after claim is not automatically retried",
+  {
+    skip:
+      !process.env.B2B_TEST_MIGRATIONS_DATABASE_URL &&
+      "PostgreSQL URL required",
+  },
+  async (t) => {
+    const f = await fixture(t, "postgresql");
+    let sent = 0;
+    const submit = createPostgresOrderSubmission(
+      f.pool,
+      f.source,
+      { amount: "27.5", currency: "AED" },
+      {
+        async send() {
+          sent++;
+          return { outcome: "uncertain" };
+        },
+      },
+    );
+    const body = { version: f.draft.version };
+    await submit(f.ca, f.draft.id, "crash-key", body);
+    await f.pool.query(
+      "UPDATE integration_transactions SET status='PROCESSING',error_code=NULL,response_payload=NULL WHERE order_id=$1",
+      [f.draft.id],
+    );
+    await submit(f.ca, f.draft.id, "crash-key", body);
+    assert.equal(sent, 1);
+    assert.equal(
+      (
+        await f.pool.query(
+          "SELECT status FROM integration_transactions WHERE order_id=$1",
+          [f.draft.id],
+        )
+      ).rows[0].status,
+      "PROCESSING",
+    );
+  },
+);
+test(
+  "postgresql: audit failure rolls back reservation and submission",
+  {
+    skip:
+      !process.env.B2B_TEST_MIGRATIONS_DATABASE_URL &&
+      "PostgreSQL URL required",
+  },
+  async (t) => {
+    const f = await fixture(t, "postgresql");
+    let sent = 0;
+    await f.pool.query(
+      "ALTER TABLE audit_logs ADD CONSTRAINT reject_submission_audit CHECK (action <> 'order.submitted')",
+    );
+    const submit = createPostgresOrderSubmission(
+      f.pool,
+      f.source,
+      { amount: "27.5", currency: "AED" },
+      {
+        async send() {
+          sent++;
+          return { outcome: "uncertain" };
+        },
+      },
+    );
+    await assert.rejects(
+      submit(f.ca, f.draft.id, "audit-key", { version: f.draft.version }),
+      isCode("unavailable"),
+    );
+    assert.equal(sent, 0);
+    assert.equal(
+      (
+        await f.pool.query(
+          "SELECT count(*)::int AS n FROM submission_idempotency WHERE order_id=$1",
+          [f.draft.id],
+        )
+      ).rows[0].n,
+      0,
+    );
+    assert.equal(
+      (
+        await f.pool.query("SELECT order_status FROM orders WHERE id=$1", [
+          f.draft.id,
+        ])
+      ).rows[0].order_status,
+      "DRAFT",
+    );
+  },
+);
+test(
+  "postgresql: changed stock or price prevents transaction, snapshot and ERP send",
+  {
+    skip:
+      !process.env.B2B_TEST_MIGRATIONS_DATABASE_URL &&
+      "PostgreSQL URL required",
+  },
+  async (t) => {
+    const f = await fixture(t, "postgresql"),
+      current = await f.source.readSnapshot(new AbortController().signal);
+    let sent = 0;
+    const submit = createPostgresOrderSubmission(
+      f.pool,
+      { readSnapshot: async () => structuredClone(current) },
+      { amount: "27.5", currency: "AED" },
+      {
+        async send() {
+          sent++;
+          return { outcome: "uncertain" };
+        },
+      },
+    );
+    current.products.find(
+      (p) => p.reference === "DEMO-P001",
+    ).metadata.availableQuantity = "0";
+    await assert.rejects(
+      submit(f.ca, f.draft.id, "stock-key", { version: f.draft.version }),
+      isCode("conflict"),
+    );
+    current.products.find(
+      (p) => p.reference === "DEMO-P001",
+    ).metadata.availableQuantity = "20";
+    current.prices.find(
+      (p) =>
+        p.productReference === "DEMO-P001" &&
+        p.customerReference === "DEMO-C001",
+    ).price.amount = "30";
+    await assert.rejects(
+      submit(f.ca, f.draft.id, "price-key", { version: f.draft.version }),
+      isCode("conflict"),
+    );
+    assert.equal(sent, 0);
+    assert.equal(
+      (
+        await f.pool.query(
+          "SELECT count(*)::int AS n FROM integration_transactions WHERE order_id=$1",
+          [f.draft.id],
+        )
+      ).rows[0].n,
+      0,
+    );
+    assert.equal(
+      (
+        await f.pool.query("SELECT order_status FROM orders WHERE id=$1", [
+          f.draft.id,
+        ])
+      ).rows[0].order_status,
+      "DRAFT",
+    );
+  },
+);
+test(
+  "postgresql: Mock business rejection is terminal, sanitized and not retried",
+  {
+    skip:
+      !process.env.B2B_TEST_MIGRATIONS_DATABASE_URL &&
+      "PostgreSQL URL required",
+  },
+  async (t) => {
+    const f = await fixture(t, "postgresql"),
+      app = express();
+    app.use((req, _res, next) => {
+      req.headers["x-mock-erp-scenario"] = "credit-hold";
+      next();
+    });
+    app.use(createMock());
+    const server = app.listen(0, "127.0.0.1");
+    await once(server, "listening");
+    t.after(
+      () =>
+        new Promise((resolve) => {
+          server.closeAllConnections();
+          server.close(resolve);
+        }),
+    );
+    const mock = createMockSubmissionAdapter({
+      baseUrl: `http://127.0.0.1:${server.address().port}/mock-erp/v1/`,
+      timeoutMs: 5000,
+    });
+    let sent = 0;
+    const submit = createPostgresOrderSubmission(
+      f.pool,
+      f.source,
+      { amount: "27.5", currency: "AED" },
+      {
+        async send(request) {
+          sent++;
+          return mock.send(request);
+        },
+      },
+    );
+    const body = { version: f.draft.version };
+    await submit(f.ca, f.draft.id, "reject-key", body);
+    await submit(f.ca, f.draft.id, "reject-key", body);
+    const row = (
+      await f.pool.query(
+        "SELECT status,retryable,error_code,response_payload FROM integration_transactions WHERE order_id=$1",
+        [f.draft.id],
+      )
+    ).rows[0];
+    assert.equal(row.status, "FAILED");
+    assert.equal(row.retryable, false);
+    assert.equal(row.error_code, "CREDIT_HOLD");
+    assert.deepEqual(row.response_payload, {
+      outcome: "rejected",
+      code: "CREDIT_HOLD",
+    });
+    assert.equal(sent, 1);
+    const order = (
+      await f.pool.query(
+        "SELECT order_status,integration_status,erp_order_reference FROM orders WHERE id=$1",
+        [f.draft.id],
+      )
+    ).rows[0];
+    assert.deepEqual(order, {
+      order_status: "SUBMITTED",
+      integration_status: "FAILED",
+      erp_order_reference: null,
+    });
+  },
+);
+test(
+  "postgresql: HTTP submission requires auth and idempotency key and returns no ERP identity",
+  {
+    skip:
+      !process.env.B2B_TEST_MIGRATIONS_DATABASE_URL &&
+      "PostgreSQL URL required",
+  },
+  async (t) => {
+    const f = await fixture(t, "postgresql");
+    const gateway = createMockSubmissionAdapter({
+      baseUrl: `http://127.0.0.1:${f.server.address().port}/mock-erp/v1/`,
+      timeoutMs: 5000,
+    });
+    const submit = createPostgresOrderSubmission(
+      f.pool,
+      f.source,
+      { amount: "27.5", currency: "AED" },
+      gateway,
+    );
+    const server = createApp({
+      sessions: f.auth,
+      orderDrafts: f.service,
+      orderSubmission: submit,
+    }).listen(0, "127.0.0.1");
+    await once(server, "listening");
+    t.after(
+      () =>
+        new Promise((resolve) => {
+          server.closeAllConnections();
+          server.close(resolve);
+        }),
+    );
+    const url = `http://127.0.0.1:${server.address().port}/api/v1/order-drafts/${f.draft.id}/submit`;
+    const token = (await f.login(2)).accessToken,
+      body = JSON.stringify({ version: f.draft.version });
+    assert.equal(
+      (
+        await fetch(url, {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body,
+        })
+      ).status,
+      401,
+    );
+    assert.equal(
+      (
+        await fetch(url, {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+            authorization: `Bearer ${token}`,
+          },
+          body,
+        })
+      ).status,
+      400,
+    );
+    const response = await fetch(url, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        authorization: `Bearer ${token}`,
+        "idempotency-key": "http-key",
+      },
+      body,
+    });
+    assert.equal(response.status, 202);
+    const text = await response.text();
+    assert.ok(text.includes(f.draft.id));
+    assert.ok(!text.includes("DEMO-C001"));
+    assert.ok(!text.includes("erpOrder"));
+  },
+);
+test("JSON submission fails closed when durable reservation is unavailable", async (t) => {
+  const f = await fixture(t, "json");
+  const server = createApp({ sessions: f.auth, orderDrafts: f.service }).listen(
+    0,
+    "127.0.0.1",
+  );
+  await once(server, "listening");
+  t.after(
+    () =>
+      new Promise((resolve) => {
+        server.closeAllConnections();
+        server.close(resolve);
+      }),
+  );
+  const token = (await f.login(2)).accessToken;
+  const response = await fetch(
+    `http://127.0.0.1:${server.address().port}/api/v1/order-drafts/${f.draft.id}/submit`,
+    {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        authorization: `Bearer ${token}`,
+        "idempotency-key": "json-key",
+      },
+      body: JSON.stringify({ version: f.draft.version }),
+    },
+  );
+  assert.equal(response.status, 503);
+  assert.equal(
+    (
+      await f.repo.find(
+        {
+          userId: f.ca.userId,
+          sessionId: f.ca.sessionId,
+          companyId: f.ca.companyId,
+          role: f.ca.role,
+          accessExpiresAt: f.ca.accessExpiresAt,
+        },
+        f.draft.id,
+      )
+    ).status,
+    "DRAFT",
+  );
+});
+test(
+  "postgresql: a client disconnect cannot cancel the committed submission",
+  {
+    skip:
+      !process.env.B2B_TEST_MIGRATIONS_DATABASE_URL &&
+      "PostgreSQL URL required",
+  },
+  async (t) => {
+    const f = await fixture(t, "postgresql"),
+      accepted = randomUUID();
+    let started;
+    const entered = new Promise((resolve) => {
+      started = resolve;
+    });
+    let finish;
+    const gate = new Promise((resolve) => {
+      finish = resolve;
+    });
+    const submit = createPostgresOrderSubmission(
+      f.pool,
+      f.source,
+      { amount: "27.5", currency: "AED" },
+      {
+        async send() {
+          started();
+          await gate;
+          return { outcome: "accepted", erpOrderReference: accepted };
+        },
+      },
+    );
+    const server = createApp({
+      sessions: f.auth,
+      orderDrafts: f.service,
+      orderSubmission: submit,
+    }).listen(0, "127.0.0.1");
+    await once(server, "listening");
+    t.after(
+      () =>
+        new Promise((resolve) => {
+          server.closeAllConnections();
+          server.close(resolve);
+        }),
+    );
+    const controller = new AbortController(),
+      token = (await f.login(2)).accessToken;
+    const request = fetch(
+      `http://127.0.0.1:${server.address().port}/api/v1/order-drafts/${f.draft.id}/submit`,
+      {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          authorization: `Bearer ${token}`,
+          "idempotency-key": "disconnect-key",
+        },
+        body: JSON.stringify({ version: f.draft.version }),
+        signal: controller.signal,
+      },
+    ).catch(() => null);
+    await entered;
+    controller.abort();
+    await request;
+    finish();
+    for (let i = 0; i < 50; i++) {
+      const row = (
+        await f.pool.query(
+          "SELECT integration_status,erp_order_reference FROM orders WHERE id=$1",
+          [f.draft.id],
+        )
+      ).rows[0];
+      if (row.integration_status === "SUCCESS") {
+        assert.equal(row.erp_order_reference, accepted);
+        return;
+      }
+      await new Promise((resolve) => setTimeout(resolve, 20));
+    }
+    assert.fail("The committed submission did not finish after disconnect");
+  },
+);
+test("Mock adapter treats malformed or mismatched receipts and transport failures as uncertain", async (t) => {
+  const app = express();
+  let mode = "mismatch",
+    count = 0;
+  app.post("/mock-erp/v1/submissions", express.json(), (req, res) => {
+    count++;
+    if (mode === "failure")
+      return res
+        .status(503)
+        .json({ error: { code: "SECRET", message: "private" } });
+    res.status(201).json({
+      externalRequestReference: "different",
+      portalOrderId: req.body.portalOrderId,
+      customerId: req.body.customerId,
+      outcome: "accepted",
+      order: {
+        erpOrderId: randomUUID(),
+        status: "created",
+        portalOrderId: req.body.portalOrderId,
+        customerId: req.body.customerId,
+        items: req.body.items,
+      },
+    });
+  });
+  const server = app.listen(0, "127.0.0.1");
+  await once(server, "listening");
+  t.after(
+    () =>
+      new Promise((resolve) => {
+        server.closeAllConnections();
+        server.close(resolve);
+      }),
+  );
+  const adapter = createMockSubmissionAdapter({
+    baseUrl: `http://127.0.0.1:${server.address().port}/mock-erp/v1/`,
+    timeoutMs: 1000,
+  });
+  const request = {
+    externalRequestReference: "abc",
+    portalOrderId: randomUUID(),
+    customerId: "DEMO-C001",
+    items: [],
+  };
+  assert.deepEqual(await adapter.send(request), { outcome: "uncertain" });
+  mode = "failure";
+  assert.deepEqual(await adapter.send(request), { outcome: "uncertain" });
+  assert.equal(count, 2);
+});
 for (const provider of ["json", "postgresql"]) {
   const opts = {
     skip:

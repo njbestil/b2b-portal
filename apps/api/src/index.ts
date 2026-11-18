@@ -26,6 +26,7 @@ import { createLogin, createVerifiedLogin } from "./services/login.js";
 import { createApplications } from "./services/applications.js";
 import { createOrderDrafts } from "./services/order-drafts.js";
 import { createMockCustomerCatalogSource } from "./infrastructure/mock-customer-catalog-adapter.js";
+import { createMockSubmissionAdapter } from "./infrastructure/mock-submission-adapter.js";
 import { createCompanyProfiles } from "./services/company-profiles.js";
 import { createDeliveryAddresses } from "./services/delivery-addresses.js";
 import { createApplicationDecisions } from "./services/application-decisions.js";
@@ -107,6 +108,17 @@ try {
       )
     : undefined;
   const app = createApp({
+    orderSubmission:
+      config.nodeEnv !== "production" &&
+      erpConfig &&
+      submissionMinimum &&
+      selectedStorage.createOrderSubmission
+        ? selectedStorage.createOrderSubmission(
+            createMockCustomerCatalogSource(erpConfig),
+            submissionMinimum,
+            createMockSubmissionAdapter(erpConfig),
+          )
+        : undefined,
     adminCompanies: selectedStorage.adminCompanies,
     invoices: createInvoiceQueries(
       selectedStorage.invoices,
