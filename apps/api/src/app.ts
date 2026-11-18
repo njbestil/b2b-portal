@@ -1,3 +1,5 @@
+import { createAdminSalesAssignmentRouter } from "./admin-sales-assignment-route.js";
+import type { AdminSalesAssignmentService } from "./services/admin-sales-assignments.js";
 import { createSalesStaffRouter } from "./sales-staff-route.js";
 import type { SalesStaffService } from "./services/sales-staff.js";
 import { createPasswordResetRouter } from "./password-reset-route.js";
@@ -52,6 +54,7 @@ interface AppOptions {
   orderDrafts?: OrderDraftService;
   companyProfiles?: CompanyProfileService;
   deliveryAddresses?: DeliveryAddressService;
+  adminSalesAssignments?: AdminSalesAssignmentService;
   salesStaff?: SalesStaffService;
   customerUsers?: CustomerUserService;
   accountStatus?: AccountStatusService;
@@ -98,6 +101,12 @@ export function createApp(options: AppOptions = {}) {
   );
   app.use(createAdminCompaniesRouter(options.sessions, options.adminCompanies));
   app.use(createAccountStatusRouter(options.sessions, options.accountStatus));
+  app.use(
+    createAdminSalesAssignmentRouter(
+      options.sessions,
+      options.adminSalesAssignments,
+    ),
+  );
   app.use(createSalesStaffRouter(options.sessions, options.salesStaff));
   app.use(createCustomerUsersRouter(options.sessions, options.customerUsers));
   app.use(

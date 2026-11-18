@@ -1,3 +1,4 @@
+import { createAdminSalesAssignments } from "./services/admin-sales-assignments.js";
 import { createSalesStaff } from "./services/sales-staff.js";
 import { createInvoiceQueries } from "./services/invoices.js";
 import { demoMode } from "./demo/accounts.js";
@@ -127,6 +128,11 @@ try {
       selectedStorage.deliveryAddresses,
     ),
     accountStatus: createAccountStatus(selectedStorage.accountStatus, record),
+    adminSalesAssignments: createAdminSalesAssignments(
+      selectedStorage.adminSalesAssignments,
+      record,
+      randomUUID,
+    ),
     salesStaff: createSalesStaff(
       selectedStorage.salesStaff,
       hashPassword,
