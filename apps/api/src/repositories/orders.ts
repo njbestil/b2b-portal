@@ -1,3 +1,4 @@
+import type { OrderSnapshot } from "./order-snapshots.js";
 import type {
   CompanyScope,
   EntityId,
@@ -30,7 +31,25 @@ export interface OrderSummary {
   readonly integrationStatus: IntegrationStatus;
 }
 
+export interface HistoryFilters {
+  readonly search?: string;
+  readonly status?: OrderStatus;
+  readonly from?: string;
+  readonly to?: string;
+}
+export interface OrderHistoryRecord extends OrderSummary {
+  readonly snapshot: OrderSnapshot | null;
+}
 export interface OrderRepository {
+  findHistory(
+    scope: CompanyScope,
+    orderId: EntityId,
+  ): Promise<OrderHistoryRecord | null>;
+  listHistory(
+    scope: CompanyScope,
+    page: PageRequest,
+    filters: HistoryFilters,
+  ): Promise<Page<OrderSummary>>;
   findById(
     scope: CompanyScope,
     orderId: EntityId,
