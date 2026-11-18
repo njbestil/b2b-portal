@@ -11,6 +11,7 @@ headers, company headers or a serialized login profile.
 | catalog.read              | yes            | yes, assigned        | yes, own company  | yes, own company  |
 | orders.read               | yes            | yes, assigned        | yes, own company  | yes, own company  |
 | customer-users.read       | yes            | yes, assigned        | yes, own company  | no                |
+| sales-assignments.manage  | yes            | no                   | no                | no                |
 | sales-staff.manage        | yes            | no                   | no                | no                |
 | customer-users.manage     | no             | no                   | yes, own company  | no                |
 | applications.read         | yes            | no                   | no                | no                |
@@ -91,3 +92,7 @@ session regressions. Self-review does not replace independent acceptance.
 
 #83 adds Internal Admin-only `sales-staff.manage` for fixed-role creation and
 activation/deactivation. See [Sales Staff management](sales-staff-management.md).
+
+#84 adds Internal Admin-only `sales-assignments.manage` for optimistic current
+assignment reads and atomic primary owner changes. See
+[Sales assignment management](sales-assignment-management.md).
