@@ -1,3 +1,5 @@
+import { createSalesStaffRouter } from "./sales-staff-route.js";
+import type { SalesStaffService } from "./services/sales-staff.js";
 import { createPasswordResetRouter } from "./password-reset-route.js";
 import type { PasswordResetService } from "./services/password-reset.js";
 import { createApplicationReviewRouter } from "./application-review-route.js";
@@ -47,6 +49,7 @@ interface AppOptions {
   orderDrafts?: OrderDraftService;
   companyProfiles?: CompanyProfileService;
   deliveryAddresses?: DeliveryAddressService;
+  salesStaff?: SalesStaffService;
   customerUsers?: CustomerUserService;
   accountStatus?: AccountStatusService;
   passwordReset?: PasswordResetService;
@@ -91,6 +94,7 @@ export function createApp(options: AppOptions = {}) {
     ),
   );
   app.use(createAccountStatusRouter(options.sessions, options.accountStatus));
+  app.use(createSalesStaffRouter(options.sessions, options.salesStaff));
   app.use(createCustomerUsersRouter(options.sessions, options.customerUsers));
   app.use(
     createDeliveryAddressRouter(options.sessions, options.deliveryAddresses),

@@ -1,3 +1,4 @@
+export type { SalesStaffResult } from "./sales-staff.js";
 export type { ApiFailure, ApiResponse, ApiSuccess } from "./api.js";
 export type { CustomerUserResult } from "./customer-users.js";
 export type { AccountStatusResult } from "./account-status.js";

@@ -11,6 +11,7 @@ headers, company headers or a serialized login profile.
 | catalog.read              | yes            | yes, assigned        | yes, own company  | yes, own company  |
 | orders.read               | yes            | yes, assigned        | yes, own company  | yes, own company  |
 | customer-users.read       | yes            | yes, assigned        | yes, own company  | no                |
+| sales-staff.manage        | yes            | no                   | no                | no                |
 | customer-users.manage     | no             | no                   | yes, own company  | no                |
 | applications.read         | yes            | no                   | no                | no                |
 | accounts.status.read      | yes            | no                   | no                | no                |
@@ -87,3 +88,6 @@ session regressions. Self-review does not replace independent acceptance.
 #39 adds company-profile.read for all four roles with own-company/current-assigned/internal scope checks, and company-profile.manage for Customer Admin own-company portal fields only. It grants no legal/licence/lifecycle/ERP writes. See [company profile API](company-profile-api.md).
 
 #51 adds order-drafts.read and order-drafts.manage for normal Customer Admin/User identities only, scoped to their own company and their own DRAFT/NOT_SENT records. Customer Admin cannot override another creator. See [customer draft API](order-draft-api.md).
+
+#83 adds Internal Admin-only `sales-staff.manage` for fixed-role creation and
+activation/deactivation. See [Sales Staff management](sales-staff-management.md).

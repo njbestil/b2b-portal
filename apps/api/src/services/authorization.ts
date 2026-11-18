@@ -19,6 +19,7 @@ export const permissions = Object.freeze({
     "CUSTOMER_USER",
   ]),
   "delivery-addresses.manage": Object.freeze(["CUSTOMER_ADMIN"]),
+  "sales-staff.manage": Object.freeze(["INTERNAL_ADMIN"]),
   "customer-users.manage": Object.freeze(["CUSTOMER_ADMIN"]),
   "accounts.status.read": Object.freeze(["INTERNAL_ADMIN"]),
   "accounts.status.write": Object.freeze(["INTERNAL_ADMIN"]),
