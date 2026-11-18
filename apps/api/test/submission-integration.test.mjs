@@ -720,6 +720,164 @@ test("Mock adapter treats malformed or mismatched receipts and transport failure
   assert.deepEqual(await adapter.send(request), { outcome: "uncertain" });
   assert.equal(count, 2);
 });
+test(
+  "postgresql: integration claim and result never overwrite concurrent business status",
+  {
+    skip:
+      !process.env.B2B_TEST_MIGRATIONS_DATABASE_URL &&
+      "PostgreSQL URL required",
+  },
+  async (t) => {
+    const f = await fixture(t, "postgresql");
+    let release, entered;
+    const started = new Promise((r) => {
+        entered = r;
+      }),
+      gate = new Promise((r) => {
+        release = r;
+      });
+    const submit = createPostgresOrderSubmission(
+      f.pool,
+      f.source,
+      { amount: "27.5", currency: "AED" },
+      {
+        async send() {
+          entered();
+          await gate;
+          return { outcome: "uncertain" };
+        },
+      },
+    );
+    const pending = submit(f.ca, f.draft.id, "status-key", {
+      version: f.draft.version,
+    });
+    await started;
+    const before = (
+      await f.pool.query(
+        "SELECT o.order_status,o.integration_status,t.status AS transaction_status FROM orders o JOIN integration_transactions t ON t.order_id=o.id WHERE o.id=$1",
+        [f.draft.id],
+      )
+    ).rows[0];
+    assert.deepEqual(before, {
+      order_status: "SUBMITTED",
+      integration_status: "PROCESSING",
+      transaction_status: "PROCESSING",
+    });
+    await f.pool.query(
+      "UPDATE orders SET order_status='CONFIRMED' WHERE id=$1",
+      [f.draft.id],
+    );
+    release();
+    await pending;
+    const after = (
+      await f.pool.query(
+        "SELECT o.order_status,o.integration_status,t.status AS transaction_status,t.error_code,t.retryable FROM orders o JOIN integration_transactions t ON t.order_id=o.id WHERE o.id=$1",
+        [f.draft.id],
+      )
+    ).rows[0];
+    assert.deepEqual(after, {
+      order_status: "CONFIRMED",
+      integration_status: "FAILED",
+      transaction_status: "FAILED",
+      error_code: "OUTCOME_UNKNOWN",
+      retryable: false,
+    });
+  },
+);
+test(
+  "postgresql: failed order claim rolls the transaction claim back without sending",
+  {
+    skip:
+      !process.env.B2B_TEST_MIGRATIONS_DATABASE_URL &&
+      "PostgreSQL URL required",
+  },
+  async (t) => {
+    const f = await fixture(t, "postgresql");
+    let sent = 0;
+    await f.pool.query(
+      "ALTER TABLE orders ADD CONSTRAINT reject_processing CHECK (integration_status <> 'PROCESSING')",
+    );
+    const submit = createPostgresOrderSubmission(
+      f.pool,
+      f.source,
+      { amount: "27.5", currency: "AED" },
+      {
+        async send() {
+          sent++;
+          return { outcome: "uncertain" };
+        },
+      },
+    );
+    await assert.rejects(
+      submit(f.ca, f.draft.id, "claim-key", { version: f.draft.version }),
+      isCode("unavailable"),
+    );
+    const row = (
+      await f.pool.query(
+        "SELECT o.order_status,o.integration_status,t.status AS transaction_status FROM orders o JOIN integration_transactions t ON t.order_id=o.id WHERE o.id=$1",
+        [f.draft.id],
+      )
+    ).rows[0];
+    assert.deepEqual(row, {
+      order_status: "SUBMITTED",
+      integration_status: "PENDING",
+      transaction_status: "PENDING",
+    });
+    assert.equal(sent, 0);
+  },
+);
+test(
+  "postgresql: a concurrent technical status change cannot be overwritten by an ERP result",
+  {
+    skip:
+      !process.env.B2B_TEST_MIGRATIONS_DATABASE_URL &&
+      "PostgreSQL URL required",
+  },
+  async (t) => {
+    const f = await fixture(t, "postgresql");
+    let release, entered;
+    const started = new Promise((r) => {
+        entered = r;
+      }),
+      gate = new Promise((r) => {
+        release = r;
+      });
+    const submit = createPostgresOrderSubmission(
+      f.pool,
+      f.source,
+      { amount: "27.5", currency: "AED" },
+      {
+        async send() {
+          entered();
+          await gate;
+          return { outcome: "accepted", erpOrderReference: randomUUID() };
+        },
+      },
+    );
+    const pending = submit(f.ca, f.draft.id, "changed-technical-key", {
+      version: f.draft.version,
+    });
+    await started;
+    await f.pool.query(
+      "UPDATE orders SET integration_status='FAILED' WHERE id=$1",
+      [f.draft.id],
+    );
+    release();
+    await assert.rejects(pending, isCode("unavailable"));
+    const row = (
+      await f.pool.query(
+        "SELECT o.order_status,o.integration_status,o.erp_order_reference,t.status AS transaction_status FROM orders o JOIN integration_transactions t ON t.order_id=o.id WHERE o.id=$1",
+        [f.draft.id],
+      )
+    ).rows[0];
+    assert.deepEqual(row, {
+      order_status: "SUBMITTED",
+      integration_status: "FAILED",
+      erp_order_reference: null,
+      transaction_status: "PROCESSING",
+    });
+  },
+);
 for (const provider of ["json", "postgresql"]) {
   const opts = {
     skip:
