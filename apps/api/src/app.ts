@@ -18,6 +18,8 @@ import { createTenantRouter } from "./tenant-route.js";
 import type { RepositoryPorts } from "./repositories/index.js";
 import { createAdminCompaniesRouter } from "./admin-companies-route.js";
 import type { AdminCompanyRepository } from "./repositories/admin-companies.js";
+import { createDiagnosticsRouter } from "./diagnostics-route.js";
+import type { DiagnosticsService } from "./services/diagnostics.js";
 import { createAccountStatusRouter } from "./account-status-route.js";
 import type { AccountStatusService } from "./services/account-status.js";
 import { createLoginRouter, type LoginHandler } from "./login-route.js";
@@ -47,6 +49,7 @@ import type { SalesAssignmentRepository } from "./repositories/sales-assignments
 import { createInvoiceRouter } from "./invoice-route.js";
 import type { InvoiceQueries } from "./services/invoices.js";
 interface AppOptions {
+  diagnostics?: DiagnosticsService;
   adminCompanies?: AdminCompanyRepository;
   invoices?: InvoiceQueries;
   orderDrafts?: OrderDraftService;
@@ -97,6 +100,7 @@ export function createApp(options: AppOptions = {}) {
     ),
   );
   app.use(createAdminCompaniesRouter(options.sessions, options.adminCompanies));
+  app.use(createDiagnosticsRouter(options.sessions, options.diagnostics));
   app.use(createAccountStatusRouter(options.sessions, options.accountStatus));
   app.use(createSalesStaffRouter(options.sessions, options.salesStaff));
   app.use(createCustomerUsersRouter(options.sessions, options.customerUsers));

@@ -69,6 +69,8 @@ import { createPostgresApplications } from "./postgres-applications.js";
 import { createJsonApplications } from "./json/applications.js";
 
 export interface StorageRuntime {
+  readonly databaseConfigured: boolean;
+  readonly databaseHealth?: HealthProbe;
   readonly adminCompanies: AdminCompanyRepository;
   readonly invoices: import("../repositories/invoices.js").InvoiceRepository;
   readonly orderDrafts: OrderDraftRepository;
@@ -152,6 +154,8 @@ export async function selectStorage(
         reason: "postgres_reachable",
       });
       return Object.freeze({
+        databaseConfigured: true,
+        databaseHealth: postgres.health,
         adminCompanies: createPostgresAdminCompanies(postgres.pool),
         invoices: createPostgresInvoices(postgres.pool),
         provider: "postgresql",
@@ -235,6 +239,7 @@ export async function selectStorage(
     reason: options.postgres ? "postgres_unavailable" : "postgres_unconfigured",
   });
   return Object.freeze({
+    databaseConfigured: options.postgres !== undefined,
     adminCompanies: createJsonAdminCompanies(security),
     invoices: createJsonInvoices(security),
     provider: "json",

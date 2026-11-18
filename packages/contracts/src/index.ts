@@ -27,3 +27,5 @@ export type {
 } from "./health.js";
 export type { SalesCompanyPage } from "./sales-companies.js";
 export type { PortalInvoice, PortalInvoicePage } from "./invoices.js";
+
+export type { AdminDiagnostics } from "./diagnostics.js";

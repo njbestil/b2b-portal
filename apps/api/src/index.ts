@@ -6,6 +6,7 @@ import {
   protectDemoAuthentication,
   protectDemoTokens,
 } from "./demo/accounts-runtime.js";
+import { createDiagnostics } from "./services/diagnostics.js";
 import { createAccountStatus } from "./services/account-status.js";
 import { createCustomerUsers } from "./services/customer-users.js";
 import { createPasswordReset } from "./services/password-reset.js";
@@ -106,7 +107,21 @@ try {
         sessionProofs,
       )
     : undefined;
+  const erpHealth = erpConfig
+    ? createErpHealthProbe(new MockErpAdapter(erpConfig))
+    : undefined;
   const app = createApp({
+    diagnostics: createDiagnostics({
+      storage: {
+        provider: selectedStorage.provider,
+        probe: selectedStorage.health,
+      },
+      database: {
+        configured: selectedStorage.databaseConfigured,
+        probe: selectedStorage.databaseHealth,
+      },
+      erp: { provider: erpConfig ? "mock" : null, probe: erpHealth },
+    }),
     adminCompanies: selectedStorage.adminCompanies,
     invoices: createInvoiceQueries(
       selectedStorage.invoices,
@@ -182,9 +197,7 @@ try {
     storageProvider: selectedStorage.provider,
     healthChecks: {
       storage: selectedStorage.health,
-      erp: erpConfig
-        ? createErpHealthProbe(new MockErpAdapter(erpConfig))
-        : undefined,
+      erp: erpHealth,
     },
   });
   const server = app.listen(config.port, config.host);

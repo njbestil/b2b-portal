@@ -1,43 +1,15 @@
-import type {
-  DependencyHealth,
-  HealthReport,
-  StorageProvider,
-} from "@b2b-portal/contracts";
+import {
+  checkDependency,
+  type DependencyProbe,
+} from "./services/dependency-health.js";
+import type { HealthReport, StorageProvider } from "@b2b-portal/contracts";
 
 // Adapters supply read-only probes once implemented; absence is not success.
-export type HealthProbe = (signal: AbortSignal) => Promise<boolean>;
+export type HealthProbe = DependencyProbe;
 
 export interface HealthChecks {
   storage?: HealthProbe;
   erp?: HealthProbe;
-}
-
-async function checkDependency(
-  probe: HealthProbe | undefined,
-  timeoutMs: number,
-): Promise<DependencyHealth> {
-  if (!probe) return "unconfigured";
-
-  const controller = new AbortController();
-  let timer: ReturnType<typeof setTimeout> | undefined;
-  const deadline = new Promise<DependencyHealth>((resolve) => {
-    timer = setTimeout(() => {
-      resolve("timeout");
-      controller.abort();
-    }, timeoutMs);
-  });
-  // Schedule invocation inside a promise to also contain synchronous throws.
-  const result = Promise.resolve()
-    .then(() => probe(controller.signal))
-    .then<DependencyHealth, DependencyHealth>(
-      (healthy) => (healthy === true ? "up" : "down"),
-      () => "down",
-    );
-  try {
-    return await Promise.race([result, deadline]);
-  } finally {
-    clearTimeout(timer);
-  }
 }
 
 export function createHealthReporter(
