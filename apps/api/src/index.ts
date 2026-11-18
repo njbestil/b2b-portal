@@ -106,6 +106,7 @@ try {
       )
     : undefined;
   const app = createApp({
+    adminCompanies: selectedStorage.adminCompanies,
     invoices: createInvoiceQueries(
       selectedStorage.invoices,
       selectedStorage.repositories.companies,
