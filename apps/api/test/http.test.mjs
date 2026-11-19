@@ -170,9 +170,9 @@ test("JSON parser failures use safe standard envelopes and request IDs", async (
         "content-type": "application/json",
         "content-encoding": "gzip",
       },
-      status: 400,
-      code: "REQUEST_ERROR",
-      message: "The request could not be processed.",
+      status: 415,
+      code: "UNSUPPORTED_MEDIA_TYPE",
+      message: "Unsupported request body encoding.",
     },
   ];
   for (const scenario of cases) {

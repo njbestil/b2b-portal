@@ -29,7 +29,12 @@ import {
 } from "./authorization-middleware.js";
 import { HttpError, sendSuccess } from "./http.js";
 import { catalogTextKeys } from "./services/catalog-filters.js";
-function page(request: Request, paged: boolean, catalog = false): PageRequest {
+function page(
+  request: Request,
+  paged: boolean,
+  catalog = false,
+  history = false,
+): PageRequest {
   const query = request.query;
   if (
     Object.keys(query).some(
@@ -39,6 +44,7 @@ function page(request: Request, paged: boolean, catalog = false): PageRequest {
           "offset",
           "limit",
           ...(catalog ? [...catalogTextKeys, "availability"] : []),
+          ...(history ? ["search", "status", "from", "to"] : []),
         ].includes(key),
     )
   )
@@ -68,6 +74,7 @@ export function createTenantRouter(
       p: PageRequest,
     ) => Promise<unknown>,
     catalog = false,
+    history = false,
   ) {
     router.get(
       path,
@@ -79,7 +86,7 @@ export function createTenantRouter(
             queries,
             actorFor(request),
             request,
-            page(request, paged, catalog),
+            page(request, paged, catalog, history),
           );
           sendSuccess(response, result);
         } catch (e) {
@@ -169,6 +176,32 @@ export function createTenantRouter(
     false,
     async (q, a, r): Promise<{ product: PortalProduct }> => ({
       product: await q.getProduct(a, r.params.companyId, r.params.productId),
+    }),
+  );
+  read(
+    base + "/order-history",
+    "orders.read",
+    true,
+    (q, a, r, p) =>
+      q.listOrderHistory(
+        a,
+        r.params.companyId,
+        p,
+        Object.fromEntries(
+          Object.entries(r.query).filter(
+            ([key]) => key !== "offset" && key !== "limit",
+          ),
+        ),
+      ),
+    false,
+    true,
+  );
+  read(
+    base + "/order-history/:orderId",
+    "orders.read",
+    false,
+    async (q, a, r) => ({
+      order: await q.getOrderHistory(a, r.params.companyId, r.params.orderId),
     }),
   );
   read(
