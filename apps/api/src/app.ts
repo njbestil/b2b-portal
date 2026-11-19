@@ -1,3 +1,5 @@
+import { createFulfillmentRouter } from "./fulfillment-route.js";
+import type { FulfillmentService } from "./services/fulfillment.js";
 import { createAdminSalesAssignmentRouter } from "./admin-sales-assignment-route.js";
 import type { AdminSalesAssignmentService } from "./services/admin-sales-assignments.js";
 import { createSalesStaffRouter } from "./sales-staff-route.js";
@@ -52,6 +54,7 @@ import type { SalesAssignmentRepository } from "./repositories/sales-assignments
 import { createInvoiceRouter } from "./invoice-route.js";
 import type { InvoiceQueries } from "./services/invoices.js";
 interface AppOptions {
+  fulfillment?: FulfillmentService;
   diagnostics?: DiagnosticsService;
   adminCompanies?: AdminCompanyRepository;
   invoices?: InvoiceQueries;
@@ -109,6 +112,7 @@ export function createApp(options: AppOptions = {}) {
   );
   app.use(createAdminCompaniesRouter(options.sessions, options.adminCompanies));
   app.use(createDiagnosticsRouter(options.sessions, options.diagnostics));
+  app.use(createFulfillmentRouter(options.sessions, options.fulfillment));
   app.use(createAccountStatusRouter(options.sessions, options.accountStatus));
   app.use(
     createAdminSalesAssignmentRouter(
