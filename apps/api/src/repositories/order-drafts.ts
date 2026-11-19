@@ -57,6 +57,22 @@ export type DraftItemChange =
   | { readonly kind: "remove"; readonly itemId: string };
 /** Private customer-owned draft port. No submission/ERP mutation capability. */
 export interface OrderDraftRepository {
+  reorder(
+    actor: DraftActor,
+    id: string,
+    catalog: import("./catalog-sync.js").CatalogSnapshot,
+  ): Promise<
+    DraftItems & {
+      issues: readonly { readonly code: string; readonly itemId?: string }[];
+      prices: readonly {
+        itemId: string;
+        previous: string;
+        current: string | null;
+        currency: string | null;
+        changed: boolean;
+      }[];
+    }
+  >;
   acknowledgeTerms(
     actor: DraftActor,
     id: string,

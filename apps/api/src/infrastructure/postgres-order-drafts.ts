@@ -20,6 +20,10 @@ import {
   nextDraftTime,
 } from "./order-draft-state.js";
 import { lockedSession } from "./postgres-sessions.js";
+import {
+  evaluateReorder,
+  materializeReorder,
+} from "../services/reorder-evaluation.js";
 type Row = Omit<OrderSummary, "createdAt"> & {
   createdAt: Date;
   updatedAt: Date;
@@ -145,6 +149,88 @@ export function createPostgresOrderDrafts(
     );
   }
   return {
+    reorder: (actor, id, catalog) =>
+      run(actor, async (client) => {
+        const source = (
+          await client.query(
+            'SELECT id, company_id AS "companyId", created_by_user_id AS "creatorId", order_status AS status, order_snapshot AS snapshot FROM orders WHERE id=$1 AND company_id=$2 FOR UPDATE',
+            [id, actor.companyId],
+          )
+        ).rows[0];
+        if (!source || source.status === "DRAFT")
+          throw new DraftError("not_found");
+        if (!source.snapshot) throw new DraftError("conflict");
+        const customer = (
+          await client.query(
+            "SELECT erp_customer_reference AS reference FROM companies WHERE id=$1",
+            [actor.companyId],
+          )
+        ).rows[0];
+        if (!customer?.reference) throw new DraftError("unavailable");
+        const ids = source.snapshot.items?.map(
+          (item: { productId: string }) => item.productId,
+        );
+        if (!Array.isArray(ids) || ids.length > 100)
+          throw new DraftError("unavailable");
+        const persisted = await items(client, actor, id);
+        if (
+          persisted.length !== source.snapshot.items.length ||
+          source.snapshot.items.some(
+            (line: { itemId: string; productId: string; quantity: string }) =>
+              !persisted.some(
+                (item) =>
+                  item.id === line.itemId &&
+                  item.productId === line.productId &&
+                  item.quantity === line.quantity,
+              ),
+          )
+        )
+          throw new DraftError("unavailable");
+        const products = (
+          await client.query(
+            "SELECT id, erp_product_reference AS reference, active FROM products WHERE id=ANY($1::uuid[]) FOR SHARE",
+            [ids],
+          )
+        ).rows;
+        const access = (
+          await client.query(
+            "SELECT product_id AS id, eligible FROM customer_product_access WHERE product_id=ANY($1::uuid[]) AND company_id=$2 FOR SHARE",
+            [ids, actor.companyId],
+          )
+        ).rows;
+        const refs = products.map((p) => ({
+          id: p.id,
+          reference: p.reference,
+          eligible: p.active && access.some((a) => a.id === p.id && a.eligible),
+        }));
+        const result = materializeReorder(
+          evaluateReorder(
+            source.snapshot,
+            actor.companyId,
+            id,
+            source.creatorId,
+            customer.reference,
+            refs,
+            catalog,
+            now(),
+          ),
+          newId,
+        );
+        const time = new Date(now()).toISOString();
+        const row = (
+          await client.query<Row>(
+            `INSERT INTO orders(id,company_id,created_by_user_id,delivery_address_id,order_status,integration_status,created_at,updated_at) VALUES($1,$2,$3,NULL,'DRAFT','NOT_SENT',$4,$4) RETURNING ${projection}`,
+            [newId(), actor.companyId, actor.userId, time],
+          )
+        ).rows[0];
+        if (!row) throw new DraftError("unavailable");
+        for (const item of result.items)
+          await client.query(
+            "INSERT INTO order_items(id,company_id,order_id,product_id,quantity) VALUES($1,$2,$3,$4,$5)",
+            [item.id, actor.companyId, row.id, item.productId, item.quantity],
+          );
+        return { draft: view(row), ...result };
+      }),
     acknowledgeTerms: (actor, id, version, terms) =>
       run(actor, async (client) => {
         const row = await owned(client, actor, id);
