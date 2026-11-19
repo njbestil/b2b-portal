@@ -4,26 +4,27 @@ The frozen requirements sections 2.2–2.3 define four roles. Backend permission
 come from #28's current validated principal, never the role-preview UI, role
 headers, company headers or a serialized login profile.
 
-| Operation                 | Internal Admin | Sales Staff          | Customer Admin    | Customer User     |
-| ------------------------- | -------------- | -------------------- | ----------------- | ----------------- |
-| profile.read              | yes            | yes                  | yes               | yes               |
-| company.read              | yes            | yes, assigned        | yes, own company  | yes, own company  |
-| catalog.read              | yes            | yes, assigned        | yes, own company  | yes, own company  |
-| orders.read               | yes            | yes, assigned        | yes, own company  | yes, own company  |
-| customer-users.read       | yes            | yes, assigned        | yes, own company  | no                |
-| sales-assignments.manage  | yes            | no                   | no                | no                |
-| sales-staff.manage        | yes            | no                   | no                | no                |
-| customer-users.manage     | no             | no                   | yes, own company  | no                |
-| applications.read         | yes            | no                   | no                | no                |
-| accounts.status.read      | yes            | no                   | no                | no                |
-| accounts.status.write     | yes            | no                   | no                | no                |
-| sales.companies.read      | no             | yes, assigned        | no                | no                |
-| delivery-addresses.read   | yes            | yes, assigned/active | yes, own company  | yes, own active   |
-| delivery-addresses.manage | no             | no                   | yes, own company  | no                |
-| company-profile.read      | yes            | yes, assigned        | yes, own company  | yes, own company  |
-| company-profile.manage    | no             | no                   | yes, own company  | no                |
-| order-drafts.read         | no             | no                   | yes, creator only | yes, creator only |
-| order-drafts.manage       | no             | no                   | yes, creator only | yes, creator only |
+| Operation                  | Internal Admin | Sales Staff          | Customer Admin    | Customer User     |
+| -------------------------- | -------------- | -------------------- | ----------------- | ----------------- |
+| profile.read               | yes            | yes                  | yes               | yes               |
+| company.read               | yes            | yes, assigned        | yes, own company  | yes, own company  |
+| catalog.read               | yes            | yes, assigned        | yes, own company  | yes, own company  |
+| orders.fulfillment.refresh | yes            | no                   | no                | no                |
+| orders.read                | yes            | yes, assigned        | yes, own company  | yes, own company  |
+| customer-users.read        | yes            | yes, assigned        | yes, own company  | no                |
+| sales-assignments.manage   | yes            | no                   | no                | no                |
+| sales-staff.manage         | yes            | no                   | no                | no                |
+| customer-users.manage      | no             | no                   | yes, own company  | no                |
+| applications.read          | yes            | no                   | no                | no                |
+| accounts.status.read       | yes            | no                   | no                | no                |
+| accounts.status.write      | yes            | no                   | no                | no                |
+| sales.companies.read       | no             | yes, assigned        | no                | no                |
+| delivery-addresses.read    | yes            | yes, assigned/active | yes, own company  | yes, own active   |
+| delivery-addresses.manage  | no             | no                   | yes, own company  | no                |
+| company-profile.read       | yes            | yes, assigned        | yes, own company  | yes, own company  |
+| company-profile.manage     | no             | no                   | yes, own company  | no                |
+| order-drafts.read          | no             | no                   | yes, creator only | yes, creator only |
+| order-drafts.manage        | no             | no                   | yes, creator only | yes, creator only |
 
 These cover existing read projections, bounded #42 status transitions and #41's
 own-company Customer User creation/deactivation. The customer-scoped management
@@ -96,3 +97,7 @@ activation/deactivation. See [Sales Staff management](sales-staff-management.md)
 #84 adds Internal Admin-only `sales-assignments.manage` for optimistic current
 assignment reads and atomic primary owner changes. See
 [Sales assignment management](sales-assignment-management.md).
+
+#66 adds Internal Admin-only `orders.fulfillment.refresh` for explicit verified
+ERP business-status refresh. It grants no customer/Sales mutation, technical
+retry or dispatch authority. See [fulfillment refresh](fulfillment-refresh.md).

@@ -1,3 +1,4 @@
+export type { FulfillmentResult } from "./fulfillment.js";
 export type { AdminSalesAssignmentResult } from "./admin-sales-assignments.js";
 export type { SalesStaffResult } from "./sales-staff.js";
 export type { ApiFailure, ApiResponse, ApiSuccess } from "./api.js";

@@ -1,3 +1,6 @@
+import type { FulfillmentRepository } from "../repositories/fulfillment.js";
+import { createPostgresFulfillment } from "./postgres-fulfillment.js";
+import { createJsonFulfillment } from "./json/fulfillment.js";
 import type { AdminSalesAssignmentRepository } from "../repositories/admin-sales-assignments.js";
 import { createPostgresAdminSalesAssignments } from "./postgres-admin-sales-assignments.js";
 import { createJsonAdminSalesAssignments } from "./json/admin-sales-assignments.js";
@@ -73,6 +76,7 @@ import { createPostgresApplications } from "./postgres-applications.js";
 import { createJsonApplications } from "./json/applications.js";
 
 export interface StorageRuntime {
+  readonly fulfillment: FulfillmentRepository;
   readonly databaseConfigured: boolean;
   readonly databaseHealth?: HealthProbe;
   readonly createOrderSubmission?: (
@@ -189,6 +193,7 @@ export async function selectStorage(
         audit: createPostgresAudit(postgres.pool),
         notifications: createPostgresNotifications(postgres.pool),
         applications: createPostgresApplications(postgres.pool),
+        fulfillment: createPostgresFulfillment(postgres.pool),
         orderDrafts: createPostgresOrderDrafts(postgres.pool),
         createOrderSubmission: (
           source: import("../repositories/catalog-sync.js").CatalogSource,
@@ -291,6 +296,7 @@ export async function selectStorage(
     audit: createJsonAudit(options.jsonDirectory),
     notifications: createJsonNotifications(options.jsonDirectory),
     applications,
+    fulfillment: createJsonFulfillment(security),
     orderDrafts: createJsonOrderDrafts(security),
     companyProfiles: createJsonCompanyProfiles(security),
     deliveryAddresses: createJsonDeliveryAddresses(security),
