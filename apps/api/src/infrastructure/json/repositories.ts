@@ -1,3 +1,4 @@
+import { matchesHistory } from "../../services/order-history-filters.js";
 import type { CompanyRepository } from "../../repositories/companies.js";
 import type {
   CatalogProduct,
@@ -165,6 +166,22 @@ export function createJsonRepositories(
       },
     },
     orders: {
+      async findHistory(scope, orderId) {
+        const row = (await companyOrders(companyScope(scope))).find(
+          (r) => r.id === orderId.toLowerCase() && r.status !== "DRAFT",
+        );
+        return row
+          ? { ...orderSummary(row), snapshot: row.submittedSnapshot ?? null }
+          : null;
+      },
+      async listHistory(scope, page, filters) {
+        const rows = (await companyOrders(companyScope(scope)))
+          .filter((r) => matchesHistory(r, filters))
+          .sort(
+            (a, b) => b.createdAt.localeCompare(a.createdAt) || ascending(a, b),
+          );
+        return pageOf(rows.map(orderSummary), checkedPage(page));
+      },
       async findById(scope, orderId) {
         const companyId = companyScope(scope);
         const row =

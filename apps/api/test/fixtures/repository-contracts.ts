@@ -72,6 +72,12 @@ const order: OrderSummary = {
   integrationStatus: "FAILED",
 };
 const orders: OrderRepository = {
+  async findHistory() {
+    return { ...order, snapshot: null };
+  },
+  async listHistory() {
+    return { items: [order], total: 1 };
+  },
   async findById() {
     return order;
   },

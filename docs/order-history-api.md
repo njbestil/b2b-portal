@@ -1,0 +1,10 @@
+# Customer order history API (#58)
+
+Normal active Customer Admin and Customer User sessions can read their company's non-draft history. Company identity is checked against the admitted principal; a foreign company or order is not found. Internal and Sales roles are not admitted to these customer routes. The existing `/api/v1/companies/:companyId/orders` summary routes are unchanged and still support the draft UI.
+
+- `GET /api/v1/companies/:companyId/order-history?offset=0&limit=20&search=...&status=...&from=YYYY-MM-DD&to=YYYY-MM-DD` returns `{items,total,offset,limit}` in the standard success envelope. Filters are optional, combined, applied before count/page; search is a literal ASCII-case-insensitive substring of order number. Dates bound createdAt by inclusive UTC calendar dates. `status=all` or omission means all non-draft statuses. Limits are 1–100 and offset 0–100000. Sort is createdAt descending, then ID ascending.
+- `GET /api/v1/companies/:companyId/order-history/:orderId` returns `{order}` with the summary and `snapshot`. A valid version-1 snapshot exposes its submitted time, submitted-by name/role, delivery details, historical item values, exact decimal strings, currency and total. Its private company/actor/address identifiers and all unrelated storage fields are excluded. Legacy orders without a snapshot return `snapshot:null`; malformed or mismatched snapshots fail unavailable instead of fabricating history.
+
+Summary fields are `id`, `companyId`, `orderNumber`, `createdAt`, `status` and `integrationStatus`. Business and integration status are independent. No timeline events or estimated dates are invented; future status-history producers remain separate. Invalid filters/query/page return 400; missing, draft or foreign orders return 404; disallowed roles return 403; storage corruption/unavailability returns 503. Responses follow the existing no-store, authenticated tenant route policy.
+
+The snapshot writer (#56), submission transition (#62), ERP and immutable evidence are not modified. The UI owner should preserve the existing `/orders?draft=...&product=...` cart flow when integrating the future history screen.

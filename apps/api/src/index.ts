@@ -29,6 +29,7 @@ import { createApplications } from "./services/applications.js";
 import { createOrderDrafts } from "./services/order-drafts.js";
 import { createMockCustomerCatalogSource } from "./infrastructure/mock-customer-catalog-adapter.js";
 import { createMockSubmissionAdapter } from "./infrastructure/mock-submission-adapter.js";
+import { parseSubmissionRetryPolicy } from "./infrastructure/submission-retry-config.js";
 import { createCompanyProfiles } from "./services/company-profiles.js";
 import { createDeliveryAddresses } from "./services/delivery-addresses.js";
 import { createApplicationDecisions } from "./services/application-decisions.js";
@@ -58,6 +59,7 @@ try {
   const postgresConfig = parsePostgresEnvironment(process.env);
   const erpConfig = parseErpEnvironment(process.env);
   const submissionMinimum = parseSubmissionMinimum(process.env);
+  const submissionRetry = parseSubmissionRetryPolicy(process.env);
   const storageConfig = parseStorageEnvironment(process.env);
   const sessionConfig = parseSessionConfiguration(process.env);
   const demoTarget = demoMode(process.env);
@@ -133,6 +135,7 @@ try {
             createMockCustomerCatalogSource(erpConfig),
             submissionMinimum,
             createMockSubmissionAdapter(erpConfig),
+            submissionRetry,
           )
         : undefined,
     adminCompanies: selectedStorage.adminCompanies,

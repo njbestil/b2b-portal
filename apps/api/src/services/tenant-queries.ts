@@ -1,3 +1,6 @@
+import { checkedOrderSnapshot } from "./order-snapshot.js";
+import { checkedHistoryFilters } from "./order-history-filters.js";
+import type { OrderHistoryRecord } from "../repositories/orders.js";
 import type { RepositoryPorts } from "../repositories/index.js";
 import type { PageRequest, Page } from "../repositories/common.js";
 import type { CompanyProfile } from "../repositories/companies.js";
@@ -70,6 +73,63 @@ const orderView = (row: OrderSummary) => ({
   status: row.status,
   integrationStatus: row.integrationStatus,
 });
+function historyView(row: OrderHistoryRecord) {
+  let snapshot = null;
+  if (row.snapshot !== null) {
+    try {
+      const value = checkedOrderSnapshot(row.snapshot);
+      if (
+        value.orderId !== row.id ||
+        value.companyId !== row.companyId ||
+        value.submittedBy.id !== row.createdByUserId
+      )
+        throw new Error("Snapshot identity mismatch.");
+      snapshot = {
+        submittedAt: value.submittedAt,
+        submittedBy: {
+          displayName: value.submittedBy.displayName,
+          role: value.submittedBy.role,
+        },
+        delivery: {
+          label: value.delivery.label,
+          line1: value.delivery.line1,
+          contactName: value.delivery.contactName,
+          contactPhone: value.delivery.contactPhone,
+        },
+        items: value.items.map(
+          ({
+            itemId,
+            productId,
+            sku,
+            name,
+            sellingUom,
+            minimumOrderQuantity,
+            quantity,
+            unitPrice,
+            currency,
+            lineTotal,
+          }) => ({
+            itemId,
+            productId,
+            sku,
+            name,
+            sellingUom,
+            minimumOrderQuantity,
+            quantity,
+            unitPrice,
+            currency,
+            lineTotal,
+          }),
+        ),
+        currency: value.currency,
+        total: value.total,
+      };
+    } catch {
+      throw new TenantQueryError("unavailable");
+    }
+  }
+  return { ...orderView(row), snapshot };
+}
 function pageRequest(page?: PageRequest) {
   try {
     return checkedPage(page);
@@ -210,6 +270,53 @@ export function createTenantQueries(repositories: RepositoryPorts) {
       const row = await repositories.catalog.findEligibleById(scope, key);
       if (!row || row.id !== key) throw notFound();
       return productView(row);
+    },
+    async listOrderHistory(
+      actor: AuthorizedActor,
+      companyId: unknown,
+      input?: PageRequest,
+      rawFilters: unknown = {},
+    ) {
+      if (!["CUSTOMER_ADMIN", "CUSTOMER_USER"].includes(actor.role))
+        throw new AuthorizationError();
+      const page = pageRequest(input);
+      if (page.offset > 100000) throw new TenantQueryError("invalid_input");
+      let filters;
+      try {
+        filters = checkedHistoryFilters(rawFilters);
+      } catch {
+        throw new TenantQueryError("invalid_input");
+      }
+      const { scope } = await access(actor, "orders.read", companyId);
+      const data = await repositories.orders.listHistory(scope, page, filters);
+      return {
+        ...pageView(
+          data,
+          page,
+          (row) => orderView(row),
+          (row) => row.companyId === scope.companyId && row.status !== "DRAFT",
+        ),
+        ...page,
+      };
+    },
+    async getOrderHistory(
+      actor: AuthorizedActor,
+      companyId: unknown,
+      orderId: unknown,
+    ) {
+      if (!["CUSTOMER_ADMIN", "CUSTOMER_USER"].includes(actor.role))
+        throw new AuthorizationError();
+      const key = id(orderId),
+        { scope } = await access(actor, "orders.read", companyId);
+      const row = await repositories.orders.findHistory(scope, key);
+      if (
+        !row ||
+        row.id !== key ||
+        row.companyId !== scope.companyId ||
+        row.status === "DRAFT"
+      )
+        throw notFound();
+      return historyView(row);
     },
     async listOrders(
       actor: AuthorizedActor,
