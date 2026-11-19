@@ -47,7 +47,7 @@ export function createMockSubmissionAdapter(config: ErpEnvironment) {
           signal: controller.signal,
         });
         if (
-          (response.status !== 200 && response.status !== 201) ||
+          ![200, 201, 500, 503, 504].includes(response.status) ||
           !/^application\/json(?:\s*;|$)/i.test(
             response.headers.get("content-type") ?? "",
           ) ||
@@ -82,6 +82,20 @@ export function createMockSubmissionAdapter(config: ErpEnvironment) {
           receipt.portalOrderId !== request.portalOrderId ||
           receipt.customerId !== request.customerId
         )
+          return { outcome: "uncertain" };
+        // These exact Mock fixtures explicitly guarantee no order was created.
+        // A network timeout or any uncorrelated/unrecognized response remains unknown.
+        const safeTechnical: Record<number, string> = {
+          500: "ERP_TEMPORARY_FAILURE",
+          503: "ERP_UNAVAILABLE",
+          504: "ERP_TIMEOUT",
+        };
+        if (
+          safeTechnical[response.status] &&
+          receipt.error?.code === safeTechnical[response.status]
+        )
+          return { outcome: "rejected", code: receipt.error.code };
+        if (response.status !== 200 && response.status !== 201)
           return { outcome: "uncertain" };
         if (
           receipt.outcome === "rejected" &&

@@ -59,6 +59,8 @@ import type { ApplicationRepository } from "../repositories/applications.js";
 import type { OrderDraftRepository } from "../repositories/order-drafts.js";
 import { createPostgresOrderDrafts } from "./postgres-order-drafts.js";
 import { createPostgresOrderSubmission } from "./postgres-order-submission.js";
+import { createPostgresRetryingGateway } from "./postgres-submission-retry.js";
+import type { SubmissionRetryPolicy } from "./submission-retry-config.js";
 import { createJsonOrderDrafts } from "./json/order-drafts.js";
 import type { CompanyProfileRepository } from "../repositories/company-profiles.js";
 import { createPostgresCompanyProfiles } from "./postgres-company-profiles.js";
@@ -83,6 +85,7 @@ export interface StorageRuntime {
         request: import("./mock-submission-adapter.js").MockSubmissionRequest,
       ): Promise<import("./mock-submission-adapter.js").MockSubmissionResult>;
     },
+    retryPolicy?: SubmissionRetryPolicy,
   ) => import("./postgres-order-submission.js").OrderSubmission;
   readonly adminCompanies: AdminCompanyRepository;
   readonly invoices: import("../repositories/invoices.js").InvoiceRepository;
@@ -200,12 +203,19 @@ export async function selectStorage(
               import("./mock-submission-adapter.js").MockSubmissionResult
             >;
           },
+          retryPolicy?: SubmissionRetryPolicy,
         ) =>
           createPostgresOrderSubmission(
             postgres.pool,
             source,
             minimum,
-            gateway,
+            retryPolicy
+              ? createPostgresRetryingGateway(
+                  postgres.pool,
+                  gateway,
+                  retryPolicy,
+                )
+              : gateway,
           ),
         companyProfiles: createPostgresCompanyProfiles(postgres.pool),
         deliveryAddresses: createPostgresDeliveryAddresses(postgres.pool),
