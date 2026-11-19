@@ -1011,12 +1011,13 @@ test("actual API runtime monitors PostgreSQL in production without ERP config an
       await once(probe, "listening");
       const port = probe.address().port;
       await new Promise((r) => probe.close(r));
-      let connection = "";
+      let connection = "",
+        pgOptions = "";
       if (provider === "postgresql") {
         const schema = (await f.pool.query("SELECT current_schema() AS name"))
             .rows[0].name,
           url = new URL(process.env.B2B_TEST_MIGRATIONS_DATABASE_URL);
-        url.searchParams.set("options", `-c search_path=${schema}`);
+        pgOptions = `-c search_path=${schema}`;
         connection = url.toString();
       }
       const env = {
@@ -1025,6 +1026,7 @@ test("actual API runtime monitors PostgreSQL in production without ERP config an
         API_HOST: "127.0.0.1",
         API_PORT: String(port),
         DATABASE_URL: connection,
+        PGOPTIONS: pgOptions,
         JSON_DATA_DIR: f.directory,
         AUTH_JWT_ISSUER: "password-test",
         AUTH_JWT_AUDIENCE: "password-test",
