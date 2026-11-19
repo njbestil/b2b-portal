@@ -111,6 +111,31 @@ export function createOrderDraftRouter(
     next();
   };
   router.post(
+    "/api/v1/orders/:id/reorder",
+    authorize("order-drafts.manage", sessions),
+    guard,
+    json({ limit: "8kb", inflate: false }),
+    async (request, response, next) => {
+      try {
+        if (Object.keys(request.query).length)
+          throw new DraftError("invalid_input");
+        if (!service) throw new DraftError("unavailable");
+        sendSuccess(
+          response,
+          await service.reorder(
+            actorFor(request),
+            request.params.id,
+            request.body,
+            requestIdFor(response),
+          ),
+          201,
+        );
+      } catch (e) {
+        next(error(e));
+      }
+    },
+  );
+  router.post(
     "/api/v1/order-drafts/:id/submit",
     authorize("order-drafts.manage", sessions),
     guard,
