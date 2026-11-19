@@ -216,6 +216,31 @@ export function createOrderDrafts(
     }
   }
   return {
+    async reorder(
+      actor: AuthorizedActor,
+      key: unknown,
+      input: unknown,
+      requestId: string,
+    ) {
+      const who = identity(actor),
+        id = draftId(key),
+        body = object(input);
+      if (Object.keys(body).length) throw new DraftError("invalid_input");
+      if (!validation) throw new DraftError("unavailable");
+      let snapshot;
+      try {
+        snapshot = await validation.source.readSnapshot(
+          new AbortController().signal,
+        );
+      } catch {
+        throw new DraftError("unavailable");
+      }
+      const result = await repository.reorder(who, id, snapshot);
+      const draft = view(result.draft, who);
+      const items = checkedDraftItems(result.items);
+      await record(who, draft.id, "order.created", requestId);
+      return { draft, items, issues: result.issues, prices: result.prices };
+    },
     async terms(actor: AuthorizedActor, key: unknown, input: unknown) {
       const who = identity(actor),
         id = draftId(key),
