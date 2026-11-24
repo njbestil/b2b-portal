@@ -171,7 +171,11 @@ try {
       selectedStorage.invoices,
       selectedStorage.repositories.companies,
     ),
-    orderNotes: createOrderNotes(selectedStorage.orderNotes, record),
+    orderNotes: createOrderNotes(
+      selectedStorage.orderNotes,
+      record,
+      randomUUID,
+    ),
     orderDrafts: createOrderDrafts(
       selectedStorage.orderDrafts,
       record,

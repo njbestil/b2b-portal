@@ -1,4 +1,3 @@
-import { randomUUID } from "node:crypto";
 import type { OrderNotesRepository } from "../repositories/order-notes.js";
 import type { AuditInput } from "../repositories/audit.js";
 import {
@@ -15,6 +14,7 @@ import { checkedSalesPage } from "./sales-assignments.js";
 export function createOrderNotes(
   repository: OrderNotesRepository,
   audit: (event: AuditInput) => Promise<unknown>,
+  newId: () => string,
 ) {
   async function access<T>(
     actor: AuthorizedActor,
@@ -43,7 +43,7 @@ export function createOrderNotes(
             scope.companyId === companyId
           );
         },
-        randomUUID,
+        newId,
       );
       return operation(service, identity, { companyId });
     });

@@ -79,10 +79,14 @@ for (const provider of ["json", "postgresql"]) {
         ? createJsonOrderNotes(f.security, f.now)
         : createPostgresOrderNotes(f.pool, f.now);
     f.events = [];
-    f.service = createOrderNotes(f.repo, async (e) => {
-      f.events.push(e);
-      return f.record(e);
-    });
+    f.service = createOrderNotes(
+      f.repo,
+      async (e) => {
+        f.events.push(e);
+        return f.record(e);
+      },
+      randomUUID,
+    );
     f.actor = async (i = 1) =>
       createAuthorization(f.auth.authenticateAccess).admit(
         (await f.login(i)).accessToken,
