@@ -5,6 +5,7 @@ import { createMockFulfillmentSource } from "./infrastructure/mock-fulfillment-a
 import { createAdminSalesAssignments } from "./services/admin-sales-assignments.js";
 import { createSalesStaff } from "./services/sales-staff.js";
 import { createInvoiceQueries } from "./services/invoices.js";
+import { createOrderNotes } from "./services/order-notes.js";
 import { demoMode } from "./demo/accounts.js";
 import {
   inspectDemoStore,
@@ -170,6 +171,7 @@ try {
       selectedStorage.invoices,
       selectedStorage.repositories.companies,
     ),
+    orderNotes: createOrderNotes(selectedStorage.orderNotes, record),
     orderDrafts: createOrderDrafts(
       selectedStorage.orderDrafts,
       record,

@@ -1,4 +1,7 @@
 import type { IntegrationMonitorRepository } from "../repositories/integration-monitor.js";
+import type { OrderNotesRepository } from "../repositories/order-notes.js";
+import { createPostgresOrderNotes } from "./postgres-order-notes.js";
+import { createJsonOrderNotes } from "./json/order-notes.js";
 import { createPostgresIntegrationMonitor } from "./postgres-integration-monitor.js";
 import { createUnavailableIntegrationMonitor } from "./unavailable-integration-monitor.js";
 import type { FulfillmentRepository } from "../repositories/fulfillment.js";
@@ -132,6 +135,7 @@ export interface StorageRuntime {
   readonly provider: StorageProvider;
   readonly repositories: RepositoryPorts;
   readonly internalNotes: InternalNotesRepository;
+  readonly orderNotes: OrderNotesRepository;
   readonly audit: AuditRepository;
   readonly cancellationStatus?: CancellationStatusRepository;
   readonly health: HealthProbe;
@@ -224,6 +228,7 @@ export async function selectStorage(
         repositories: createPostgresRepositories(postgres.pool),
         authentication: createPostgresAuthentication(postgres.pool),
         internalNotes: createPostgresInternalNotes(postgres.pool),
+        orderNotes: createPostgresOrderNotes(postgres.pool),
         audit: createPostgresAudit(postgres.pool),
         notifications: createPostgresNotifications(postgres.pool),
         applications: createPostgresApplications(postgres.pool),
@@ -342,6 +347,7 @@ export async function selectStorage(
     repositories: createJsonRepositories(store),
     authentication: createJsonAuthentication(store),
     internalNotes: createJsonInternalNotes(options.jsonDirectory, security),
+    orderNotes: createJsonOrderNotes(security),
     audit: createJsonAudit(options.jsonDirectory),
     notifications: createJsonNotifications(options.jsonDirectory),
     applications,

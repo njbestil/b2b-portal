@@ -1,5 +1,9 @@
 # Internal order note persistence (B2B-014)
 
+The authenticated B2B-059 workflow now wraps these unchanged persistence ports;
+see [the internal-note API](order-notes-api.md) for current routes and authority.
+This document describes the underlying storage capability and its original scope.
+
 Migration `0002_order_internal_notes.sql` adds the separate internal table with
 UUID ID, company/order composite FK, author FK, bounded nonblank note and finite
 UTC timestamp. Apply it explicitly through the existing migration command to an
@@ -30,7 +34,7 @@ This is persistence groundwork, **not** an authenticated HTTP API or the full
 Sales workflow. B2B-020/022 supply real backend role/assignment checks; B2B-059
 supplies the later Sales note workflow/UI. Do not wire a callback that trusts HTTP
 input or returns true for arbitrary Sales companies. No new public endpoint is
-registered. Customer order summaries remain note-free; database/filesystem access
+registered by this persistence factory. Customer order summaries remain note-free; database/filesystem access
 is trusted infrastructure access, not customer access. SQL roles are not claimed
 as a new RLS/security sandbox.
 
