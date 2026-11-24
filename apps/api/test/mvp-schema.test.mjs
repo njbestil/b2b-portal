@@ -172,7 +172,12 @@ test(
     );
     assert.deepEqual(
       actual.rows.map((r) => r.table_name),
-      [...tables, "schema_migrations", "submission_idempotency"].sort(),
+      [
+        ...tables,
+        "schema_migrations",
+        "submission_idempotency",
+        "cancellation_idempotency",
+      ].sort(),
     );
     for (const table of tables) {
       assert.equal(
@@ -189,7 +194,15 @@ test(
     WHERE n.nspname=$1 AND k.contype='p' AND c.relname <> 'schema_migrations'`,
       [schema],
     );
-    assert.equal(keys.rows.length, tables.length + 1);
+    assert.equal(keys.rows.length, tables.length + 2);
+    assert.deepEqual(
+      keys.rows.find((r) => r.table_name === "cancellation_idempotency"),
+      {
+        table_name: "cancellation_idempotency",
+        attname: "key_hash",
+        type: "text",
+      },
+    );
     assert.deepEqual(
       keys.rows.find((r) => r.table_name === "submission_idempotency"),
       {
@@ -200,7 +213,12 @@ test(
     );
     assert.ok(
       keys.rows
-        .filter((r) => r.table_name !== "submission_idempotency")
+        .filter(
+          (r) =>
+            !["submission_idempotency", "cancellation_idempotency"].includes(
+              r.table_name,
+            ),
+        )
         .every(
           (r) =>
             r.attname ===
@@ -690,7 +708,12 @@ test(
       );
       assert.deepEqual(
         result.rows.map((r) => r.tablename),
-        [...tables, "schema_migrations", "submission_idempotency"].sort(),
+        [
+          ...tables,
+          "schema_migrations",
+          "submission_idempotency",
+          "cancellation_idempotency",
+        ].sort(),
       );
     } finally {
       await inspect.end();

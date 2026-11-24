@@ -27,6 +27,10 @@ import {
 } from "../order-draft-state.js";
 import { readJsonSecurityAccount } from "./security-account.js";
 import { createJsonSessionFile } from "./session-file.js";
+import {
+  evaluateReorder,
+  materializeReorder,
+} from "../../services/reorder-evaluation.js";
 export function createJsonOrderDrafts(
   security: JsonSecurityCoordinator,
   now = Date.now,
@@ -170,6 +174,74 @@ export function createJsonOrderDrafts(
       throw new DraftError("not_found");
   }
   return {
+    reorder: (actor, id, catalog) =>
+      run(actor, async (rows, check) => {
+        const source = rows.find(
+          (row) => row.id === id && row.companyId === actor.companyId,
+        );
+        if (!source || source.status === "DRAFT")
+          throw new DraftError("not_found");
+        if (!source.submittedSnapshot) throw new DraftError("conflict");
+        const companies = await security.store.read("companies"),
+          products = await security.store.read("products"),
+          access = await security.store.read("customer_product_access");
+        const reference = companies.find(
+          (c) => c.id === actor.companyId,
+        )?.erpCustomerReference;
+        if (!reference) throw new DraftError("unavailable");
+        const refs = products.map((p) => ({
+          id: p.id,
+          reference: p.erpProductReference ?? null,
+          eligible:
+            p.active &&
+            access.some(
+              (a) =>
+                a.productId === p.id &&
+                a.companyId === actor.companyId &&
+                a.eligible,
+            ),
+        }));
+        const result = materializeReorder(
+          evaluateReorder(
+            source.submittedSnapshot,
+            actor.companyId,
+            id,
+            source.createdByUserId,
+            reference,
+            refs,
+            catalog,
+            now(),
+          ),
+          newId,
+        );
+        const draftIdValue = draftId(newId());
+        if (
+          rows.some(
+            (row) =>
+              row.id === draftIdValue ||
+              row.items?.some((item) =>
+                result.items.some((newItem) => newItem.id === item.id),
+              ),
+          )
+        )
+          throw new DraftError("conflict");
+        const time = new Date(now()).toISOString();
+        const row: JsonOrder = {
+          id: draftIdValue,
+          companyId: actor.companyId,
+          createdByUserId: actor.userId,
+          orderNumber: null,
+          createdAt: time,
+          updatedAt: time,
+          deliveryAddressId: null,
+          status: "DRAFT",
+          integrationStatus: "NOT_SENT",
+          items: result.items,
+        };
+        const draft = view(row);
+        await publish([...rows, row], check);
+        return { draft, ...result };
+      }),
     acknowledgeTerms: (actor, id, version, terms) =>
       run(actor, async (rows, check) => {
         const row = owned(rows, actor, id);

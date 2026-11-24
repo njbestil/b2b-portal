@@ -24,6 +24,7 @@ const roles = [
 const expected = {
   "diagnostics.read": roles.slice(0, 1),
   "orders.fulfillment.refresh": roles.slice(0, 1),
+  "orders.cancel": roles.slice(1),
   "invoices.read": roles.slice(2),
   "order-drafts.read": roles.slice(2),
   "order-drafts.manage": roles.slice(2),

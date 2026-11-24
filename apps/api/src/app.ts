@@ -3,6 +3,7 @@ import type { FulfillmentService } from "./services/fulfillment.js";
 import { createAdminSalesAssignmentRouter } from "./admin-sales-assignment-route.js";
 import type { AdminSalesAssignmentService } from "./services/admin-sales-assignments.js";
 import { createSalesStaffRouter } from "./sales-staff-route.js";
+import { createCancellationRouter } from "./cancellation-route.js";
 import type { SalesStaffService } from "./services/sales-staff.js";
 import { createPasswordResetRouter } from "./password-reset-route.js";
 import type { PasswordResetService } from "./services/password-reset.js";
@@ -54,6 +55,7 @@ import type { SalesAssignmentRepository } from "./repositories/sales-assignments
 import { createInvoiceRouter } from "./invoice-route.js";
 import type { InvoiceQueries } from "./services/invoices.js";
 interface AppOptions {
+  orderCancellation?: import("./infrastructure/postgres-cancellation.js").OrderCancellation;
   fulfillment?: FulfillmentService;
   diagnostics?: DiagnosticsService;
   adminCompanies?: AdminCompanyRepository;
@@ -93,6 +95,9 @@ export function createApp(options: AppOptions = {}) {
   app.disable("x-powered-by");
   app.use(requestIdMiddleware);
   app.use(requestLogging(logger));
+  app.use(
+    createCancellationRouter(options.sessions, options.orderCancellation),
+  );
   app.use(securityHeaders);
   app.use(createRequestGuard());
   if (options.login)

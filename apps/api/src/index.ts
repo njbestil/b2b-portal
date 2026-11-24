@@ -1,4 +1,5 @@
 import { createFulfillmentRefresh } from "./services/fulfillment.js";
+import { createMockCancellationAdapter } from "./infrastructure/mock-cancellation-adapter.js";
 import { createMockFulfillmentSource } from "./infrastructure/mock-fulfillment-adapter.js";
 import { createAdminSalesAssignments } from "./services/admin-sales-assignments.js";
 import { createSalesStaff } from "./services/sales-staff.js";
@@ -117,6 +118,11 @@ try {
     ? createErpHealthProbe(new MockErpAdapter(erpConfig))
     : undefined;
   const app = createApp({
+    orderCancellation: selectedStorage.createOrderCancellation?.(
+      config.nodeEnv !== "production" && erpConfig
+        ? createMockCancellationAdapter(erpConfig)
+        : undefined,
+    ),
     fulfillment:
       config.nodeEnv !== "production" && erpConfig
         ? createFulfillmentRefresh(
