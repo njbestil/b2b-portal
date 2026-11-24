@@ -49,6 +49,7 @@ import {
   type ApplicationHandler,
 } from "./application-route.js";
 import { createSalesCompaniesRouter } from "./sales-companies-route.js";
+import { createSalesCustomerDetailRouter } from "./sales-customer-detail-route.js";
 import type { SalesAssignmentRepository } from "./repositories/sales-assignments.js";
 
 import { createInvoiceRouter } from "./invoice-route.js";
@@ -140,6 +141,13 @@ export function createApp(options: AppOptions = {}) {
   app.use(createTenantRouter(options.sessions, options.companyRepositories));
   app.use(
     createSalesCompaniesRouter(options.sessions, options.salesAssignments),
+  );
+  app.use(
+    createSalesCustomerDetailRouter(
+      options.sessions,
+      options.companyProfiles,
+      options.companyRepositories,
+    ),
   );
 
   app.get("/", (_request, response) => {
