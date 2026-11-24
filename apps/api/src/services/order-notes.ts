@@ -31,7 +31,20 @@ export function createOrderNotes(
     const companyId = noteId(company as string),
       identity = { id: actor.userId, role: actor.role, status: "ACTIVE" };
     return repository.run(actor, companyId, async (notes) => {
-      const service = createInternalNotes(notes, async () => true, randomUUID);
+      const service = createInternalNotes(
+        notes,
+        async (author, scope) => {
+          // The provider holds current authority; bind the lower-level callback
+          // to that exact actor/company rather than admitting arbitrary scopes.
+          requirePermission(actor, "orders.read");
+          return (
+            author.id === actor.userId &&
+            author.role === actor.role &&
+            scope.companyId === companyId
+          );
+        },
+        randomUUID,
+      );
       return operation(service, identity, { companyId });
     });
   }
