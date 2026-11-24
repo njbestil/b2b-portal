@@ -8,6 +8,8 @@ import { createAdminSalesAssignmentRouter } from "./admin-sales-assignment-route
 import type { AdminSalesAssignmentService } from "./services/admin-sales-assignments.js";
 import { createSalesStaffRouter } from "./sales-staff-route.js";
 import { createCancellationRouter } from "./cancellation-route.js";
+import { createCancellationStatusRouter } from "./cancellation-status-route.js";
+import type { CancellationStatusReader } from "./services/cancellation-status.js";
 import type { SalesStaffService } from "./services/sales-staff.js";
 import { createPasswordResetRouter } from "./password-reset-route.js";
 import type { PasswordResetService } from "./services/password-reset.js";
@@ -70,6 +72,7 @@ interface AppOptions {
   orderDrafts?: OrderDraftService;
   orderSubmission?: import("./infrastructure/postgres-order-submission.js").OrderSubmission;
   companyProfiles?: CompanyProfileService;
+  cancellationStatus?: CancellationStatusReader;
   deliveryAddresses?: DeliveryAddressService;
   adminSalesAssignments?: AdminSalesAssignmentService;
   salesStaff?: SalesStaffService;
@@ -107,6 +110,12 @@ export function createApp(options: AppOptions = {}) {
   app.use(createManualRetryRouter(options.sessions, options.manualRetry));
   app.use(
     createCancellationRouter(options.sessions, options.orderCancellation),
+  );
+  app.use(
+    createCancellationStatusRouter(
+      options.sessions,
+      options.cancellationStatus,
+    ),
   );
   if (options.login)
     app.use(createLoginRouter(options.login, Date.now, options.sessionLogin));

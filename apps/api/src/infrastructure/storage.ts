@@ -9,6 +9,8 @@ import {
   type ManualRetry,
 } from "./postgres-manual-retry.js";
 import { createJsonFulfillment } from "./json/fulfillment.js";
+import { createPostgresCancellationStatus } from "./postgres-cancellation-status.js";
+import type { CancellationStatusRepository } from "../repositories/cancellation-status.js";
 import type { AdminSalesAssignmentRepository } from "../repositories/admin-sales-assignments.js";
 import { createPostgresAdminSalesAssignments } from "./postgres-admin-sales-assignments.js";
 import { createJsonAdminSalesAssignments } from "./json/admin-sales-assignments.js";
@@ -131,6 +133,7 @@ export interface StorageRuntime {
   readonly repositories: RepositoryPorts;
   readonly internalNotes: InternalNotesRepository;
   readonly audit: AuditRepository;
+  readonly cancellationStatus?: CancellationStatusRepository;
   readonly health: HealthProbe;
   close(): Promise<void>;
 }
@@ -206,6 +209,7 @@ export async function selectStorage(
         databaseHealth: postgres.health,
         adminCompanies: createPostgresAdminCompanies(postgres.pool),
         invoices: createPostgresInvoices(postgres.pool),
+        cancellationStatus: createPostgresCancellationStatus(postgres.pool),
         provider: "postgresql",
         sessions,
         passwordChanges: createPostgresPasswordChange(postgres.pool),

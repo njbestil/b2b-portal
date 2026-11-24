@@ -26,6 +26,7 @@ import {
   parseSubmissionMinimum,
 } from "@b2b-portal/config/server";
 import { createApp } from "./app.js";
+import { createCancellationStatus } from "./services/cancellation-status.js";
 import { randomUUID } from "node:crypto";
 import { createAudit } from "./services/audit.js";
 import { createLogin, createVerifiedLogin } from "./services/login.js";
@@ -209,6 +210,12 @@ try {
       resetProofs,
     ),
     companyRepositories: selectedStorage.repositories,
+    cancellationStatus: selectedStorage.cancellationStatus
+      ? createCancellationStatus(
+          selectedStorage.cancellationStatus,
+          selectedStorage.companyProfiles,
+        )
+      : undefined,
     salesAssignments: selectedStorage.salesAssignments,
     pendingApplication: selectedStorage.applications.pending,
     applicationReview: createApplicationDecisions(

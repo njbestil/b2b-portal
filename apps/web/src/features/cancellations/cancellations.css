@@ -1,0 +1,46 @@
+.cancellation-panel {
+  padding: var(--space-6);
+  margin-block-start: var(--space-4);
+}
+.cancellation-state {
+  padding: var(--space-4);
+  background: var(--surface-accent);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+.cancellation-state p:last-child {
+  margin-block-end: 0;
+}
+.cancellation-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  margin-block: var(--space-4);
+}
+.cancellation-dialog {
+  inline-size: min(36rem, calc(100vi - 2rem));
+  max-block-size: calc(100dvb - 2rem);
+  overflow: auto;
+  padding: var(--space-6);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  color: var(--content);
+  background: var(--surface);
+}
+.cancellation-dialog::backdrop {
+  background: #0009;
+}
+.cancellation-dialog textarea {
+  inline-size: 100%;
+  min-block-size: 8rem;
+  resize: vertical;
+  font: inherit;
+  color: var(--content);
+  background: var(--surface);
+  border: 1px solid var(--control-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-3);
+}
+.cancellation-dialog form {
+  margin-block-start: var(--space-4);
+}
