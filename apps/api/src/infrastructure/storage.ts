@@ -1,3 +1,6 @@
+import type { IntegrationMonitorRepository } from "../repositories/integration-monitor.js";
+import { createPostgresIntegrationMonitor } from "./postgres-integration-monitor.js";
+import { createUnavailableIntegrationMonitor } from "./unavailable-integration-monitor.js";
 import type { FulfillmentRepository } from "../repositories/fulfillment.js";
 import { createPostgresFulfillment } from "./postgres-fulfillment.js";
 import { createJsonFulfillment } from "./json/fulfillment.js";
@@ -78,6 +81,7 @@ import { createPostgresApplications } from "./postgres-applications.js";
 import { createJsonApplications } from "./json/applications.js";
 
 export interface StorageRuntime {
+  readonly integrationMonitor: IntegrationMonitorRepository;
   readonly fulfillment: FulfillmentRepository;
   readonly databaseConfigured: boolean;
   readonly databaseHealth?: HealthProbe;
@@ -175,6 +179,7 @@ export async function selectStorage(
         reason: "postgres_reachable",
       });
       return Object.freeze({
+        integrationMonitor: createPostgresIntegrationMonitor(postgres.pool),
         databaseConfigured: true,
         databaseHealth: postgres.health,
         adminCompanies: createPostgresAdminCompanies(postgres.pool),
@@ -288,6 +293,7 @@ export async function selectStorage(
     reason: options.postgres ? "postgres_unavailable" : "postgres_unconfigured",
   });
   return Object.freeze({
+    integrationMonitor: createUnavailableIntegrationMonitor(),
     databaseConfigured: options.postgres !== undefined,
     adminCompanies: createJsonAdminCompanies(security),
     invoices: createJsonInvoices(security),

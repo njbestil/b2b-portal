@@ -1,3 +1,4 @@
+import { createIntegrationMonitor } from "./services/integration-monitor.js";
 import { createFulfillmentRefresh } from "./services/fulfillment.js";
 import { createMockFulfillmentSource } from "./infrastructure/mock-fulfillment-adapter.js";
 import { createAdminSalesAssignments } from "./services/admin-sales-assignments.js";
@@ -117,6 +118,9 @@ try {
     ? createErpHealthProbe(new MockErpAdapter(erpConfig))
     : undefined;
   const app = createApp({
+    integrationMonitor: createIntegrationMonitor(
+      selectedStorage.integrationMonitor,
+    ),
     fulfillment:
       config.nodeEnv !== "production" && erpConfig
         ? createFulfillmentRefresh(

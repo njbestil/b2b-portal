@@ -1,3 +1,5 @@
+import { createIntegrationMonitorRouter } from "./integration-monitor-route.js";
+import type { IntegrationMonitorService } from "./services/integration-monitor.js";
 import { createFulfillmentRouter } from "./fulfillment-route.js";
 import type { FulfillmentService } from "./services/fulfillment.js";
 import { createAdminSalesAssignmentRouter } from "./admin-sales-assignment-route.js";
@@ -55,6 +57,7 @@ import { createInvoiceRouter } from "./invoice-route.js";
 import type { InvoiceQueries } from "./services/invoices.js";
 interface AppOptions {
   fulfillment?: FulfillmentService;
+  integrationMonitor?: IntegrationMonitorService;
   diagnostics?: DiagnosticsService;
   adminCompanies?: AdminCompanyRepository;
   invoices?: InvoiceQueries;
@@ -112,6 +115,12 @@ export function createApp(options: AppOptions = {}) {
   );
   app.use(createAdminCompaniesRouter(options.sessions, options.adminCompanies));
   app.use(createDiagnosticsRouter(options.sessions, options.diagnostics));
+  app.use(
+    createIntegrationMonitorRouter(
+      options.sessions,
+      options.integrationMonitor,
+    ),
+  );
   app.use(createFulfillmentRouter(options.sessions, options.fulfillment));
   app.use(createAccountStatusRouter(options.sessions, options.accountStatus));
   app.use(
