@@ -4,12 +4,7 @@ import type {
   MockSubmissionResult,
 } from "./mock-submission-adapter.js";
 import type { SubmissionRetryPolicy } from "./submission-retry-config.js";
-
-const retryable = new Set([
-  "ERP_TIMEOUT",
-  "ERP_UNAVAILABLE",
-  "ERP_TEMPORARY_FAILURE",
-]);
+import { retryableSubmission } from "../services/retryable-submission.js";
 
 /** Called only after the durable initial claim. Interrupted PROCESSING stays
  * uncertain and is never reclaimed, even if a retry timer had been scheduled. */
@@ -32,8 +27,7 @@ export function createPostgresRetryingGateway(
         } catch {
           return { outcome: "uncertain" };
         }
-        if (result.outcome !== "rejected" || !retryable.has(result.code))
-          return result;
+        if (!retryableSubmission(result)) return result;
         let allocation;
         try {
           allocation = await pool.query(

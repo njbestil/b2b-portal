@@ -4,6 +4,10 @@ import { createUnavailableIntegrationMonitor } from "./unavailable-integration-m
 import type { FulfillmentRepository } from "../repositories/fulfillment.js";
 import { createPostgresFulfillment } from "./postgres-fulfillment.js";
 import { createPostgresCancellation } from "./postgres-cancellation.js";
+import {
+  createPostgresManualRetry,
+  type ManualRetry,
+} from "./postgres-manual-retry.js";
 import { createJsonFulfillment } from "./json/fulfillment.js";
 import type { AdminSalesAssignmentRepository } from "../repositories/admin-sales-assignments.js";
 import { createPostgresAdminSalesAssignments } from "./postgres-admin-sales-assignments.js";
@@ -82,6 +86,11 @@ import { createPostgresApplications } from "./postgres-applications.js";
 import { createJsonApplications } from "./json/applications.js";
 
 export interface StorageRuntime {
+  readonly createManualRetry?: (gateway: {
+    send(
+      request: import("./mock-submission-adapter.js").MockSubmissionRequest,
+    ): Promise<import("./mock-submission-adapter.js").MockSubmissionResult>;
+  }) => ManualRetry;
   readonly createOrderCancellation?: (gateway?: {
     cancel(
       input: import("./mock-cancellation-adapter.js").CancellationRequest,
@@ -186,6 +195,13 @@ export async function selectStorage(
       });
       return Object.freeze({
         integrationMonitor: createPostgresIntegrationMonitor(postgres.pool),
+        createManualRetry: (gateway: {
+          send(
+            request: import("./mock-submission-adapter.js").MockSubmissionRequest,
+          ): Promise<
+            import("./mock-submission-adapter.js").MockSubmissionResult
+          >;
+        }) => createPostgresManualRetry(postgres.pool, gateway),
         databaseConfigured: true,
         databaseHealth: postgres.health,
         adminCompanies: createPostgresAdminCompanies(postgres.pool),

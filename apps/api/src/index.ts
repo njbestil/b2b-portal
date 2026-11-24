@@ -119,6 +119,12 @@ try {
     ? createErpHealthProbe(new MockErpAdapter(erpConfig))
     : undefined;
   const app = createApp({
+    manualRetry:
+      config.nodeEnv !== "production" && erpConfig
+        ? selectedStorage.createManualRetry?.(
+            createMockSubmissionAdapter(erpConfig),
+          )
+        : undefined,
     orderCancellation: selectedStorage.createOrderCancellation?.(
       config.nodeEnv !== "production" && erpConfig
         ? createMockCancellationAdapter(erpConfig)
