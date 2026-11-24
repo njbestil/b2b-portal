@@ -11,6 +11,8 @@ import { createPostgresSubmissionDispatch } from "../dist/infrastructure/postgre
 import { createApp as createMock } from "../../mock-erp/dist/app.js";
 import { createApp } from "../dist/app.js";
 import { cancellationReason } from "../dist/services/cancellation.js";
+import { createIntegrationMonitor } from "../dist/services/integration-monitor.js";
+import { createPostgresIntegrationMonitor } from "../dist/infrastructure/postgres-integration-monitor.js";
 const opts = {
   skip:
     !process.env.B2B_TEST_MIGRATIONS_DATABASE_URL && "PostgreSQL URL required",
@@ -100,6 +102,45 @@ async function fixture(t, scenario) {
   };
   return f;
 }
+test(
+  "monitoring a cancellation transaction preserves provider and reason privacy",
+  opts,
+  async (t) => {
+    const f = await fixture(t),
+      order = await f.order("CONFIRMED", "SUCCESS", true),
+      reason = "PRIVATE CANCELLATION REASON";
+    await f.cancel(
+      f.customer,
+      f.company,
+      order.id,
+      "private-cancellation-key",
+      { reason },
+    );
+    const admin = await createAuthorization(f.auth.authenticateAccess).admit(
+      (await f.login(0)).accessToken,
+      "integration-transactions.read",
+    );
+    const monitor = createIntegrationMonitor(
+      createPostgresIntegrationMonitor(f.pool),
+    );
+    const result = await monitor.list(
+      admin,
+      { orderId: order.id },
+      new AbortController().signal,
+    );
+    assert.equal(result.total, 1);
+    assert.equal(result.items[0].operation, "OTHER");
+    assert.equal(result.items[0].status, "SUCCESS");
+    const text = JSON.stringify(result);
+    for (const secret of [
+      reason,
+      "private-cancellation-key",
+      "DEMO-C001",
+      order.erp,
+    ])
+      assert.equal(text.includes(secret), false);
+  },
+);
 test(
   "PostgreSQL direct cancellation prevents a not-yet-sent submission and replays once",
   opts,
@@ -352,6 +393,8 @@ test(
       body: JSON.stringify({ reason: "reason" }),
     });
     assert.equal(response.status, 202);
+    assert.equal(response.headers.get("x-content-type-options"), "nosniff");
+    assert.equal(response.headers.get("x-frame-options"), "DENY");
     assert.ok(!(await response.text()).includes("DEMO-C001"));
   },
 );

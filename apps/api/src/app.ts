@@ -1,3 +1,5 @@
+import { createIntegrationMonitorRouter } from "./integration-monitor-route.js";
+import type { IntegrationMonitorService } from "./services/integration-monitor.js";
 import { createFulfillmentRouter } from "./fulfillment-route.js";
 import type { FulfillmentService } from "./services/fulfillment.js";
 import { createAdminSalesAssignmentRouter } from "./admin-sales-assignment-route.js";
@@ -50,6 +52,7 @@ import {
   type ApplicationHandler,
 } from "./application-route.js";
 import { createSalesCompaniesRouter } from "./sales-companies-route.js";
+import { createSalesCustomerDetailRouter } from "./sales-customer-detail-route.js";
 import type { SalesAssignmentRepository } from "./repositories/sales-assignments.js";
 
 import { createInvoiceRouter } from "./invoice-route.js";
@@ -57,6 +60,7 @@ import type { InvoiceQueries } from "./services/invoices.js";
 interface AppOptions {
   orderCancellation?: import("./infrastructure/postgres-cancellation.js").OrderCancellation;
   fulfillment?: FulfillmentService;
+  integrationMonitor?: IntegrationMonitorService;
   diagnostics?: DiagnosticsService;
   adminCompanies?: AdminCompanyRepository;
   invoices?: InvoiceQueries;
@@ -95,11 +99,11 @@ export function createApp(options: AppOptions = {}) {
   app.disable("x-powered-by");
   app.use(requestIdMiddleware);
   app.use(requestLogging(logger));
+  app.use(securityHeaders);
+  app.use(createRequestGuard());
   app.use(
     createCancellationRouter(options.sessions, options.orderCancellation),
   );
-  app.use(securityHeaders);
-  app.use(createRequestGuard());
   if (options.login)
     app.use(createLoginRouter(options.login, Date.now, options.sessionLogin));
   if (options.applications)
@@ -117,6 +121,12 @@ export function createApp(options: AppOptions = {}) {
   );
   app.use(createAdminCompaniesRouter(options.sessions, options.adminCompanies));
   app.use(createDiagnosticsRouter(options.sessions, options.diagnostics));
+  app.use(
+    createIntegrationMonitorRouter(
+      options.sessions,
+      options.integrationMonitor,
+    ),
+  );
   app.use(createFulfillmentRouter(options.sessions, options.fulfillment));
   app.use(createAccountStatusRouter(options.sessions, options.accountStatus));
   app.use(
@@ -145,6 +155,13 @@ export function createApp(options: AppOptions = {}) {
   app.use(createTenantRouter(options.sessions, options.companyRepositories));
   app.use(
     createSalesCompaniesRouter(options.sessions, options.salesAssignments),
+  );
+  app.use(
+    createSalesCustomerDetailRouter(
+      options.sessions,
+      options.companyProfiles,
+      options.companyRepositories,
+    ),
   );
 
   app.get("/", (_request, response) => {
