@@ -4,9 +4,9 @@ import { createUnavailableIntegrationMonitor } from "./unavailable-integration-m
 import type { FulfillmentRepository } from "../repositories/fulfillment.js";
 import { createPostgresFulfillment } from "./postgres-fulfillment.js";
 import { createPostgresCancellation } from "./postgres-cancellation.js";
+import { createJsonFulfillment } from "./json/fulfillment.js";
 import { createPostgresCancellationStatus } from "./postgres-cancellation-status.js";
 import type { CancellationStatusRepository } from "../repositories/cancellation-status.js";
-import { createJsonFulfillment } from "./json/fulfillment.js";
 import type { AdminSalesAssignmentRepository } from "../repositories/admin-sales-assignments.js";
 import { createPostgresAdminSalesAssignments } from "./postgres-admin-sales-assignments.js";
 import { createJsonAdminSalesAssignments } from "./json/admin-sales-assignments.js";
