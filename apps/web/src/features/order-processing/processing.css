@@ -1,0 +1,27 @@
+.processing-list {
+  padding: var(--space-6);
+}
+.processing-order {
+  padding-block: var(--space-4);
+  border-block-end: 1px solid var(--border);
+}
+.processing-order h3 {
+  margin-block-end: var(--space-2);
+  overflow-wrap: anywhere;
+}
+.processing-notice {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  background: var(--surface-accent);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+.processing-notice > .icon {
+  flex: none;
+  margin-block-start: var(--space-2);
+}
+.processing-notice p {
+  margin-block-end: 0;
+}
