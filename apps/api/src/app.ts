@@ -1,5 +1,7 @@
 import { createIntegrationMonitorRouter } from "./integration-monitor-route.js";
 import type { IntegrationMonitorService } from "./services/integration-monitor.js";
+import { createManualRetryRouter } from "./manual-retry-route.js";
+import type { ManualRetry } from "./infrastructure/postgres-manual-retry.js";
 import { createFulfillmentRouter } from "./fulfillment-route.js";
 import type { FulfillmentService } from "./services/fulfillment.js";
 import { createAdminSalesAssignmentRouter } from "./admin-sales-assignment-route.js";
@@ -58,6 +60,7 @@ import type { SalesAssignmentRepository } from "./repositories/sales-assignments
 import { createInvoiceRouter } from "./invoice-route.js";
 import type { InvoiceQueries } from "./services/invoices.js";
 interface AppOptions {
+  manualRetry?: ManualRetry;
   orderCancellation?: import("./infrastructure/postgres-cancellation.js").OrderCancellation;
   fulfillment?: FulfillmentService;
   integrationMonitor?: IntegrationMonitorService;
@@ -101,6 +104,7 @@ export function createApp(options: AppOptions = {}) {
   app.use(requestLogging(logger));
   app.use(securityHeaders);
   app.use(createRequestGuard());
+  app.use(createManualRetryRouter(options.sessions, options.manualRetry));
   app.use(
     createCancellationRouter(options.sessions, options.orderCancellation),
   );

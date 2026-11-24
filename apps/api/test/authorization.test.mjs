@@ -22,6 +22,7 @@ const roles = [
   "CUSTOMER_USER",
 ];
 const expected = {
+  "integration-transactions.retry": roles.slice(0, 1),
   "integration-transactions.read": roles.slice(0, 1),
   "diagnostics.read": roles.slice(0, 1),
   "orders.fulfillment.refresh": roles.slice(0, 1),

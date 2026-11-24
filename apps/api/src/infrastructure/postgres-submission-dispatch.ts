@@ -1,4 +1,5 @@
 import type { Pool } from "pg";
+import { retryableSubmission } from "../services/retryable-submission.js";
 import type {
   MockSubmissionRequest,
   MockSubmissionResult,
@@ -78,7 +79,7 @@ export function createPostgresSubmissionDispatch(
     try {
       await client.query("BEGIN");
       const updated = await client.query(
-        `UPDATE integration_transactions SET status=$1, retryable=false, error_code=$2, response_payload=$3::jsonb, updated_at=clock_timestamp()
+        `UPDATE integration_transactions SET status=$1, retryable=$7, error_code=$2, response_payload=$3::jsonb, next_retry_at=NULL, updated_at=clock_timestamp()
          WHERE id=$4 AND company_id=$5 AND order_id=$6 AND status='PROCESSING' RETURNING id`,
         [
           result.outcome === "accepted" ? "SUCCESS" : "FAILED",
@@ -91,6 +92,7 @@ export function createPostgresSubmissionDispatch(
           row.id,
           companyId,
           orderId,
+          retryableSubmission(result),
         ],
       );
       if (updated.rowCount !== 1)
