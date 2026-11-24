@@ -208,6 +208,9 @@ export async function seedPostgres(
       ...(rows.some((row) => row.name === "submission_idempotency")
         ? ["submission_idempotency"]
         : []),
+      ...(rows.some((row) => row.name === "cancellation_idempotency")
+        ? ["cancellation_idempotency"]
+        : []),
     ];
     if (
       rows.length !== managedTables.length + 1 ||

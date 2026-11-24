@@ -5,6 +5,7 @@ import type { FulfillmentService } from "./services/fulfillment.js";
 import { createAdminSalesAssignmentRouter } from "./admin-sales-assignment-route.js";
 import type { AdminSalesAssignmentService } from "./services/admin-sales-assignments.js";
 import { createSalesStaffRouter } from "./sales-staff-route.js";
+import { createCancellationRouter } from "./cancellation-route.js";
 import type { SalesStaffService } from "./services/sales-staff.js";
 import { createPasswordResetRouter } from "./password-reset-route.js";
 import type { PasswordResetService } from "./services/password-reset.js";
@@ -57,6 +58,7 @@ import type { SalesAssignmentRepository } from "./repositories/sales-assignments
 import { createInvoiceRouter } from "./invoice-route.js";
 import type { InvoiceQueries } from "./services/invoices.js";
 interface AppOptions {
+  orderCancellation?: import("./infrastructure/postgres-cancellation.js").OrderCancellation;
   fulfillment?: FulfillmentService;
   integrationMonitor?: IntegrationMonitorService;
   diagnostics?: DiagnosticsService;
@@ -99,6 +101,9 @@ export function createApp(options: AppOptions = {}) {
   app.use(requestLogging(logger));
   app.use(securityHeaders);
   app.use(createRequestGuard());
+  app.use(
+    createCancellationRouter(options.sessions, options.orderCancellation),
+  );
   if (options.login)
     app.use(createLoginRouter(options.login, Date.now, options.sessionLogin));
   if (options.applications)

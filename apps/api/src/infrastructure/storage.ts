@@ -3,6 +3,7 @@ import { createPostgresIntegrationMonitor } from "./postgres-integration-monitor
 import { createUnavailableIntegrationMonitor } from "./unavailable-integration-monitor.js";
 import type { FulfillmentRepository } from "../repositories/fulfillment.js";
 import { createPostgresFulfillment } from "./postgres-fulfillment.js";
+import { createPostgresCancellation } from "./postgres-cancellation.js";
 import { createJsonFulfillment } from "./json/fulfillment.js";
 import type { AdminSalesAssignmentRepository } from "../repositories/admin-sales-assignments.js";
 import { createPostgresAdminSalesAssignments } from "./postgres-admin-sales-assignments.js";
@@ -81,6 +82,11 @@ import { createPostgresApplications } from "./postgres-applications.js";
 import { createJsonApplications } from "./json/applications.js";
 
 export interface StorageRuntime {
+  readonly createOrderCancellation?: (gateway?: {
+    cancel(
+      input: import("./mock-cancellation-adapter.js").CancellationRequest,
+    ): Promise<import("./mock-cancellation-adapter.js").CancellationDecision>;
+  }) => import("./postgres-cancellation.js").OrderCancellation;
   readonly integrationMonitor: IntegrationMonitorRepository;
   readonly fulfillment: FulfillmentRepository;
   readonly databaseConfigured: boolean;
@@ -202,6 +208,13 @@ export async function selectStorage(
         notifications: createPostgresNotifications(postgres.pool),
         applications: createPostgresApplications(postgres.pool),
         fulfillment: createPostgresFulfillment(postgres.pool),
+        createOrderCancellation: (gateway?: {
+          cancel(
+            input: import("./mock-cancellation-adapter.js").CancellationRequest,
+          ): Promise<
+            import("./mock-cancellation-adapter.js").CancellationDecision
+          >;
+        }) => createPostgresCancellation(postgres.pool, gateway),
         orderDrafts: createPostgresOrderDrafts(postgres.pool),
         createOrderSubmission: (
           source: import("../repositories/catalog-sync.js").CatalogSource,
