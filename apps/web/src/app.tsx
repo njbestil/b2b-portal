@@ -48,6 +48,7 @@ import type { ReviewAdapter } from "./features/application-review/api";
 import { CompanyEntry } from "./features/company-profile/CompanyPage";
 import type { CompanyAdapter } from "./features/company-profile/api";
 import { AddressEntry } from "./features/delivery-addresses/AddressPage";
+import { CancellationEntry } from "./features/cancellations/CancellationPage";
 import type { AddressAdapter } from "./features/delivery-addresses/api";
 
 function PublicLayout({ application = false }: { application?: boolean }) {
@@ -212,6 +213,7 @@ function AppRoutes({
           element={<CatalogEntry adapter={catalog} />}
         />
         <Route path="design-system" element={<DesignSystem />} />
+        <Route path="orders/cancellations" element={<CancellationEntry />} />
         <Route
           path="company/addresses"
           element={<AddressEntry adapter={deliveryAddresses} />}

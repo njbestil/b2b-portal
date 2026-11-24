@@ -444,11 +444,15 @@ export class SessionClient {
       method: "GET" | "POST" | "PATCH" | "DELETE";
       body?: string;
       signal?: AbortSignal;
+      idempotencyKey?: string;
     },
   ): Promise<Response> {
     if (this.#logout) throw new AuthError("session");
     if (
       !["GET", "POST", "PATCH", "DELETE"].includes(init.method) ||
+      (init.idempotencyKey !== undefined &&
+        (init.method !== "POST" ||
+          !/^[!-~]{1,128}$/.test(init.idempotencyKey))) ||
       (init.method === "GET" && init.body !== undefined) ||
       !path.startsWith("/api/v1/") ||
       path.startsWith("/api/v1/auth/") ||
@@ -470,6 +474,9 @@ export class SessionClient {
         headers: {
           Authorization: `Bearer ${proof.accessToken}`,
           Accept: "application/json",
+          ...(init.idempotencyKey
+            ? { "Idempotency-Key": init.idempotencyKey }
+            : {}),
           ...(init.body === undefined
             ? {}
             : { "Content-Type": "application/json" }),

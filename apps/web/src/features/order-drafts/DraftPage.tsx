@@ -478,6 +478,9 @@ function Connected() {
           )}
         </section>
       </div>
+      <Link to="/orders/cancellations">
+        Request or check an order cancellation
+      </Link>
     </Page>
   );
 }

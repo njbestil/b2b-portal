@@ -4,6 +4,8 @@ import { createUnavailableIntegrationMonitor } from "./unavailable-integration-m
 import type { FulfillmentRepository } from "../repositories/fulfillment.js";
 import { createPostgresFulfillment } from "./postgres-fulfillment.js";
 import { createPostgresCancellation } from "./postgres-cancellation.js";
+import { createPostgresCancellationStatus } from "./postgres-cancellation-status.js";
+import type { CancellationStatusRepository } from "../repositories/cancellation-status.js";
 import { createJsonFulfillment } from "./json/fulfillment.js";
 import type { AdminSalesAssignmentRepository } from "../repositories/admin-sales-assignments.js";
 import { createPostgresAdminSalesAssignments } from "./postgres-admin-sales-assignments.js";
@@ -122,6 +124,7 @@ export interface StorageRuntime {
   readonly repositories: RepositoryPorts;
   readonly internalNotes: InternalNotesRepository;
   readonly audit: AuditRepository;
+  readonly cancellationStatus?: CancellationStatusRepository;
   readonly health: HealthProbe;
   close(): Promise<void>;
 }
@@ -190,6 +193,7 @@ export async function selectStorage(
         databaseHealth: postgres.health,
         adminCompanies: createPostgresAdminCompanies(postgres.pool),
         invoices: createPostgresInvoices(postgres.pool),
+        cancellationStatus: createPostgresCancellationStatus(postgres.pool),
         provider: "postgresql",
         sessions,
         passwordChanges: createPostgresPasswordChange(postgres.pool),
