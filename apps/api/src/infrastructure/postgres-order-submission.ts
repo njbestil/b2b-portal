@@ -46,7 +46,7 @@ export function createPostgresOrderSubmission(
     requirePermission(actor, "order-drafts.manage");
     if (actor.role !== "CUSTOMER_ADMIN" && actor.role !== "CUSTOMER_USER")
       throw new DraftError("forbidden");
-    const who: DraftActor = {
+    const who: DraftActor & { role: "CUSTOMER_ADMIN" | "CUSTOMER_USER" } = {
       userId: actor.userId,
       sessionId: actor.sessionId,
       role: actor.role,

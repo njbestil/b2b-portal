@@ -31,7 +31,10 @@ import { randomUUID } from "node:crypto";
 import { createAudit } from "./services/audit.js";
 import { createLogin, createVerifiedLogin } from "./services/login.js";
 import { createApplications } from "./services/applications.js";
-import { createOrderDrafts } from "./services/order-drafts.js";
+import {
+  createOrderDrafts,
+  createSalesDrafts,
+} from "./services/order-drafts.js";
 import { createMockCustomerCatalogSource } from "./infrastructure/mock-customer-catalog-adapter.js";
 import { createMockSubmissionAdapter } from "./infrastructure/mock-submission-adapter.js";
 import { parseSubmissionRetryPolicy } from "./infrastructure/submission-retry-config.js";
@@ -180,6 +183,7 @@ try {
           }
         : undefined,
     ),
+    salesDrafts: createSalesDrafts(selectedStorage.orderDrafts, record),
     companyProfiles: createCompanyProfiles(selectedStorage.companyProfiles),
     deliveryAddresses: createDeliveryAddresses(
       selectedStorage.deliveryAddresses,

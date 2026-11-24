@@ -48,7 +48,22 @@ function object(value: unknown): Record<string, unknown> {
   return value as Record<string, unknown>;
 }
 const address = (value: unknown) => (value === null ? null : draftId(value));
-function identity(actor: AuthorizedActor, read = false): DraftActor {
+function draftIdentity(
+  actor: AuthorizedActor,
+  read = false,
+  salesCompany?: string,
+): DraftActor {
+  if (salesCompany !== undefined) {
+    requirePermission(actor, "sales-drafts.manage");
+    if (actor.role !== "SALES_STAFF") throw new DraftError("forbidden");
+    return {
+      userId: actor.userId,
+      sessionId: actor.sessionId,
+      role: "SALES_STAFF",
+      companyId: draftId(salesCompany),
+      accessExpiresAt: actor.accessExpiresAt,
+    };
+  }
   requirePermission(actor, read ? "order-drafts.read" : "order-drafts.manage");
   if (actor.role !== "CUSTOMER_ADMIN" && actor.role !== "CUSTOMER_USER")
     throw new DraftError("forbidden");
@@ -92,7 +107,10 @@ export function createOrderDrafts(
     readonly minimum: { readonly amount: string; readonly currency: string };
     readonly source: CatalogSource;
   },
+  salesCompany?: string,
 ) {
+  const identity = (actor: AuthorizedActor, read = false) =>
+    draftIdentity(actor, read, salesCompany);
   async function record(
     actor: DraftActor,
     id: string,
@@ -432,3 +450,21 @@ export function createOrderDrafts(
   };
 }
 export type OrderDraftService = ReturnType<typeof createOrderDrafts>;
+
+/** Sales workflow deliberately exposes no validation, acknowledgement, reorder,
+ * delete, confirmation or submission capability. The provider checks assignment. */
+export function createSalesDrafts(
+  repository: OrderDraftRepository,
+  audit: (input: AuditInput) => Promise<unknown>,
+) {
+  return (companyId: string) => {
+    const { create, find, update, items, changeItem } = createOrderDrafts(
+      repository,
+      audit,
+      undefined,
+      draftId(companyId),
+    );
+    return { create, find, update, items, changeItem };
+  };
+}
+export type SalesDraftService = ReturnType<typeof createSalesDrafts>;
