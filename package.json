@@ -21,6 +21,7 @@
     "format:check": "prettier . --check",
     "test": "npm run build && node --test --test-concurrency=1 tests/*.test.mjs apps/api/test/*.test.mjs apps/web/test/*.test.mjs apps/web/test/integration/*.test.mjs apps/mock-erp/test/*.test.mjs",
     "test:authorization": "npm run build && node --test --test-concurrency=1 apps/api/test/authorization.test.mjs apps/api/test/authorization-regression.test.mjs apps/api/test/tenant-isolation.test.mjs apps/api/test/sales-assignments.test.mjs apps/api/test/sales-companies.test.mjs apps/api/test/company-profiles.test.mjs apps/api/test/delivery-addresses.test.mjs apps/api/test/customer-users.test.mjs apps/api/test/order-drafts.test.mjs apps/api/test/order-items.test.mjs apps/api/test/invoices.test.mjs apps/api/test/account-status.test.mjs",
+    "test:erp": "npm run build --workspace=@b2b-portal/api --workspace=@b2b-portal/mock-erp && node --test --test-concurrency=1 apps/api/test/erp-workflow.test.mjs apps/api/test/submission-integration.test.mjs apps/api/test/submission-retry.test.mjs apps/api/test/manual-retry.test.mjs apps/api/test/fulfillment.test.mjs apps/mock-erp/test/submissions.test.mjs apps/mock-erp/test/submission-failures.test.mjs apps/mock-erp/test/fulfillment.test.mjs",
     "check": "npm run format:check && npm run lint && npm run typecheck && npm test"
   },
   "devDependencies": {
