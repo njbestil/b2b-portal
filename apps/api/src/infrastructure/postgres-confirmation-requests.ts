@@ -1,9 +1,11 @@
+import { sqlConfirmation } from "./postgres-customer-confirmations.js";
 import { randomUUID } from "node:crypto";
 import type { Pool, PoolClient } from "pg";
 import type {
   ConfirmationRequests,
   ConfirmationActor,
   PendingConfirmation,
+  StoredConfirmation,
 } from "../repositories/confirmation-requests.js";
 import type { LoginCredential } from "../repositories/authentication.js";
 import type { OrderSummary } from "../repositories/orders.js";
@@ -110,14 +112,14 @@ export function createPostgresConfirmationRequests(
     c: PoolClient,
     actor: ConfirmationActor,
     id: string,
-  ): Promise<PendingConfirmation | null> {
+  ): Promise<StoredConfirmation | null> {
     const r = (
       await c.query(
-        'SELECT id,company_id AS "companyId",order_id AS "orderId",customer_user_id AS "customerUserId",status,created_at AS "createdAt",request_fingerprint AS fingerprint FROM order_confirmations WHERE company_id=$1 AND order_id=$2 FOR UPDATE',
+        'SELECT id,company_id AS "companyId",order_id AS "orderId",customer_user_id AS "customerUserId",status,created_at AS "createdAt",request_fingerprint AS fingerprint, decided_at AS "decidedAt", decided_by_user_id AS "decidedByUserId", reason FROM order_confirmations WHERE company_id=$1 AND order_id=$2 FOR UPDATE',
         [actor.companyId, id],
       )
     ).rows[0];
-    return r ? { ...r, createdAt: r.createdAt.toISOString() } : null;
+    return r ? sqlConfirmation(r) : null;
   }
   return {
     find: (a, id) => run(a, id, (c) => existing(c, a, id)),

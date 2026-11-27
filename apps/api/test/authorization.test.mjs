@@ -30,6 +30,7 @@ const expected = {
   "invoices.read": roles.slice(2),
   "order-drafts.read": roles.slice(2),
   "order-drafts.manage": roles.slice(2),
+  "orders.confirmation.decide": roles.slice(2),
   "sales-drafts.manage": roles.slice(1, 2),
   "company-profile.read": roles,
   "company-profile.manage": roles.slice(2, 3),

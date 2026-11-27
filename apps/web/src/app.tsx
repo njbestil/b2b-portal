@@ -1,3 +1,4 @@
+import { ConfirmationEntry } from "./features/customer-confirmations/ConfirmationPage";
 import { InvoiceEntry } from "./features/invoices/InvoicePage";
 import { useEffect, useState } from "react";
 import { Navigate, Outlet, Route, Routes } from "react-router";
@@ -185,6 +186,10 @@ function AppRoutes({
         <Route index element={<Navigate to="/dashboard" replace />} />
         <Route path="orders/processing" element={<ProcessingEntry />} />
         <Route path="orders/history" element={<HistoryEntry />} />
+        <Route
+          path="orders/confirmations/:orderId"
+          element={<ConfirmationEntry />}
+        />
         {workspacePages.map((page) => (
           <Route
             key={page.path}

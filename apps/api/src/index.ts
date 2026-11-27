@@ -1,3 +1,4 @@
+import { createCustomerConfirmations } from "./services/customer-confirmations.js";
 import { createInvoiceDocuments } from "./services/invoice-documents.js";
 import { createMockInvoiceDocuments } from "./infrastructure/mock-invoice-documents.js";
 import { createIntegrationMonitor } from "./services/integration-monitor.js";
@@ -180,6 +181,10 @@ try {
             createMockInvoiceDocuments(erpConfig),
           )
         : undefined,
+    customerConfirmations: createCustomerConfirmations(
+      selectedStorage.customerConfirmations,
+      record,
+    ),
     adminCompanies: selectedStorage.adminCompanies,
     invoices: createInvoiceQueries(
       selectedStorage.invoices,

@@ -192,6 +192,11 @@ function Detail({ client, id }: { client: HistoryClient; id: string }) {
           Refresh order
         </Button>
         <Link to="/orders/cancellations">Manage cancellations</Link>
+        {state.data?.order.status === "PENDING_CUSTOMER_CONFIRMATION" && (
+          <Link to={`/orders/confirmations/${id}`}>
+            Review customer confirmation
+          </Link>
+        )}
         {reordered ? (
           <Link to={"/orders?draft=" + reordered}>Open new draft</Link>
         ) : uncertain ? (
