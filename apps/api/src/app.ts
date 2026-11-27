@@ -1,3 +1,5 @@
+import { createInvoiceDocumentRouter } from "./invoice-document-route.js";
+import type { InvoiceDocuments } from "./services/invoice-documents.js";
 import { createIntegrationMonitorRouter } from "./integration-monitor-route.js";
 import type { IntegrationMonitorService } from "./services/integration-monitor.js";
 import { createManualRetryRouter } from "./manual-retry-route.js";
@@ -75,6 +77,7 @@ interface AppOptions {
   diagnostics?: DiagnosticsService;
   adminCompanies?: AdminCompanyRepository;
   invoices?: InvoiceQueries;
+  invoiceDocuments?: InvoiceDocuments;
   orderNotes?: OrderNotesService;
   orderDrafts?: OrderDraftService;
   salesDrafts?: SalesDraftService;
@@ -181,6 +184,9 @@ export function createApp(options: AppOptions = {}) {
     ),
   );
   app.use(createInvoiceRouter(options.sessions, options.invoices));
+  app.use(
+    createInvoiceDocumentRouter(options.sessions, options.invoiceDocuments),
+  );
   app.use(express.json({ limit: "16kb", inflate: false }));
   app.use(createTenantRouter(options.sessions, options.companyRepositories));
   app.use(
