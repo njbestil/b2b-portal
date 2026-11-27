@@ -5,6 +5,7 @@ import { createMockFulfillmentSource } from "./infrastructure/mock-fulfillment-a
 import { createAdminSalesAssignments } from "./services/admin-sales-assignments.js";
 import { createSalesStaff } from "./services/sales-staff.js";
 import { createInvoiceQueries } from "./services/invoices.js";
+import { createConfirmationRequests } from "./services/confirmation-requests.js";
 import { createOrderNotes } from "./services/order-notes.js";
 import { demoMode } from "./demo/accounts.js";
 import {
@@ -190,6 +191,10 @@ try {
         : undefined,
     ),
     salesDrafts: createSalesDrafts(selectedStorage.orderDrafts, record),
+    confirmationRequests: createConfirmationRequests(
+      selectedStorage.confirmationRequests,
+      record,
+    ),
     companyProfiles: createCompanyProfiles(selectedStorage.companyProfiles),
     deliveryAddresses: createDeliveryAddresses(
       selectedStorage.deliveryAddresses,

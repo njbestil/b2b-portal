@@ -20,6 +20,8 @@ import express from "express";
 import { createRequestGuard, securityHeaders } from "./security-middleware.js";
 import { createOrderDraftRouter } from "./order-draft-route.js";
 import { createSalesDraftRouter } from "./sales-draft-route.js";
+import { createConfirmationRequestRouter } from "./confirmation-request-route.js";
+import type { ConfirmationRequestService } from "./services/confirmation-requests.js";
 import type { SalesDraftService } from "./services/order-drafts.js";
 import type { OrderDraftService } from "./services/order-drafts.js";
 import { createCompanyProfileRouter } from "./company-profile-route.js";
@@ -76,6 +78,7 @@ interface AppOptions {
   orderNotes?: OrderNotesService;
   orderDrafts?: OrderDraftService;
   salesDrafts?: SalesDraftService;
+  confirmationRequests?: ConfirmationRequestService;
   orderSubmission?: import("./infrastructure/postgres-order-submission.js").OrderSubmission;
   companyProfiles?: CompanyProfileService;
   cancellationStatus?: CancellationStatusReader;
@@ -157,6 +160,12 @@ export function createApp(options: AppOptions = {}) {
   );
   app.use(createSalesStaffRouter(options.sessions, options.salesStaff));
   app.use(createSalesDraftRouter(options.sessions, options.salesDrafts));
+  app.use(
+    createConfirmationRequestRouter(
+      options.sessions,
+      options.confirmationRequests,
+    ),
+  );
   app.use(createCustomerUsersRouter(options.sessions, options.customerUsers));
   app.use(
     createDeliveryAddressRouter(options.sessions, options.deliveryAddresses),
