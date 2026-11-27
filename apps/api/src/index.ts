@@ -1,3 +1,5 @@
+import { createInvoiceDocuments } from "./services/invoice-documents.js";
+import { createMockInvoiceDocuments } from "./infrastructure/mock-invoice-documents.js";
 import { createIntegrationMonitor } from "./services/integration-monitor.js";
 import { createFulfillmentRefresh } from "./services/fulfillment.js";
 import { createMockCancellationAdapter } from "./infrastructure/mock-cancellation-adapter.js";
@@ -167,6 +169,14 @@ try {
             submissionMinimum,
             createMockSubmissionAdapter(erpConfig),
             submissionRetry,
+          )
+        : undefined,
+    invoiceDocuments:
+      config.nodeEnv !== "production" && erpConfig
+        ? createInvoiceDocuments(
+            selectedStorage.invoices,
+            selectedStorage.companyProfiles,
+            createMockInvoiceDocuments(erpConfig),
           )
         : undefined,
     adminCompanies: selectedStorage.adminCompanies,

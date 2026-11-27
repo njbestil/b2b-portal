@@ -1,3 +1,4 @@
+import { InvoiceEntry } from "./features/invoices/InvoicePage";
 import { useEffect, useState } from "react";
 import { Navigate, Outlet, Route, Routes } from "react-router";
 import {
@@ -194,6 +195,8 @@ function AppRoutes({
               ) : page.path === "/orders" &&
                 (role === "Customer Admin" || role === "Customer User") ? (
                 <DraftEntry />
+              ) : page.path === "/invoices" ? (
+                <InvoiceEntry />
               ) : page.path === "/catalog" ? (
                 <CatalogEntry adapter={catalog} />
               ) : page.path === "/customer-applications" ? (
