@@ -289,6 +289,7 @@ function Connected() {
       description="Create and manage your own draft orders."
     >
       <Link to="/orders/processing">Check submitted order processing</Link>
+      <Link to="/orders/history">View company order history</Link>
       <div role="status">{busy ? "Loading or saving…" : message}</div>
       {(error || formError) && (
         <div className="application-error" tabIndex={-1} ref={errorRef}>

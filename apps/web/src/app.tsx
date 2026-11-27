@@ -42,6 +42,7 @@ import { LogoutButton } from "./features/authentication/LogoutButton";
 import { SessionClient, type ApiRole } from "./features/authentication/session";
 import { DraftEntry } from "./features/order-drafts/DraftPage";
 import { ProcessingEntry } from "./features/order-processing/ProcessingPage";
+import { HistoryEntry } from "./features/order-history/HistoryPage";
 import { CatalogEntry } from "./features/catalog/CatalogPage";
 import type { CatalogAdapter } from "./features/catalog/api";
 import { ApplicationReviewEntry } from "./features/application-review/ReviewPage";
@@ -182,6 +183,7 @@ function AppRoutes({
       >
         <Route index element={<Navigate to="/dashboard" replace />} />
         <Route path="orders/processing" element={<ProcessingEntry />} />
+        <Route path="orders/history" element={<HistoryEntry />} />
         {workspacePages.map((page) => (
           <Route
             key={page.path}
