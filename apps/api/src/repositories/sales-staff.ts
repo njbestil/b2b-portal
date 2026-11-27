@@ -19,6 +19,10 @@ export interface ManagedSalesStaff {
   readonly mustChangePassword: boolean;
 }
 export interface SalesStaffRepository {
+  list(
+    actor: SalesStaffActor,
+    page: import("./common.js").PageRequest,
+  ): Promise<import("./common.js").Page<ManagedSalesStaff>>;
   create(
     actor: SalesStaffActor,
     input: NewSalesStaff,

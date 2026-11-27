@@ -10,6 +10,7 @@ import {
   salesStaffId,
   SalesStaffError,
   validSalesStaffTransition,
+  checkedStaffPage,
 } from "../services/sales-staff.js";
 import { SessionError } from "../services/session-state.js";
 import { salesStaffActor } from "./sales-staff-state.js";
@@ -80,6 +81,20 @@ export function createPostgresSalesStaff(
     }
   }
   return {
+    list: (actor, input) => {
+      const page = checkedStaffPage(input);
+      return run(actor, undefined, async (client) => {
+        const result = await client.query<{
+          total: number;
+          items: ManagedSalesStaff[];
+        }>(
+          `WITH matching AS MATERIALIZED (SELECT id,company_id AS "companyId",display_name AS "displayName",email,role,status,must_change_password AS "mustChangePassword" FROM users WHERE company_id IS NULL AND role='SALES_STAFF'), page AS (SELECT * FROM matching ORDER BY id LIMIT $1 OFFSET $2) SELECT (SELECT count(*)::integer FROM matching) AS total, COALESCE((SELECT jsonb_agg(p ORDER BY p.id) FROM page p),'[]'::jsonb) AS items`,
+          [page.limit, page.offset],
+        );
+        if (!result.rows[0]) throw new SalesStaffError("unavailable");
+        return result.rows[0];
+      });
+    },
     create: (actor, value) => {
       const input = checkedNewSalesStaff(value);
       return run(actor, undefined, async (client) => {

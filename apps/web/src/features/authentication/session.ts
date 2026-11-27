@@ -441,7 +441,7 @@ export class SessionClient {
   async request(
     path: string,
     init: {
-      method: "GET" | "POST" | "PATCH" | "DELETE";
+      method: "GET" | "POST" | "PATCH" | "DELETE" | "PUT";
       body?: string;
       signal?: AbortSignal;
       idempotencyKey?: string;
@@ -449,7 +449,7 @@ export class SessionClient {
   ): Promise<Response> {
     if (this.#logout) throw new AuthError("session");
     if (
-      !["GET", "POST", "PATCH", "DELETE"].includes(init.method) ||
+      !["GET", "POST", "PATCH", "DELETE", "PUT"].includes(init.method) ||
       (init.idempotencyKey !== undefined &&
         (init.method !== "POST" ||
           !/^[!-~]{1,128}$/.test(init.idempotencyKey))) ||

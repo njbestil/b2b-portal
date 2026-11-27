@@ -101,6 +101,36 @@ export function createSalesStaffRouter(
                   "SALES_STAFF_UNAVAILABLE",
                   "Sales staff operation could not be confirmed. Refresh user data.",
                 );
+  router.get(
+    "/api/v1/admin/sales-staff",
+    authorize("sales-staff.manage", sessions),
+    async (request, response, next) => {
+      try {
+        if (!service) throw new SalesStaffError("unavailable");
+        if (
+          Object.keys(request.query).some(
+            (k) => !["offset", "limit"].includes(k),
+          )
+        )
+          throw new SalesStaffError("invalid_input");
+        const number = (v: unknown, fallback: number) => {
+          if (v === undefined) return fallback;
+          if (typeof v !== "string" || !/^(0|[1-9]\d*)$/.test(v))
+            throw new SalesStaffError("invalid_input");
+          return Number(v);
+        };
+        sendSuccess(
+          response,
+          await service.list(actorFor(request), {
+            offset: number(request.query.offset, 0),
+            limit: number(request.query.limit, 20),
+          }),
+        );
+      } catch (e) {
+        next(error(e));
+      }
+    },
+  );
   for (const [path, create] of [
     ["/api/v1/admin/sales-staff", true],
     ["/api/v1/admin/sales-staff/:id/deactivate", false],

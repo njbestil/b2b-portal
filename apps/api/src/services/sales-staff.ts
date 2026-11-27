@@ -7,6 +7,17 @@ import type {
 import type { AuditInput } from "../repositories/audit.js";
 import { requirePermission, type AuthorizedActor } from "./authorization.js";
 import { normalizedEmail } from "./login.js";
+import { checkedPage } from "./query-input.js";
+import type { PageRequest } from "../repositories/common.js";
+export function checkedStaffPage(input?: PageRequest) {
+  try {
+    const p = checkedPage(input);
+    if (p.offset > 100000) throw Error();
+    return p;
+  } catch {
+    throw new SalesStaffError("invalid_input");
+  }
+}
 export class SalesStaffError extends Error {
   constructor(
     readonly code:
@@ -113,6 +124,36 @@ export function createSalesStaff(
     }
   }
   return {
+    async list(actor: AuthorizedActor, input?: PageRequest) {
+      const who = identity(actor),
+        page = checkedStaffPage(input),
+        rows = await repository.list(who, page);
+      if (
+        !Number.isSafeInteger(rows.total) ||
+        rows.total < 0 ||
+        rows.items.length > page.limit ||
+        (rows.items.length && page.offset + rows.items.length > rows.total) ||
+        new Set(rows.items.map((u) => u.id)).size !== rows.items.length ||
+        rows.items.some(
+          (u, i) =>
+            !u ||
+            u.id !== salesStaffId(u.id) ||
+            u.companyId !== null ||
+            u.role !== "SALES_STAFF" ||
+            !["ACTIVE", "SUSPENDED", "DEACTIVATED"].includes(u.status) ||
+            !safeText(u.displayName, 160) ||
+            (u.email !== null && !safeText(u.email, 254)) ||
+            typeof u.mustChangePassword !== "boolean" ||
+            (i > 0 && rows.items[i - 1]!.id >= u.id),
+        )
+      )
+        throw new SalesStaffError("unavailable");
+      return {
+        items: rows.items.map((u) => result(u).user),
+        total: rows.total,
+        ...page,
+      };
+    },
     async create(actor: AuthorizedActor, value: unknown, requestId: string) {
       const who = identity(actor);
       if (
