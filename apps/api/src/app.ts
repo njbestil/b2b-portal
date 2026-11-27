@@ -19,6 +19,8 @@ import type { ApplicationDecisionService } from "./services/application-decision
 import express from "express";
 import { createRequestGuard, securityHeaders } from "./security-middleware.js";
 import { createOrderDraftRouter } from "./order-draft-route.js";
+import { createSalesDraftRouter } from "./sales-draft-route.js";
+import type { SalesDraftService } from "./services/order-drafts.js";
 import type { OrderDraftService } from "./services/order-drafts.js";
 import { createCompanyProfileRouter } from "./company-profile-route.js";
 import type { CompanyProfileService } from "./services/company-profiles.js";
@@ -70,6 +72,7 @@ interface AppOptions {
   adminCompanies?: AdminCompanyRepository;
   invoices?: InvoiceQueries;
   orderDrafts?: OrderDraftService;
+  salesDrafts?: SalesDraftService;
   orderSubmission?: import("./infrastructure/postgres-order-submission.js").OrderSubmission;
   companyProfiles?: CompanyProfileService;
   cancellationStatus?: CancellationStatusReader;
@@ -149,6 +152,7 @@ export function createApp(options: AppOptions = {}) {
     ),
   );
   app.use(createSalesStaffRouter(options.sessions, options.salesStaff));
+  app.use(createSalesDraftRouter(options.sessions, options.salesDrafts));
   app.use(createCustomerUsersRouter(options.sessions, options.customerUsers));
   app.use(
     createDeliveryAddressRouter(options.sessions, options.deliveryAddresses),

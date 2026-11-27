@@ -27,6 +27,7 @@ import {
 } from "../order-draft-state.js";
 import { readJsonSecurityAccount } from "./security-account.js";
 import { createJsonSessionFile } from "./session-file.js";
+import { createJsonSalesAssignmentFile } from "./sales-assignment-file.js";
 import {
   evaluateReorder,
   materializeReorder,
@@ -84,6 +85,25 @@ export function createJsonOrderDrafts(
             (await sessions.read()).find((r) => r.id === actor.sessionId) ??
             null;
         const check = () => draftActor(actor, account, session, now());
+        if (actor.role === "SALES_STAFF") {
+          const { rows, companies } =
+            await createJsonSalesAssignmentFile(security).read();
+          const active = rows.filter(
+            (r) =>
+              r.companyId === actor.companyId &&
+              r.active &&
+              r.isPrimary &&
+              r.endedAt === null,
+          );
+          if (
+            companies.find((c) => c.id === actor.companyId)?.status !==
+              "ACTIVE" ||
+            active.length !== 1 ||
+            active[0]!.salesStaffUserId !== actor.userId ||
+            Date.parse(active[0]!.createdAt) > now()
+          )
+            throw new DraftError("forbidden");
+        }
         check();
         // This writer must not discard unsupported future private order fields.
         const raw = await file("orders.json");

@@ -2,7 +2,7 @@ export interface DraftActor {
   readonly userId: string;
   readonly sessionId: string;
   readonly companyId: string;
-  readonly role: "CUSTOMER_ADMIN" | "CUSTOMER_USER";
+  readonly role: "CUSTOMER_ADMIN" | "CUSTOMER_USER" | "SALES_STAFF";
   readonly accessExpiresAt: string;
 }
 export interface OrderDraft {
@@ -55,7 +55,8 @@ export type DraftItemChange =
       readonly quantity: string;
     }
   | { readonly kind: "remove"; readonly itemId: string };
-/** Private customer-owned draft port. No submission/ERP mutation capability. */
+/** Creator-owned draft port for customers and currently assigned Sales.
+ * No confirmation, submission or ERP mutation capability. */
 export interface OrderDraftRepository {
   reorder(
     actor: DraftActor,

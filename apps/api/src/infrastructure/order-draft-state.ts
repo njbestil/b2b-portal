@@ -6,6 +6,7 @@ import type { SessionRecord } from "../repositories/sessions.js";
 import { eligible, SessionError } from "../services/session-state.js";
 import { DraftError, draftId } from "../services/order-drafts.js";
 import { bound } from "./session-crypto.js";
+import { salesListingActor } from "./sales-list-state.js";
 export function draftActor(
   identity: DraftActor,
   account: LoginCredential | null,
@@ -15,6 +16,10 @@ export function draftActor(
   draftId(identity.userId);
   draftId(identity.sessionId);
   draftId(identity.companyId);
+  if (identity.role === "SALES_STAFF") {
+    salesListingActor(identity, account, session, time);
+    return;
+  }
   const user = eligible(account);
   if (
     user.id !== identity.userId ||

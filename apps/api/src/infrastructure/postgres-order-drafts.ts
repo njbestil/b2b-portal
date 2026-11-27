@@ -87,6 +87,24 @@ export function createPostgresOrderDrafts(
             }
           : null;
       const session = await lockedSession(client, actor.sessionId);
+      if (actor.role === "SALES_STAFF") {
+        const rows = (
+          await client.query(
+            "SELECT sales_staff_user_id AS staff,active,is_primary AS primary,ended_at AS ended,created_at AS created FROM customer_sales_assignments WHERE company_id=$1 FOR SHARE",
+            [actor.companyId],
+          )
+        ).rows;
+        const active = rows.filter(
+          (r) => r.active && r.primary && r.ended === null,
+        );
+        if (
+          company?.status !== "ACTIVE" ||
+          active.length !== 1 ||
+          active[0].staff !== actor.userId ||
+          active[0].created.getTime() > now()
+        )
+          throw new DraftError("forbidden");
+      }
       const check = () => draftActor(actor, account, session, now());
       check();
       const result = await work(client);
