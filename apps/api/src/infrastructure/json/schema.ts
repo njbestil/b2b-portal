@@ -1,4 +1,6 @@
 import { checkedDraftItems } from "../../services/draft-quantities.js";
+import { checkedPendingConfirmation } from "../../services/confirmation-requests.js";
+import type { PendingConfirmation } from "../../repositories/confirmation-requests.js";
 import { checkedCommercialTerms } from "../../services/draft-commercial.js";
 import { checkedOrderSnapshot } from "../../services/order-snapshot.js";
 import {
@@ -229,7 +231,20 @@ const parsers: {
     let items: ReturnType<typeof checkedDraftItems> | undefined;
     let commercialBaseline;
     let submittedSnapshot;
+    let confirmation;
     try {
+      if (row.confirmation !== undefined) {
+        confirmation = checkedPendingConfirmation(
+          row.confirmation as PendingConfirmation,
+        );
+        if (
+          confirmation.companyId !== id(row.companyId) ||
+          confirmation.orderId !== id(row.id) ||
+          row.status === "DRAFT" ||
+          row.integrationStatus !== "NOT_SENT"
+        )
+          return invalid();
+      }
       items =
         row.items === undefined ? undefined : checkedDraftItems(row.items);
       commercialBaseline =
@@ -276,6 +291,7 @@ const parsers: {
         ? {}
         : { erpOrderReference: id(row.erpOrderReference) }),
       ...(submittedSnapshot === undefined ? {} : { submittedSnapshot }),
+      ...(confirmation === undefined ? {} : { confirmation }),
       ...(commercialBaseline === undefined ? {} : { commercialBaseline }),
       ...(items === undefined ? {} : { items }),
       ...(updatedAt === undefined

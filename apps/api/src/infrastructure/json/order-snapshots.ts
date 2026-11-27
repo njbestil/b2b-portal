@@ -56,6 +56,7 @@ export async function commitJsonOrderSnapshot(
       "updatedAt",
       "items",
       "commercialBaseline",
+      "confirmation",
       "submittedSnapshot",
       "erpOrderReference",
     ];

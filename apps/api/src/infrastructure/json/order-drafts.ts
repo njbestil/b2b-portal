@@ -128,6 +128,7 @@ export function createJsonOrderDrafts(
                     "updatedAt",
                     "items",
                     "commercialBaseline",
+                    "confirmation",
                     "erpOrderReference",
                     "submittedSnapshot",
                   ].includes(k),

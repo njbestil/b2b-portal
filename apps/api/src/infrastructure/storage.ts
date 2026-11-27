@@ -74,6 +74,9 @@ import { createJsonNotifications } from "./json/notifications.js";
 import type { ApplicationRepository } from "../repositories/applications.js";
 import type { OrderDraftRepository } from "../repositories/order-drafts.js";
 import { createPostgresOrderDrafts } from "./postgres-order-drafts.js";
+import { createPostgresConfirmationRequests } from "./postgres-confirmation-requests.js";
+import { createJsonConfirmationRequests } from "./json/confirmation-requests.js";
+import type { ConfirmationRequests } from "../repositories/confirmation-requests.js";
 import { createPostgresOrderSubmission } from "./postgres-order-submission.js";
 import { createPostgresRetryingGateway } from "./postgres-submission-retry.js";
 import type { SubmissionRetryPolicy } from "./submission-retry-config.js";
@@ -118,6 +121,7 @@ export interface StorageRuntime {
   readonly adminCompanies: AdminCompanyRepository;
   readonly invoices: import("../repositories/invoices.js").InvoiceRepository;
   readonly orderDrafts: OrderDraftRepository;
+  readonly confirmationRequests: ConfirmationRequests;
   readonly companyProfiles: CompanyProfileRepository;
   readonly deliveryAddresses: DeliveryAddressRepository;
   readonly adminSalesAssignments: AdminSalesAssignmentRepository;
@@ -241,6 +245,7 @@ export async function selectStorage(
           >;
         }) => createPostgresCancellation(postgres.pool, gateway),
         orderDrafts: createPostgresOrderDrafts(postgres.pool),
+        confirmationRequests: createPostgresConfirmationRequests(postgres.pool),
         createOrderSubmission: (
           source: import("../repositories/catalog-sync.js").CatalogSource,
           minimum: { amount: string; currency: string },
@@ -353,6 +358,7 @@ export async function selectStorage(
     applications,
     fulfillment: createJsonFulfillment(security),
     orderDrafts: createJsonOrderDrafts(security),
+    confirmationRequests: createJsonConfirmationRequests(security),
     companyProfiles: createJsonCompanyProfiles(security),
     deliveryAddresses: createJsonDeliveryAddresses(security),
     applicationReviews,
