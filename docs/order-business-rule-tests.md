@@ -26,6 +26,8 @@ Acceptance mapping:
 Nine focused tests cover JSON/PostgreSQL validation parity, actual PostgreSQL
 submission and JSON's internal snapshot component. JSON has no enabled full
 submission/idempotency service; its snapshot test does not claim one. Existing
-lower-level suites remain intact. The helper adds no test substitutes for SQL,
-Mock transport or repositories. There are no application, dependency or policy
-changes. Set disposable B2B_TEST_MIGRATIONS_DATABASE_URL for PostgreSQL cases.
+lower-level suites remain intact. Initial catalog reads and accepted dispatch use
+the real local Mock transport. Controlled catalog snapshot ports vary commercial
+conditions for negative cases; SQL and JSON repositories remain real. There are
+no application, dependency or policy changes. Set disposable
+B2B_TEST_MIGRATIONS_DATABASE_URL for PostgreSQL cases.
