@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import type {
   ConfirmationActor,
-  PendingConfirmation,
+  StoredConfirmation,
 } from "../repositories/confirmation-requests.js";
 import { checkedPendingConfirmation } from "../services/confirmation-requests.js";
 import { DraftError } from "../services/order-drafts.js";
@@ -26,11 +26,12 @@ export function confirmationFingerprint(
     .digest("hex");
 }
 export function pendingReplay(
-  record: PendingConfirmation,
+  record: StoredConfirmation,
   status: string,
   integration: string,
   fingerprint: string,
 ) {
+  if (record.status !== "PENDING") throw new DraftError("conflict");
   const r = checkedPendingConfirmation(record);
   if (
     r.fingerprint !== fingerprint ||

@@ -1,3 +1,6 @@
+import type { CustomerConfirmations } from "../repositories/customer-confirmations.js";
+import { createPostgresCustomerConfirmations } from "./postgres-customer-confirmations.js";
+import { createJsonCustomerConfirmations } from "./json/customer-confirmations.js";
 import type { IntegrationMonitorRepository } from "../repositories/integration-monitor.js";
 import type { OrderNotesRepository } from "../repositories/order-notes.js";
 import { createPostgresOrderNotes } from "./postgres-order-notes.js";
@@ -122,6 +125,7 @@ export interface StorageRuntime {
   readonly invoices: import("../repositories/invoices.js").InvoiceRepository;
   readonly orderDrafts: OrderDraftRepository;
   readonly confirmationRequests: ConfirmationRequests;
+  readonly customerConfirmations: CustomerConfirmations;
   readonly companyProfiles: CompanyProfileRepository;
   readonly deliveryAddresses: DeliveryAddressRepository;
   readonly adminSalesAssignments: AdminSalesAssignmentRepository;
@@ -246,6 +250,9 @@ export async function selectStorage(
         }) => createPostgresCancellation(postgres.pool, gateway),
         orderDrafts: createPostgresOrderDrafts(postgres.pool),
         confirmationRequests: createPostgresConfirmationRequests(postgres.pool),
+        customerConfirmations: createPostgresCustomerConfirmations(
+          postgres.pool,
+        ),
         createOrderSubmission: (
           source: import("../repositories/catalog-sync.js").CatalogSource,
           minimum: { amount: string; currency: string },
@@ -359,6 +366,7 @@ export async function selectStorage(
     fulfillment: createJsonFulfillment(security),
     orderDrafts: createJsonOrderDrafts(security),
     confirmationRequests: createJsonConfirmationRequests(security),
+    customerConfirmations: createJsonCustomerConfirmations(security),
     companyProfiles: createJsonCompanyProfiles(security),
     deliveryAddresses: createJsonDeliveryAddresses(security),
     applicationReviews,

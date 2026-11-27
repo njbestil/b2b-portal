@@ -1,3 +1,5 @@
+import { createCustomerConfirmationRouter } from "./customer-confirmation-route.js";
+import type { CustomerConfirmationService } from "./services/customer-confirmations.js";
 import { createInvoiceDocumentRouter } from "./invoice-document-route.js";
 import type { InvoiceDocuments } from "./services/invoice-documents.js";
 import { createIntegrationMonitorRouter } from "./integration-monitor-route.js";
@@ -82,6 +84,7 @@ interface AppOptions {
   orderDrafts?: OrderDraftService;
   salesDrafts?: SalesDraftService;
   confirmationRequests?: ConfirmationRequestService;
+  customerConfirmations?: CustomerConfirmationService;
   orderSubmission?: import("./infrastructure/postgres-order-submission.js").OrderSubmission;
   companyProfiles?: CompanyProfileService;
   cancellationStatus?: CancellationStatusReader;
@@ -181,6 +184,12 @@ export function createApp(options: AppOptions = {}) {
       options.sessions,
       options.orderDrafts,
       options.orderSubmission,
+    ),
+  );
+  app.use(
+    createCustomerConfirmationRouter(
+      options.sessions,
+      options.customerConfirmations,
     ),
   );
   app.use(createInvoiceRouter(options.sessions, options.invoices));

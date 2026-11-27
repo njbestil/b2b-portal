@@ -1,36 +1,13 @@
+import { checkedConfirmation } from "./confirmation-record.js";
+export { checkedPendingConfirmation } from "./confirmation-record.js";
 import type {
   ConfirmationActor,
   ConfirmationRequests,
-  PendingConfirmation,
+  StoredConfirmation,
 } from "../repositories/confirmation-requests.js";
 import type { AuditInput } from "../repositories/audit.js";
 import { requirePermission, type AuthorizedActor } from "./authorization.js";
 import { draftId, DraftError } from "./order-drafts.js";
-export function checkedPendingConfirmation(
-  value: PendingConfirmation,
-): PendingConfirmation {
-  if (
-    !value ||
-    Object.keys(value).sort().join(",") !==
-      "companyId,createdAt,customerUserId,fingerprint,id,orderId,status" ||
-    value.status !== "PENDING" ||
-    typeof value.fingerprint !== "string" ||
-    !/^[a-f0-9]{64}$/.test(value.fingerprint) ||
-    typeof value.createdAt !== "string" ||
-    !Number.isFinite(Date.parse(value.createdAt)) ||
-    new Date(value.createdAt).toISOString() !== value.createdAt
-  )
-    throw new DraftError("unavailable");
-  return {
-    id: draftId(value.id),
-    companyId: draftId(value.companyId),
-    orderId: draftId(value.orderId),
-    customerUserId: draftId(value.customerUserId),
-    status: "PENDING",
-    createdAt: value.createdAt,
-    fingerprint: value.fingerprint,
-  };
-}
 function who(actor: AuthorizedActor, company: unknown): ConfirmationActor {
   requirePermission(actor, "sales-drafts.manage");
   if (actor.role !== "SALES_STAFF") throw new DraftError("forbidden");
@@ -42,14 +19,17 @@ function who(actor: AuthorizedActor, company: unknown): ConfirmationActor {
     companyId: draftId(company),
   };
 }
-const view = (input: PendingConfirmation) => {
-  const r = checkedPendingConfirmation(input);
+const view = (input: StoredConfirmation) => {
+  const r = checkedConfirmation(input);
   return {
     id: r.id,
     orderId: r.orderId,
     customerUserId: r.customerUserId,
     status: r.status,
     createdAt: r.createdAt,
+    ...(r.status === "PENDING"
+      ? {}
+      : { decidedAt: r.decidedAt, reason: r.reason }),
   };
 };
 export function createConfirmationRequests(

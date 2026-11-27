@@ -9,6 +9,14 @@ export interface PendingConfirmation {
   readonly createdAt: string;
   readonly fingerprint: string;
 }
+export type StoredConfirmation =
+  | PendingConfirmation
+  | (Omit<PendingConfirmation, "status"> & {
+      readonly status: "CONFIRMED" | "REJECTED";
+      readonly decidedByUserId: string;
+      readonly decidedAt: string;
+      readonly reason: string | null;
+    });
 export interface ConfirmationRequests {
   request(
     actor: ConfirmationActor,
@@ -20,5 +28,5 @@ export interface ConfirmationRequests {
   find(
     actor: ConfirmationActor,
     orderId: string,
-  ): Promise<PendingConfirmation | null>;
+  ): Promise<StoredConfirmation | null>;
 }

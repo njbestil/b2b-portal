@@ -14,6 +14,10 @@ export const permissions = Object.freeze({
   "invoices.read": Object.freeze(["CUSTOMER_ADMIN", "CUSTOMER_USER"]),
   "order-drafts.read": Object.freeze(["CUSTOMER_ADMIN", "CUSTOMER_USER"]),
   "order-drafts.manage": Object.freeze(["CUSTOMER_ADMIN", "CUSTOMER_USER"]),
+  "orders.confirmation.decide": Object.freeze([
+    "CUSTOMER_ADMIN",
+    "CUSTOMER_USER",
+  ]),
   "sales-drafts.manage": Object.freeze(["SALES_STAFF"]),
   "company-profile.read": Object.freeze([
     "INTERNAL_ADMIN",

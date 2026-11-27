@@ -1,6 +1,6 @@
 import { checkedDraftItems } from "../../services/draft-quantities.js";
-import { checkedPendingConfirmation } from "../../services/confirmation-requests.js";
-import type { PendingConfirmation } from "../../repositories/confirmation-requests.js";
+import { checkedConfirmation } from "../../services/confirmation-record.js";
+import type { StoredConfirmation } from "../../repositories/confirmation-requests.js";
 import { checkedCommercialTerms } from "../../services/draft-commercial.js";
 import { checkedOrderSnapshot } from "../../services/order-snapshot.js";
 import {
@@ -234,8 +234,8 @@ const parsers: {
     let confirmation;
     try {
       if (row.confirmation !== undefined) {
-        confirmation = checkedPendingConfirmation(
-          row.confirmation as PendingConfirmation,
+        confirmation = checkedConfirmation(
+          row.confirmation as StoredConfirmation,
         );
         if (
           confirmation.companyId !== id(row.companyId) ||
