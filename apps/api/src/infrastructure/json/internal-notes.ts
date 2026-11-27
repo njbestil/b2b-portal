@@ -21,6 +21,7 @@ import type { JsonSecurityCoordinator } from "./security.js";
 export function createJsonInternalNotes(
   directory: string,
   security?: JsonSecurityCoordinator,
+  beforePublish?: () => void,
 ): InternalNotesRepository {
   const root = resolve(directory),
     path = join(root, "order_internal_notes.json"),
@@ -97,6 +98,7 @@ export function createJsonInternalNotes(
       } finally {
         await handle.close();
       }
+      beforePublish?.();
       await rename(temporary, path);
     } finally {
       await unlink(temporary).catch(() => {});

@@ -62,6 +62,8 @@ import { createSalesCustomerDetailRouter } from "./sales-customer-detail-route.j
 import type { SalesAssignmentRepository } from "./repositories/sales-assignments.js";
 
 import { createInvoiceRouter } from "./invoice-route.js";
+import { createOrderNotesRouter } from "./order-notes-route.js";
+import type { OrderNotesService } from "./services/order-notes.js";
 import type { InvoiceQueries } from "./services/invoices.js";
 interface AppOptions {
   manualRetry?: ManualRetry;
@@ -71,6 +73,7 @@ interface AppOptions {
   diagnostics?: DiagnosticsService;
   adminCompanies?: AdminCompanyRepository;
   invoices?: InvoiceQueries;
+  orderNotes?: OrderNotesService;
   orderDrafts?: OrderDraftService;
   salesDrafts?: SalesDraftService;
   orderSubmission?: import("./infrastructure/postgres-order-submission.js").OrderSubmission;
@@ -144,6 +147,7 @@ export function createApp(options: AppOptions = {}) {
     ),
   );
   app.use(createFulfillmentRouter(options.sessions, options.fulfillment));
+  app.use(createOrderNotesRouter(options.sessions, options.orderNotes));
   app.use(createAccountStatusRouter(options.sessions, options.accountStatus));
   app.use(
     createAdminSalesAssignmentRouter(
