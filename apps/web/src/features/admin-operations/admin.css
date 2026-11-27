@@ -1,0 +1,110 @@
+.admin-ops-links,
+.admin-ops-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1rem;
+  margin-block: 1rem;
+}
+.admin-ops-panel,
+.admin-ops-detail {
+  padding: 1.5rem;
+  margin-block: 1.5rem;
+  min-inline-size: 0;
+}
+.admin-ops-table {
+  overflow-x: auto;
+}
+.admin-ops-table table {
+  inline-size: 100%;
+  border-collapse: collapse;
+  text-align: start;
+}
+.admin-ops-table th,
+.admin-ops-table td {
+  padding: 1rem;
+  border-block-end: 1px solid var(--border);
+  vertical-align: top;
+  overflow-wrap: anywhere;
+  min-inline-size: 7rem;
+}
+.admin-ops-table small {
+  display: block;
+  color: var(--content-subtle);
+  margin-block-start: 0.5rem;
+}
+.admin-ops-detail dd {
+  margin-inline-start: 0;
+  margin-block: 0.5rem 1rem;
+  overflow-wrap: anywhere;
+}
+.admin-ops-detail > .button {
+  margin: 0.5rem;
+}
+.admin-ops-section {
+  margin-block: 1.5rem;
+  padding-block-start: 1rem;
+  border-block-start: 1px solid var(--border);
+}
+.admin-ops-section label {
+  display: block;
+  margin-block: 1rem 0.5rem;
+}
+.admin-ops-section select,
+.admin-ops-filters select {
+  padding: 0.75rem;
+  max-inline-size: 100%;
+  background: var(--surface);
+  color: var(--content);
+  border: 1px solid var(--control-border);
+  border-radius: 0.5rem;
+}
+.admin-ops-dialog {
+  inline-size: min(36rem, calc(100% - 2rem));
+  max-block-size: calc(100dvh - 2rem);
+  overflow: auto;
+  padding: 1.5rem;
+  color: var(--content);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 1rem;
+}
+.admin-ops-dialog::backdrop {
+  background: #0008;
+}
+.admin-ops-panel form {
+  display: grid;
+  gap: 1rem;
+  max-inline-size: 36rem;
+}
+.admin-ops-filters {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: end;
+  gap: 1rem;
+  margin-block: 1.5rem;
+}
+.admin-ops-health {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
+}
+.admin-ops-fields {
+  display: grid;
+  grid-template-columns: minmax(8rem, 1fr) 3fr;
+  gap: 0.5rem 1rem;
+}
+.admin-ops-fields dd {
+  margin: 0;
+}
+@media (max-width: 48rem) {
+  .admin-ops-health,
+  .admin-ops-fields,
+  .admin-ops-filters {
+    grid-template-columns: 1fr;
+  }
+  .admin-ops-panel,
+  .admin-ops-detail {
+    padding: 1rem;
+  }
+}

@@ -180,7 +180,7 @@ export class RemoteModel<T> {
 }
 export interface ApiOperation {
   path: string;
-  method: "GET" | "POST" | "PATCH";
+  method: "GET" | "POST" | "PATCH" | "PUT";
   body?: unknown;
 }
 export type ApiTransport = (
@@ -192,7 +192,7 @@ export function createApiTransport(
   send: (
     path: string,
     init: {
-      method: "GET" | "POST" | "PATCH";
+      method: "GET" | "POST" | "PATCH" | "PUT";
       body?: string;
       signal: AbortSignal;
     },

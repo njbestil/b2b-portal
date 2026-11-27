@@ -46,6 +46,7 @@ import { ProcessingEntry } from "./features/order-processing/ProcessingPage";
 import { HistoryEntry } from "./features/order-history/HistoryPage";
 import { CatalogEntry } from "./features/catalog/CatalogPage";
 import type { CatalogAdapter } from "./features/catalog/api";
+import { AdminEntry } from "./features/admin-operations/AdminEntry";
 import { ApplicationReviewEntry } from "./features/application-review/ReviewPage";
 import type { ReviewAdapter } from "./features/application-review/api";
 import { CompanyEntry } from "./features/company-profile/CompanyPage";
@@ -197,6 +198,12 @@ function AppRoutes({
               ) : page.path === "/orders" &&
                 (role === "Customer Admin" || role === "Customer User") ? (
                 <DraftEntry />
+              ) : page.path === "/customers" && role === "Internal Admin" ? (
+                <AdminEntry view="customers" />
+              ) : page.path === "/sales-staff" ? (
+                <AdminEntry view="staff" />
+              ) : page.path === "/erp-integrations" ? (
+                <AdminEntry view="integrations" />
               ) : page.path === "/invoices" ? (
                 <InvoiceEntry />
               ) : page.path === "/catalog" ? (
@@ -220,6 +227,10 @@ function AppRoutes({
           element={<CatalogEntry adapter={catalog} />}
         />
         <Route path="design-system" element={<DesignSystem />} />
+        <Route
+          path="operations/diagnostics"
+          element={<AdminEntry view="diagnostics" />}
+        />
         <Route path="orders/cancellations" element={<CancellationEntry />} />
         <Route
           path="company/addresses"

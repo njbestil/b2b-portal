@@ -15,6 +15,7 @@ import {
   salesStaffId,
   SalesStaffError,
   validSalesStaffTransition,
+  checkedStaffPage,
 } from "../../services/sales-staff.js";
 import { SessionError } from "../../services/session-state.js";
 const view = (row: JsonUser): ManagedSalesStaff => ({
@@ -69,6 +70,22 @@ export function createJsonSalesStaff(
     return { users, rows, authorize };
   }
   return {
+    list: (actor, input) => {
+      const page = checkedStaffPage(input);
+      return run(async () => {
+        const { users, authorize } = await state(actor),
+          matching = users
+            .filter((u) => u.companyId === null && u.role === "SALES_STAFF")
+            .sort((a, b) => a.id.localeCompare(b.id));
+        authorize();
+        return {
+          items: matching
+            .slice(page.offset, page.offset + page.limit)
+            .map(view),
+          total: matching.length,
+        };
+      });
+    },
     create: (actor, value) =>
       run(async () => {
         const input = checkedNewSalesStaff(value),
