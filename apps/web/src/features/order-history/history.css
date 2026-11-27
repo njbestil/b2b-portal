@@ -1,3 +1,7 @@
+.history-list,
+.history-detail {
+  padding: 1.25rem;
+}
 .history-filters {
   display: grid;
   grid-template-columns: minmax(12rem, 2fr) repeat(3, minmax(8rem, 1fr)) auto;
