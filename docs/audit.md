@@ -26,8 +26,9 @@ failure reject with controlled errors. Failures propagate; no silent drop, retry
 or runtime provider fallback. There is no cross-business-operation transaction or
 distributed crash-durability claim for this initial append port.
 
-No customer/public audit query, edit/delete endpoint, admin viewer or broad feature
-integration is added. B2B-078 owns business-event integration; B2B-082 owns the
+No customer/public audit query, edit/delete endpoint or admin viewer is added.
+Business-event integration and acceptance evidence are mapped in
+[audit-event-integration.md](audit-event-integration.md). B2B-082 owns the
 authorized admin viewer. Audit history is separate from migration history. No new
 SQL migration/dependency is required. Readiness remains scoped to current read
 collections, not proof of future audit write permission.

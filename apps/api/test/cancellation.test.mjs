@@ -262,6 +262,30 @@ test(
         )
       ).rows[0];
       assert.equal(tx.status, "SUCCESS");
+      const auditRows = (
+        await f.pool.query(
+          "SELECT company_id,actor_user_id,actor_role,action,target_type,target_id,metadata,created_at FROM audit_logs WHERE target_id=$1 ORDER BY action",
+          [value.requestId],
+        )
+      ).rows;
+      assert.deepEqual(
+        auditRows.map((r) => r.action),
+        ["order.cancellation_decided", "order.cancellation_requested"],
+      );
+      for (const e of auditRows) {
+        assert.equal(e.company_id, f.company);
+        assert.equal(e.actor_user_id, f.customer.userId);
+        assert.equal(e.actor_role, "CUSTOMER_ADMIN");
+        assert.equal(e.target_type, "cancellation_request");
+        assert.equal(e.metadata.orderId, order.id);
+        assert.equal(e.metadata.outcome, "success");
+        assert.ok(e.created_at instanceof Date);
+        assert.doesNotMatch(
+          JSON.stringify(e),
+          /synthetic reason|Simulated|password|token|payload/i,
+        );
+      }
+
       assert.ok(!JSON.stringify(tx.response_payload).includes("Simulated"));
       assert.equal(
         (

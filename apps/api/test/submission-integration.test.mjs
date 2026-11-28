@@ -176,6 +176,26 @@ test(
       )
     ).rows;
     assert.equal(tx.length, 1);
+    const audit = (
+      await f.pool.query(
+        "SELECT company_id,actor_user_id,actor_role,target_type,target_id,metadata FROM audit_logs WHERE target_id=$1 AND action='order.submitted'",
+        [f.draft.id],
+      )
+    ).rows;
+    assert.equal(audit.length, 1);
+    assert.equal(audit[0].company_id, f.ca.companyId);
+    assert.equal(audit[0].actor_user_id, f.ca.userId);
+    assert.equal(audit[0].actor_role, "CUSTOMER_ADMIN");
+    assert.equal(audit[0].target_type, "order");
+    assert.deepEqual(audit[0].metadata, {
+      orderId: f.draft.id,
+      outcome: "success",
+    });
+    assert.doesNotMatch(
+      JSON.stringify(audit),
+      /password|token|payload|PRIVATE/i,
+    );
+
     assert.equal(tx[0].status, "SUCCESS");
     assert.equal(
       tx[0].request_payload.externalRequestReference,
