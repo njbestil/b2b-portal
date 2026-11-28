@@ -13,6 +13,7 @@ import {
 } from "../../shared/remote";
 import { quantity } from "../order-drafts/api";
 export type Review = {
+  canSubmit?: boolean;
   confirmation: {
     id: string;
     orderId: string;
@@ -24,7 +25,14 @@ export type Review = {
   };
   order: {
     id: string;
-    status: "PENDING_CUSTOMER_CONFIRMATION" | "REJECTED";
+    status:
+      | "PENDING_CUSTOMER_CONFIRMATION"
+      | "REJECTED"
+      | "SUBMITTED"
+      | "CONFIRMED"
+      | "FULFILLING"
+      | "DELIVERED"
+      | "CANCELLED";
     createdBy: string;
     items: {
       id: string;
@@ -49,10 +57,27 @@ export function reviewView(value: unknown, id: string): Review {
     !timestamp(c.createdAt) ||
     !["PENDING", "CONFIRMED", "REJECTED"].includes(c.status as string) ||
     o.id !== id ||
-    o.status !==
-      (c.status === "REJECTED"
-        ? "REJECTED"
-        : "PENDING_CUSTOMER_CONFIRMATION") ||
+    !(
+      c.status === "CONFIRMED"
+        ? [
+            "PENDING_CUSTOMER_CONFIRMATION",
+            "SUBMITTED",
+            "CONFIRMED",
+            "FULFILLING",
+            "DELIVERED",
+            "CANCELLED",
+            "REJECTED",
+          ]
+        : [
+            c.status === "REJECTED"
+              ? "REJECTED"
+              : "PENDING_CUSTOMER_CONFIRMATION",
+          ]
+    ).includes(o.status as string) ||
+    (value.canSubmit !== undefined && typeof value.canSubmit !== "boolean") ||
+    (value.canSubmit === true &&
+      (c.status !== "CONFIRMED" ||
+        o.status !== "PENDING_CUSTOMER_CONFIRMATION")) ||
     !safeText(o.createdBy, 160) ||
     !Array.isArray(o.items) ||
     !o.items.length ||
@@ -98,6 +123,7 @@ export function reviewView(value: unknown, id: string): Review {
   )
     throw new RemoteError("unavailable");
   return {
+    canSubmit: value.canSubmit === true,
     confirmation: {
       id: c.id,
       orderId: id,
@@ -136,7 +162,12 @@ export class ConfirmationClient {
       throw new RemoteError("forbidden");
     this.send = createApiTransport(async (path, init) => {
       try {
-        return await session.request(path, init);
+        return await session.request(path, {
+          ...init,
+          ...(path.endsWith("/submit")
+            ? { idempotencyKey: "assisted-confirmation" }
+            : {}),
+        });
       } catch (e) {
         throw new RemoteError(
           e instanceof AuthError && ["session", "restricted"].includes(e.code)
@@ -155,6 +186,39 @@ export class ConfirmationClient {
       ),
       id,
     );
+  }
+  async quote(
+    id: string,
+    confirmationId: string,
+    signal: AbortSignal,
+  ): Promise<SubmissionQuote> {
+    if (!entityId(id) || !entityId(confirmationId))
+      throw new RemoteError("invalid");
+    return submissionQuote(
+      await this.send(
+        {
+          path: `/api/v1/orders/${id}/submission-quote`,
+          method: "POST",
+          body: { confirmationId },
+        },
+        signal,
+      ),
+      confirmationId,
+    );
+  }
+  async submit(id: string, quote: SubmissionQuote, signal: AbortSignal) {
+    if (!entityId(id)) throw new RemoteError("invalid");
+    submissionQuote(quote, quote.confirmationId);
+    const result = await this.send(
+      {
+        path: `/api/v1/order-drafts/${id}/submit`,
+        method: "POST",
+        body: { confirmationId: quote.confirmationId, quoteToken: quote.token },
+      },
+      signal,
+    );
+    if (!object(result) || result.orderId !== id)
+      throw new RemoteError("unavailable");
   }
   async decide(
     id: string,
@@ -188,4 +252,95 @@ export class ConfirmationClient {
       throw new RemoteError("unavailable");
     return result;
   }
+}
+export type SubmissionQuote = {
+  delivery: {
+    label: string;
+    line1: string;
+    contactName: string | null;
+    contactPhone: string | null;
+  };
+  confirmationId: string;
+  token: string;
+  currency: string;
+  total: string;
+  items: {
+    itemId: string;
+    name: string;
+    quantity: string;
+    sellingUom: string;
+    unitPrice: string;
+    lineTotal: string;
+    currency: string;
+  }[];
+};
+const money = (v: unknown): v is string =>
+  typeof v === "string" && /^\d{1,18}(?:\.\d{1,6})?$/.test(v);
+export function submissionQuote(
+  value: unknown,
+  confirmationId: string,
+): SubmissionQuote {
+  if (
+    !object(value) ||
+    value.confirmationId !== confirmationId ||
+    !entityId(confirmationId) ||
+    typeof value.token !== "string" ||
+    !/^assisted-[a-f0-9]{64}$/.test(value.token) ||
+    typeof value.currency !== "string" ||
+    !/^[A-Z]{3}$/.test(value.currency) ||
+    !money(value.total) ||
+    !object(value.delivery) ||
+    !safeText(value.delivery.label, 160) ||
+    !safeText(value.delivery.line1, 500) ||
+    !(
+      value.delivery.contactName === null ||
+      safeText(value.delivery.contactName, 160)
+    ) ||
+    !(
+      value.delivery.contactPhone === null ||
+      safeText(value.delivery.contactPhone, 40)
+    ) ||
+    !Array.isArray(value.items) ||
+    !value.items.length ||
+    value.items.length > 100
+  )
+    throw new RemoteError("unavailable");
+  const items = value.items.map((r) => {
+    if (
+      !object(r) ||
+      !entityId(r.itemId) ||
+      !safeText(r.name, 256) ||
+      !safeText(r.sellingUom, 64) ||
+      typeof r.quantity !== "string" ||
+      !quantity(r.quantity) ||
+      !money(r.unitPrice) ||
+      !money(r.lineTotal) ||
+      r.currency !== value.currency
+    )
+      throw new RemoteError("unavailable");
+    return {
+      itemId: r.itemId,
+      name: r.name,
+      quantity: r.quantity,
+      sellingUom: r.sellingUom,
+      unitPrice: r.unitPrice,
+      lineTotal: r.lineTotal,
+      currency: r.currency as string,
+    };
+  });
+  if (new Set(items.map((r) => r.itemId)).size !== items.length)
+    throw new RemoteError("unavailable");
+  return {
+    confirmationId,
+    token: value.token,
+    currency: value.currency,
+    total: value.total,
+    delivery: {
+      label: value.delivery.label as string,
+      line1: value.delivery.line1 as string,
+      contactName: value.delivery.contactName as string | null,
+      contactPhone: value.delivery.contactPhone as string | null,
+    },
+    items,
+  };
 }

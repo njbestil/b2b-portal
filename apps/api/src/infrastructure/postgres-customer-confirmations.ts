@@ -87,13 +87,25 @@ export function createPostgresCustomerConfirmations(
         order.creator === a.userId
       )
         throw new DraftError("forbidden");
+      const submitted =
+        record.status === "CONFIRMED" &&
+        [
+          "SUBMITTED",
+          "CONFIRMED",
+          "FULFILLING",
+          "DELIVERED",
+          "CANCELLED",
+          "REJECTED",
+        ].includes(order.status) &&
+        order.protected;
       if (
-        order.integration !== "NOT_SENT" ||
-        order.protected ||
-        order.status !==
-          (record.status === "REJECTED"
-            ? "REJECTED"
-            : "PENDING_CUSTOMER_CONFIRMATION")
+        !submitted &&
+        (order.integration !== "NOT_SENT" ||
+          order.protected ||
+          order.status !==
+            (record.status === "REJECTED"
+              ? "REJECTED"
+              : "PENDING_CUSTOMER_CONFIRMATION"))
       )
         throw new DraftError("conflict");
       const items = (

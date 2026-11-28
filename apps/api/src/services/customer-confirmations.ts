@@ -55,9 +55,13 @@ function publicReview(
     c.orderId !== id ||
     value.order.id !== id ||
     !text(value.order.createdBy, 160) ||
-    !["PENDING_CUSTOMER_CONFIRMATION", "REJECTED"].includes(
-      value.order.status,
-    ) ||
+    ![
+      "PENDING_CUSTOMER_CONFIRMATION",
+      "REJECTED",
+      ...(c.status === "CONFIRMED"
+        ? ["SUBMITTED", "CONFIRMED", "FULFILLING", "DELIVERED", "CANCELLED"]
+        : []),
+    ].includes(value.order.status) ||
     value.order.items.length > 100 ||
     !value.order.items.length ||
     (value.order.delivery &&
@@ -79,6 +83,10 @@ function publicReview(
   )
     throw new DraftError("unavailable");
   return {
+    canSubmit:
+      c.status === "CONFIRMED" &&
+      c.decidedByUserId === actor.userId &&
+      value.order.status === "PENDING_CUSTOMER_CONFIRMATION",
     confirmation: {
       id: c.id,
       orderId: c.orderId,

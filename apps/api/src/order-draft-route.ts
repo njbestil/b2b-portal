@@ -136,6 +136,35 @@ export function createOrderDraftRouter(
     },
   );
   router.post(
+    "/api/v1/orders/:id/submission-quote",
+    authorize("order-drafts.manage", sessions),
+    guard,
+    json({ limit: "2kb", inflate: false }),
+    async (request, response, next) => {
+      try {
+        if (
+          Object.keys(request.query).length ||
+          !request.body ||
+          typeof request.body !== "object" ||
+          Array.isArray(request.body) ||
+          Object.keys(request.body).join(",") !== "confirmationId"
+        )
+          throw new DraftError("invalid_input");
+        if (!submit) throw new DraftError("unavailable");
+        sendSuccess(
+          response,
+          await submit.quote(
+            actorFor(request),
+            request.params.id,
+            request.body.confirmationId,
+          ),
+        );
+      } catch (e) {
+        next(error(e));
+      }
+    },
+  );
+  router.post(
     "/api/v1/order-drafts/:id/submit",
     authorize("order-drafts.manage", sessions),
     guard,

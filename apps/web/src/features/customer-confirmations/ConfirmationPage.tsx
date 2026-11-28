@@ -12,6 +12,7 @@ import { Badge, Button } from "../../shared/ui";
 import { RemoteModel, remoteMessage } from "../../shared/remote";
 import { useAuth } from "../authentication/AuthContext";
 import { ConfirmationClient, type Review } from "./api";
+import { AssistedSubmission } from "./AssistedSubmission";
 import "./confirmation.css";
 export function ConfirmationContents({ review }: { review: Review }) {
   return (
@@ -45,9 +46,11 @@ export function ConfirmationContents({ review }: { review: Review }) {
         </dd>
       </dl>
       <p className="confirmation-notice">
-        This records your decision. Current pricing, availability and account
-        eligibility must be validated before ERP submission. No financial total
-        is available at this stage.
+        {review.confirmation.status === "PENDING"
+          ? "This records your decision. Current pricing, availability and account eligibility must be validated before ERP submission. No financial total is available at this stage."
+          : review.order.status === "PENDING_CUSTOMER_CONFIRMATION"
+            ? "Your decision is recorded. Review current prices before submitting this order."
+            : "Your decision is retained. View company orders for financial details and ERP status."}
       </p>
     </>
   );
@@ -57,7 +60,8 @@ export function ConfirmationPage({
   client,
 }: {
   id: string;
-  client: Pick<ConfirmationClient, "find" | "decide">;
+  client: Pick<ConfirmationClient, "find" | "decide"> &
+    Partial<Pick<ConfirmationClient, "quote" | "submit">>;
 }) {
   const model = useMemo(() => new RemoteModel<Review>(), []),
     state = useSyncExternalStore(
@@ -117,7 +121,9 @@ export function ConfirmationPage({
         {state.busy
           ? "Loading or recording confirmation…"
           : record?.status === "CONFIRMED"
-            ? "Confirmation recorded. Awaiting submission."
+            ? state.data?.order.status === "PENDING_CUSTOMER_CONFIRMATION"
+              ? "Confirmation recorded. Awaiting submission."
+              : "Confirmation recorded. Check company orders for submission and ERP status."
             : record?.status === "REJECTED"
               ? "Rejection recorded."
               : ""}
@@ -144,6 +150,14 @@ export function ConfirmationPage({
           </h2>
           <ConfirmationContents review={state.data} />
           {record?.reason && <p>Rejection reason: {record.reason}</p>}
+          {state.data.canSubmit && client.quote && client.submit && (
+            <AssistedSubmission
+              id={id}
+              confirmationId={state.data.confirmation.id}
+              client={client as ConfirmationClient}
+              onSubmitted={() => void model.load((s) => client.find(id, s))}
+            />
+          )}
           {record?.status === "PENDING" && (
             <Button onClick={() => dialog.current?.showModal()}>
               Review and decide

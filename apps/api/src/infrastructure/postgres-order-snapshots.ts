@@ -13,6 +13,7 @@ import {
 export async function withPostgresOrderSnapshot(
   pool: Pool,
   transition: (client: PoolClient) => Promise<OrderSnapshot>,
+  confirmationId?: string,
 ): Promise<OrderSnapshot> {
   const client = await pool.connect();
   let broken = false;
@@ -30,10 +31,26 @@ export async function withPostgresOrderSnapshot(
         [snapshot.orderId],
       )
     ).rows[0];
+    let approved = false;
+    if (confirmationId && order && order.userId !== snapshot.submittedBy.id) {
+      approved =
+        (
+          await client.query(
+            "SELECT c.id FROM order_confirmations c JOIN users u ON u.id=$4 WHERE c.id=$1 AND c.company_id=$2 AND c.order_id=$3 AND c.status='CONFIRMED' AND c.decided_by_user_id=$5 AND u.role='SALES_STAFF' AND u.company_id IS NULL FOR SHARE OF c,u",
+            [
+              confirmationId,
+              snapshot.companyId,
+              snapshot.orderId,
+              order.userId,
+              snapshot.submittedBy.id,
+            ],
+          )
+        ).rowCount === 1;
+    }
     if (
       !order ||
       order.companyId !== snapshot.companyId ||
-      order.userId !== snapshot.submittedBy.id ||
+      (order.userId !== snapshot.submittedBy.id && !approved) ||
       order.addressId !== snapshot.delivery.id ||
       order.status !== "SUBMITTED" ||
       !(order.submittedAt instanceof Date) ||

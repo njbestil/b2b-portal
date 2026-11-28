@@ -6,7 +6,9 @@ Customer User must be the designated contact; any normal Customer Admin in that
 same active company may decide. Sales and Internal Admin cannot approve.
 Current credential/session/role/company and access expiry are checked under the
 provider ownership boundary. The source order must have a Sales creator and one
-unsent request; no ERP/submission evidence is accepted.
+unsent request for its initial decision. A retained CONFIRMED decision remains
+readable/replayable after submission. See [assisted-order-submission.md](assisted-order-submission.md)
+for the separate current-price acceptance and normal ERP submission step.
 
 POST has exactly `{confirmationId,decision,reason}`. Decision is CONFIRMED or
 REJECTED. Confirm requires reason=null; reject requires nonblank plain text up

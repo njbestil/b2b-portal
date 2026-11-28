@@ -4,11 +4,12 @@ import { createServer } from "vite";
 import { fileURLToPath } from "node:url";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-let vite, ConfirmationClient, reviewView, ConfirmationContents;
+let vite, ConfirmationClient, reviewView, ConfirmationContents, submissionQuote;
 const id = "12345678-1234-4234-8234-123456789abc",
   contact = "22345678-1234-4234-8234-123456789abc",
   item = "32345678-1234-4234-8234-123456789abc";
 const value = {
+  canSubmit: false,
   confirmation: {
     id: contact,
     orderId: id,
@@ -39,9 +40,8 @@ before(async () => {
     configFile: false,
     server: { middlewareMode: true, hmr: false, ws: false, watch: null },
   });
-  ({ ConfirmationClient, reviewView } = await vite.ssrLoadModule(
-    "/src/features/customer-confirmations/api.ts",
-  ));
+  ({ ConfirmationClient, reviewView, submissionQuote } =
+    await vite.ssrLoadModule("/src/features/customer-confirmations/api.ts"));
   ({ ConfirmationContents } = await vite.ssrLoadModule(
     "/src/features/customer-confirmations/ConfirmationPage.tsx",
   ));
@@ -143,4 +143,97 @@ test("confirmation client uses scoped cancellable reads and one explicit decisio
   await assert.rejects(
     unavailable.decide(id, contact, "CONFIRMED", null, signal),
   );
+});
+
+test("assisted submission quote rejects malformed totals and client sends one explicit scoped submission", async () => {
+  const q = {
+    confirmationId: contact,
+    token: "assisted-" + "a".repeat(64),
+    currency: "AED",
+    total: "27.5",
+    delivery: {
+      label: "Updated kitchen",
+      line1: "Fresh quoted delivery",
+      contactName: "Receiving team",
+      contactPhone: "+971000000000",
+    },
+    items: [
+      {
+        itemId: item,
+        name: "Synthetic rice",
+        quantity: "1",
+        sellingUom: "Case",
+        unitPrice: "27.5",
+        lineTotal: "27.5",
+        currency: "AED",
+      },
+    ],
+  };
+  assert.deepEqual(submissionQuote(q, contact), q);
+  const { SubmissionQuoteDetails } = await vite.ssrLoadModule(
+    "/src/features/customer-confirmations/AssistedSubmission.tsx",
+  );
+  const html = renderToStaticMarkup(
+    createElement(SubmissionQuoteDetails, {
+      quote: submissionQuote(q, contact),
+    }),
+  );
+  assert.match(html, /Fresh quoted delivery/);
+  assert.match(html, /Receiving team/);
+  assert.match(html, /\+971000000000/);
+  for (const delivery of [
+    null,
+    { ...q.delivery, line1: "" },
+    { ...q.delivery, contactPhone: "x".repeat(41) },
+  ])
+    assert.throws(() => submissionQuote({ ...q, delivery }, contact));
+  for (const bad of [
+    { ...q, token: "bad" },
+    { ...q, total: "NaN" },
+    { ...q, items: [] },
+    { ...q, items: [...q.items, ...q.items] },
+    { ...q, items: [{ ...q.items[0], currency: "USD" }] },
+  ])
+    assert.throws(() => submissionQuote(bad, contact));
+  const calls = [];
+  const client = new ConfirmationClient(
+    {
+      async request(path, init) {
+        calls.push([path, init]);
+        return envelope(
+          path.endsWith("submission-quote") ? q : { orderId: id },
+        );
+      },
+    },
+    {
+      id: contact,
+      companyId: id,
+      role: "CUSTOMER_USER",
+      mustChangePassword: false,
+    },
+  );
+  const signal = new AbortController().signal;
+  const quote = await client.quote(id, contact, signal);
+  assert.equal(calls.length, 1);
+  await client.submit(id, quote, signal);
+  assert.equal(calls.length, 2);
+  assert.equal(calls[1][0], "/api/v1/order-drafts/" + id + "/submit");
+  assert.equal(calls[1][1].idempotencyKey, "assisted-confirmation");
+  assert.deepEqual(JSON.parse(calls[1][1].body), {
+    confirmationId: contact,
+    quoteToken: q.token,
+  });
+  const confirmed = {
+    ...value,
+    canSubmit: false,
+    confirmation: {
+      ...value.confirmation,
+      status: "CONFIRMED",
+      decidedAt: "2026-11-28T10:00:00.000Z",
+      reason: null,
+    },
+    order: { ...value.order, status: "SUBMITTED" },
+  };
+  assert.equal(reviewView(confirmed, id).order.status, "SUBMITTED");
+  assert.throws(() => reviewView({ ...confirmed, canSubmit: true }, id));
 });

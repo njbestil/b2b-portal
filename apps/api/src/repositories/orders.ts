@@ -38,6 +38,8 @@ export interface HistoryFilters {
   readonly to?: string;
 }
 export interface OrderHistoryRecord extends OrderSummary {
+  /** Provider-verified retained customer approval for a Sales-created order. */
+  readonly confirmedByUserId?: string | null;
   readonly snapshot: OrderSnapshot | null;
 }
 export interface OrderRepository {

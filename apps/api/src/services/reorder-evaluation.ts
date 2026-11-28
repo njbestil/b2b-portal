@@ -21,12 +21,14 @@ export function evaluateReorder(
   }[],
   catalogInput: CatalogSnapshot,
   now: number,
+  confirmedByUserId?: string | null,
 ) {
   const order = checkedOrderSnapshot(historic);
   if (
     order.orderId !== sourceOrderId ||
     order.companyId !== companyId ||
-    order.submittedBy.id !== creatorId
+    (order.submittedBy.id !== creatorId &&
+      order.submittedBy.id !== confirmedByUserId)
   )
     throw new TypeError("Snapshot identity mismatch.");
   const catalog = checkedCatalog(catalogInput);

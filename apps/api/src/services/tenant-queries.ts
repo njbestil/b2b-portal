@@ -81,7 +81,8 @@ function historyView(row: OrderHistoryRecord) {
       if (
         value.orderId !== row.id ||
         value.companyId !== row.companyId ||
-        value.submittedBy.id !== row.createdByUserId
+        (value.submittedBy.id !== row.createdByUserId &&
+          value.submittedBy.id !== row.confirmedByUserId)
       )
         throw new Error("Snapshot identity mismatch.");
       snapshot = {
