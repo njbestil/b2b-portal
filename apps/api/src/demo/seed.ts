@@ -55,6 +55,7 @@ async function checkedDirectory(directory: string) {
         name !== privateNoteFile &&
         name !== privateAuditFile &&
         name !== privateNotificationFile &&
+        name !== "order_cancellations.json" &&
         name !== "invoices.json" &&
         name !== "delivery_addresses.json" &&
         name !== "user_sessions.json" &&

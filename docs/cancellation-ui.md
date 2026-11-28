@@ -18,6 +18,7 @@ GET /api/v1/companies/:companyId/orders/:orderId/cancellations returns
 {cancellation: null | {requestId, orderId, status}} with standard no-store/auth
 envelopes. It uses the existing cancellation permission, current account/company/
 assignment checks and draft ownership. Unknown selectors refuse. Reasons and
-provider payloads are not selected. JSON returns unavailable pending #195; this
-feature does not enable JSON cancellation. Existing POST and ERP behavior remain
-unchanged. See ADR-029 and cancellation-api.md for the boundaries.
+provider payloads are not selected. JSON now uses the recoverable boundary in
+[json-cancellation-recovery.md](json-cancellation-recovery.md); the same UI requires
+status checking after uncertainty and never automatically repeats a cancellation.
+See ADR-029 and cancellation-api.md for the shared contract and provider limits.

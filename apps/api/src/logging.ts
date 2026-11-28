@@ -23,6 +23,7 @@ type LogEvent =
   | { event: "postgres.pool_error" }
   | { event: "applications.recovery_failed" }
   | { event: "application_reviews.recovery_failed" }
+  | { event: "cancellations.recovery_failed" }
   | { event: "migrations.completed"; applied: number; skipped: number }
   | {
       event: "migrations.failed";

@@ -1,5 +1,10 @@
 # JSON storage engine
 
+Cancellation commands and status reads use the shared coordinator and recoverable
+order/audit/attempt journal in [json-cancellation-recovery.md](json-cancellation-recovery.md).
+All online writers must share that runtime coordinator; offline tools refuse a
+pending cancellation intent. JSON submission remains unavailable.
+
 B2B-011 implements the existing backend-only read ports: company profile lookup,
 customer user lookup/list, eligible catalog lookup/list and order summary lookup/list.
 Application query services accept these adapters without changing their contracts.
