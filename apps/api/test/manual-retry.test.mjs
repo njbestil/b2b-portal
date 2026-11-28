@@ -172,6 +172,27 @@ test(
     assert.equal(row.retryable, false);
     assert.equal(row.retry_count, 2);
     assert.deepEqual(row.request_payload, f.payload);
+    const audit = (
+      await f.pool.query(
+        "SELECT company_id,actor_user_id,actor_role,target_type,target_id,metadata,created_at FROM audit_logs WHERE action='integration.retry_requested'",
+      )
+    ).rows;
+    assert.equal(audit.length, 1);
+    assert.equal(audit[0].actor_user_id, f.actor.userId);
+    assert.equal(audit[0].actor_role, "INTERNAL_ADMIN");
+    assert.equal(audit[0].company_id, f.companyId);
+    assert.equal(audit[0].target_type, "integration_transaction");
+    assert.equal(audit[0].target_id, f.id);
+    assert.deepEqual(audit[0].metadata, {
+      transactionId: f.id,
+      orderId: f.orderId,
+      outcome: "success",
+    });
+    assert.ok(audit[0].created_at instanceof Date);
+    assert.doesNotMatch(
+      JSON.stringify(audit),
+      /PRIVATE|payload|password|token/i,
+    );
     assert.equal(calls, 3);
     const order = (
       await f.pool.query(
