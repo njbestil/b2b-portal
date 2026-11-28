@@ -1,4 +1,7 @@
 import { createHash, randomUUID } from "node:crypto";
+import { checkedConfirmation } from "../services/confirmation-record.js";
+import { sqlConfirmation } from "./postgres-customer-confirmations.js";
+import type { OrderSnapshot } from "../repositories/order-snapshots.js";
 import type { Pool, PoolClient } from "pg";
 import type { CatalogSource } from "../repositories/catalog-sync.js";
 import type { LoginCredential } from "../repositories/authentication.js";
@@ -20,6 +23,7 @@ import { canonicalDraft, draftActor } from "./order-draft-state.js";
 import { lockedSession } from "./postgres-sessions.js";
 import {
   SubmissionKeyConflict,
+  submissionKeyHash,
   submitIdempotently,
 } from "./postgres-submission-idempotency.js";
 import { createPostgresSubmissionDispatch } from "./postgres-submission-dispatch.js";
@@ -28,6 +32,35 @@ import type {
   MockSubmissionResult,
 } from "./mock-submission-adapter.js";
 
+type Quote = {
+  confirmationId: string;
+  token: string;
+  currency: string;
+  total: string;
+  items: OrderSnapshot["items"];
+  delivery: OrderSnapshot["delivery"];
+};
+class Preview extends Error {
+  constructor(readonly quote: Quote) {
+    super("Submission preview");
+  }
+}
+function quoteFor(snapshot: OrderSnapshot, confirmationId: string): Quote {
+  return {
+    confirmationId,
+    token:
+      "assisted-" +
+      createHash("sha256")
+        .update(
+          JSON.stringify({ ...snapshot, submittedAt: null, confirmationId }),
+        )
+        .digest("hex"),
+    currency: snapshot.currency,
+    total: snapshot.total,
+    items: snapshot.items,
+    delivery: snapshot.delivery,
+  };
+}
 export function createPostgresOrderSubmission(
   pool: Pool,
   source: CatalogSource,
@@ -37,11 +70,12 @@ export function createPostgresOrderSubmission(
   },
 ) {
   const dispatch = createPostgresSubmissionDispatch(pool, gateway);
-  return async function submit(
+  async function execute(
     actor: AuthorizedActor,
     rawId: unknown,
     key: unknown,
     input: unknown,
+    preview = false,
   ) {
     requirePermission(actor, "order-drafts.manage");
     if (actor.role !== "CUSTOMER_ADMIN" && actor.role !== "CUSTOMER_USER")
@@ -54,27 +88,41 @@ export function createPostgresOrderSubmission(
       accessExpiresAt: actor.accessExpiresAt,
     };
     const id = draftId(rawId);
+    if (!input || typeof input !== "object" || Array.isArray(input))
+      throw new DraftError("invalid_input");
+    const body = input as {
+      version?: unknown;
+      confirmationId?: unknown;
+      quoteToken?: unknown;
+    };
+    const assisted = Object.hasOwn(body, "confirmationId");
+    const confirmationId = assisted ? draftId(body.confirmationId) : undefined;
     if (
       typeof key !== "string" ||
       !/^[\x21-\x7e]{1,128}$/.test(key) ||
       !input ||
       typeof input !== "object" ||
       Array.isArray(input) ||
-      Object.keys(input).join(",") !== "version" ||
-      typeof (input as { version?: unknown }).version !== "string" ||
-      !/^draft-[\da-f]{64}$/.test((input as { version: string }).version)
+      (assisted
+        ? Object.keys(body).sort().join(",") !== "confirmationId,quoteToken" ||
+          typeof body.quoteToken !== "string" ||
+          (!preview && !/^assisted-[a-f0-9]{64}$/.test(body.quoteToken))
+        : Object.keys(body).join(",") !== "version" ||
+          typeof body.version !== "string" ||
+          !/^draft-[\da-f]{64}$/.test(body.version))
     )
       throw new DraftError("invalid_input");
     const version = (input as { version: string }).version;
+    const submissionKey = assisted ? "assisted:" + confirmationId : key;
     let catalog: Awaited<ReturnType<CatalogSource["readSnapshot"]>> | null =
       null;
     try {
-      const keyHash = createHash("sha256").update(key).digest("hex");
+      const keyHash = submissionKeyHash(submissionKey, assisted);
       const prior = await pool.query(
         "SELECT 1 FROM submission_idempotency WHERE key_hash=$1 AND company_id=$2 AND user_id=$3 AND order_id=$4",
         [keyHash, who.companyId, who.userId, id],
       );
-      if (!prior.rowCount)
+      if (preview || !prior.rowCount)
         catalog = await source.readSnapshot(new AbortController().signal);
     } catch {
       throw new DraftError("unavailable");
@@ -107,19 +155,71 @@ export function createPostgresOrderSubmission(
         session,
         Date.now(),
       );
+      if (assisted) {
+        const order = (
+          await client.query(
+            "SELECT created_by_user_id AS creator,order_status AS status FROM orders WHERE id=$1 AND company_id=$2 FOR UPDATE",
+            [id, who.companyId],
+          )
+        ).rows[0];
+        if (!order) throw new DraftError("not_found");
+        if (preview && order.status !== "PENDING_CUSTOMER_CONFIRMATION")
+          throw new DraftError("conflict");
+        const raw = (
+          await client.query(
+            'SELECT id,company_id AS "companyId",order_id AS "orderId",customer_user_id AS "customerUserId",status,created_at AS "createdAt",request_fingerprint AS fingerprint,decided_by_user_id AS "decidedByUserId",decided_at AS "decidedAt",reason FROM order_confirmations WHERE order_id=$1 AND company_id=$2 FOR UPDATE',
+            [id, who.companyId],
+          )
+        ).rows[0];
+        if (!raw) throw new DraftError("not_found");
+        const confirmation = checkedConfirmation(sqlConfirmation(raw));
+        if (
+          confirmation.id !== confirmationId ||
+          confirmation.status !== "CONFIRMED" ||
+          confirmation.decidedByUserId !== who.userId ||
+          (who.role !== "CUSTOMER_ADMIN" &&
+            confirmation.customerUserId !== who.userId)
+        )
+          throw new DraftError("conflict");
+        const creator = (
+          await client.query(
+            "SELECT role,status,company_id FROM users WHERE id=$1 FOR SHARE",
+            [order.creator],
+          )
+        ).rows[0];
+        const assignments = (
+          await client.query(
+            "SELECT sales_staff_user_id AS staff,created_at AS created FROM customer_sales_assignments WHERE company_id=$1 AND active AND is_primary AND ended_at IS NULL FOR SHARE",
+            [who.companyId],
+          )
+        ).rows;
+        if (
+          !creator ||
+          creator.role !== "SALES_STAFF" ||
+          creator.status !== "ACTIVE" ||
+          creator.company_id !== null ||
+          assignments.length !== 1 ||
+          assignments[0].staff !== order.creator ||
+          assignments[0].created.getTime() > Date.now()
+        )
+          throw new DraftError("forbidden");
+      }
     }
     try {
       await submitIdempotently(
         pool,
         {
-          key,
+          key: submissionKey,
+          ...(confirmationId ? { confirmationId } : {}),
           companyId: who.companyId,
           userId: who.userId,
           orderId: id,
           canonicalRequest: JSON.stringify({
             schemaVersion: 1,
             orderId: id,
-            version,
+            ...(assisted
+              ? { confirmationId, quoteToken: body.quoteToken }
+              : { version }),
           }),
         },
         authorize,
@@ -127,8 +227,8 @@ export function createPostgresOrderSubmission(
           if (!catalog) throw new DraftError("unavailable");
           const row = (
             await client.query(
-              `SELECT id,company_id AS "companyId",created_by_user_id AS "createdByUserId",order_number AS "orderNumber",created_at AS "createdAt",updated_at AS "updatedAt",order_status AS status,integration_status AS "integrationStatus",delivery_address_id AS "deliveryAddressId",draft_commercial_baseline AS baseline,order_snapshot,submitted_at,erp_order_reference,idempotency_key FROM orders WHERE id=$1 AND company_id=$2 AND created_by_user_id=$3 FOR UPDATE`,
-              [id, who.companyId, who.userId],
+              `SELECT id,company_id AS "companyId",created_by_user_id AS "createdByUserId",order_number AS "orderNumber",created_at AS "createdAt",updated_at AS "updatedAt",order_status AS status,integration_status AS "integrationStatus",delivery_address_id AS "deliveryAddressId",draft_commercial_baseline AS baseline,order_snapshot,submitted_at,erp_order_reference,idempotency_key FROM orders WHERE id=$1 AND company_id=$2 AND ($3::uuid IS NULL OR created_by_user_id=$3) FOR UPDATE`,
+              [id, who.companyId, assisted ? null : who.userId],
             )
           ).rows[0];
           if (!row) throw new DraftError("not_found");
@@ -139,12 +239,22 @@ export function createPostgresOrderSubmission(
             row.idempotency_key !== null
           )
             throw new DraftError("conflict");
+          if (
+            assisted &&
+            (row.status !== "PENDING_CUSTOMER_CONFIRMATION" ||
+              row.integrationStatus !== "NOT_SENT")
+          )
+            throw new DraftError("conflict");
           const draft = canonicalDraft({
             ...row,
+            ...(assisted ? { status: "DRAFT" } : {}),
             createdAt: row.createdAt.toISOString(),
             updatedAt: row.updatedAt.toISOString(),
           });
-          if (draft.version !== version || !draft.deliveryAddressId)
+          if (
+            (!assisted && draft.version !== version) ||
+            !draft.deliveryAddressId
+          )
             throw new DraftError("conflict");
           const company = (
             await client.query(
@@ -250,12 +360,13 @@ export function createPostgresOrderSubmission(
             issues.length ||
             checked.length !== lines.length ||
             !checked.length ||
-            commercialDifferences(
-              row.baseline === null
-                ? null
-                : checkedCommercialTerms(row.baseline),
-              checked,
-            ).length ||
+            (!assisted &&
+              commercialDifferences(
+                row.baseline === null
+                  ? null
+                  : checkedCommercialTerms(row.baseline),
+                checked,
+              ).length) ||
             resolved.some(
               (r) =>
                 !r.product ||
@@ -291,6 +402,12 @@ export function createPostgresOrderSubmission(
               currency: price!.currency,
             })),
           });
+          if (confirmationId) {
+            const quote = quoteFor(snapshot, confirmationId);
+            if (preview) throw new Preview(quote);
+            if (body.quoteToken !== quote.token)
+              throw new DraftError("conflict");
+          }
           const payload: MockSubmissionRequest = {
             externalRequestReference: outboundReference,
             portalOrderId: id,
@@ -351,11 +468,37 @@ export function createPostgresOrderSubmission(
       await dispatch(who.companyId, id);
       return { orderId: id };
     } catch (error) {
+      if (error instanceof Preview) throw error;
       if (error instanceof SubmissionKeyConflict)
         throw new DraftError("conflict");
       if (error instanceof DraftError) throw error;
       throw new DraftError("unavailable");
     }
-  };
+  }
+  return Object.assign(
+    (actor: AuthorizedActor, id: unknown, key: unknown, input: unknown) =>
+      execute(actor, id, key, input),
+    {
+      async quote(
+        actor: AuthorizedActor,
+        id: unknown,
+        confirmationId: unknown,
+      ): Promise<Quote> {
+        try {
+          await execute(
+            actor,
+            id,
+            "preview",
+            { confirmationId, quoteToken: "preview" },
+            true,
+          );
+        } catch (error) {
+          if (error instanceof Preview) return error.quote;
+          throw error;
+        }
+        throw new DraftError("conflict");
+      },
+    },
+  );
 }
 export type OrderSubmission = ReturnType<typeof createPostgresOrderSubmission>;

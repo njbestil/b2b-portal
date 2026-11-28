@@ -1,3 +1,4 @@
+import { confirmedOrderApproverSql } from "./confirmed-order-owner.js";
 import type { Pool, QueryResultRow } from "pg";
 import type { RepositoryPorts } from "../repositories/index.js";
 import type { CompanyProfile } from "../repositories/companies.js";
@@ -203,18 +204,25 @@ export function createPostgresRepositories(
       async findHistory(scope, id) {
         const rows = await query<
           RawOrder & {
+            confirmedByUserId: string | null;
             snapshot:
               import("../repositories/order-snapshots.js").OrderSnapshot | null;
           }
         >(
           orderSql.replace(
             " FROM orders",
-            ", order_snapshot AS snapshot FROM orders",
+            `, order_snapshot AS snapshot, ${confirmedOrderApproverSql} AS "confirmedByUserId" FROM orders`,
           ) + " AND id=$2 AND order_status <> 'DRAFT'",
           [companyId(scope), id.toLowerCase()],
         );
         const row = rows[0];
-        return row ? { ...orderSummary(row), snapshot: row.snapshot } : null;
+        return row
+          ? {
+              ...orderSummary(row),
+              snapshot: row.snapshot,
+              confirmedByUserId: row.confirmedByUserId,
+            }
+          : null;
       },
       async listHistory(scope, page, filters) {
         const values: unknown[] = [companyId(scope)];

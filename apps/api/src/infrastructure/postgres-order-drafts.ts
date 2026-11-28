@@ -1,3 +1,4 @@
+import { confirmedOrderApproverSql } from "./confirmed-order-owner.js";
 import { randomUUID } from "node:crypto";
 import type { Pool, PoolClient } from "pg";
 import type {
@@ -171,7 +172,7 @@ export function createPostgresOrderDrafts(
       run(actor, async (client) => {
         const source = (
           await client.query(
-            'SELECT id, company_id AS "companyId", created_by_user_id AS "creatorId", order_status AS status, order_snapshot AS snapshot FROM orders WHERE id=$1 AND company_id=$2 FOR UPDATE',
+            `SELECT id, company_id AS "companyId", created_by_user_id AS "creatorId", order_status AS status, order_snapshot AS snapshot, ${confirmedOrderApproverSql} AS "confirmedByUserId" FROM orders WHERE id=$1 AND company_id=$2 FOR UPDATE`,
             [id, actor.companyId],
           )
         ).rows[0];
@@ -231,6 +232,7 @@ export function createPostgresOrderDrafts(
             refs,
             catalog,
             now(),
+            source.confirmedByUserId,
           ),
           newId,
         );

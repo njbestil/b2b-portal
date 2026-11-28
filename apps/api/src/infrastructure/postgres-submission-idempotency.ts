@@ -11,6 +11,7 @@ export class SubmissionKeyConflict extends Error {
 }
 
 type Request = {
+  readonly confirmationId?: string;
   readonly key: string;
   readonly companyId: string;
   readonly userId: string;
@@ -25,6 +26,10 @@ type Result = {
 };
 const hash = (value: string) =>
   createHash("sha256").update(value).digest("hex");
+/** The NUL separator is forbidden in public keys; direct drafts cannot reserve
+ * the backend-owned assisted identity by choosing the same printable key. */
+export const submissionKeyHash = (key: string, assisted = false) =>
+  hash(assisted ? "assisted\0" + key : key);
 
 class Replay extends Error {
   constructor(readonly result: Result) {
@@ -50,59 +55,66 @@ export async function submitIdempotently(
     Buffer.byteLength(request.canonicalRequest, "utf8") > 65536
   )
     throw new TypeError("Invalid submission request.");
-  const keyHash = hash(request.key),
+  const keyHash = submissionKeyHash(
+      request.key,
+      request.confirmationId !== undefined,
+    ),
     requestHash = hash(request.canonicalRequest);
   let outboundReference = "";
   try {
-    const snapshot = await withPostgresOrderSnapshot(pool, async (client) => {
-      await authorize(client);
-      outboundReference = randomUUID();
-      const inserted = await client.query(
-        `INSERT INTO submission_idempotency(key_hash,company_id,order_id,user_id,request_hash,outbound_reference)
+    const snapshot = await withPostgresOrderSnapshot(
+      pool,
+      async (client) => {
+        await authorize(client);
+        outboundReference = randomUUID();
+        const inserted = await client.query(
+          `INSERT INTO submission_idempotency(key_hash,company_id,order_id,user_id,request_hash,outbound_reference)
          VALUES($1,$2,$3,$4,$5,$6) ON CONFLICT DO NOTHING RETURNING key_hash`,
-        [
-          keyHash,
-          request.companyId,
-          request.orderId,
-          request.userId,
-          requestHash,
-          outboundReference,
-        ],
-      );
-      if (!inserted.rowCount) {
-        const existing = (
-          await client.query(
-            `SELECT s.company_id AS "companyId",s.order_id AS "orderId",s.user_id AS "userId",s.request_hash AS "requestHash",s.outbound_reference AS "outboundReference",o.order_snapshot AS snapshot
+          [
+            keyHash,
+            request.companyId,
+            request.orderId,
+            request.userId,
+            requestHash,
+            outboundReference,
+          ],
+        );
+        if (!inserted.rowCount) {
+          const existing = (
+            await client.query(
+              `SELECT s.company_id AS "companyId",s.order_id AS "orderId",s.user_id AS "userId",s.request_hash AS "requestHash",s.outbound_reference AS "outboundReference",o.order_snapshot AS snapshot
            FROM submission_idempotency s JOIN orders o ON o.id=s.order_id AND o.company_id=s.company_id WHERE s.key_hash=$1`,
-            [keyHash],
+              [keyHash],
+            )
+          ).rows[0];
+          if (
+            !existing ||
+            existing.companyId !== request.companyId ||
+            existing.orderId !== request.orderId ||
+            existing.userId !== request.userId ||
+            existing.requestHash !== requestHash ||
+            !existing.snapshot
           )
-        ).rows[0];
+            throw new SubmissionKeyConflict();
+          await authorize(client);
+          throw new Replay({
+            snapshot: checkedOrderSnapshot(existing.snapshot),
+            outboundReference: existing.outboundReference,
+            replayed: true,
+          });
+        }
+        const snapshot = await transition(client, outboundReference);
         if (
-          !existing ||
-          existing.companyId !== request.companyId ||
-          existing.orderId !== request.orderId ||
-          existing.userId !== request.userId ||
-          existing.requestHash !== requestHash ||
-          !existing.snapshot
+          snapshot.orderId !== request.orderId ||
+          snapshot.companyId !== request.companyId ||
+          snapshot.submittedBy.id !== request.userId
         )
           throw new SubmissionKeyConflict();
         await authorize(client);
-        throw new Replay({
-          snapshot: checkedOrderSnapshot(existing.snapshot),
-          outboundReference: existing.outboundReference,
-          replayed: true,
-        });
-      }
-      const snapshot = await transition(client, outboundReference);
-      if (
-        snapshot.orderId !== request.orderId ||
-        snapshot.companyId !== request.companyId ||
-        snapshot.submittedBy.id !== request.userId
-      )
-        throw new SubmissionKeyConflict();
-      await authorize(client);
-      return snapshot;
-    });
+        return snapshot;
+      },
+      request.confirmationId,
+    );
     return { snapshot, outboundReference, replayed: false };
   } catch (error) {
     if (error instanceof Replay) return error.result;
