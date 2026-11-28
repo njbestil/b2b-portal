@@ -11,6 +11,10 @@ import type { FulfillmentRepository } from "../repositories/fulfillment.js";
 import { createPostgresFulfillment } from "./postgres-fulfillment.js";
 import { createPostgresCancellation } from "./postgres-cancellation.js";
 import {
+  createJsonCancellation,
+  createJsonCancellationStatus,
+} from "./json/cancellation.js";
+import {
   createPostgresManualRetry,
   type ManualRetry,
 } from "./postgres-manual-retry.js";
@@ -95,6 +99,7 @@ import { createPostgresApplicationReviews } from "./postgres-application-reviews
 import { createJsonApplicationReviews } from "./json/application-reviews.js";
 import { createPostgresApplications } from "./postgres-applications.js";
 import { createJsonApplications } from "./json/applications.js";
+import { recoverCancellationPublication } from "./json/cancellation-publication.js";
 
 export interface StorageRuntime {
   readonly createManualRetry?: (gateway: {
@@ -309,16 +314,27 @@ export async function selectStorage(
     security,
   );
   const applicationReviews = createJsonApplicationReviews(security);
-  await applicationReviews
-    .recover()
-    .catch(() =>
-      options.logger("error", { event: "application_reviews.recovery_failed" }),
+  const cancellationReady = await recoverCancellationPublication(
+    security.directory,
+  ).then(
+    () => true,
+    () => {
+      options.logger("error", { event: "cancellations.recovery_failed" });
+      return false;
+    },
+  );
+  if (cancellationReady)
+    await applicationReviews.recover().catch(() =>
+      options.logger("error", {
+        event: "application_reviews.recovery_failed",
+      }),
     );
-  await applications
-    .recover()
-    .catch(() =>
-      options.logger("error", { event: "applications.recovery_failed" }),
-    );
+  if (cancellationReady)
+    await applications
+      .recover()
+      .catch(() =>
+        options.logger("error", { event: "applications.recovery_failed" }),
+      );
   const health: HealthProbe = async (signal) => {
     if (signal.aborted) return false;
     try {
@@ -347,6 +363,10 @@ export async function selectStorage(
     databaseConfigured: options.postgres !== undefined,
     adminCompanies: createJsonAdminCompanies(security),
     invoices: createJsonInvoices(security),
+    cancellationStatus: createJsonCancellationStatus(security),
+    createOrderCancellation: (
+      gateway?: Parameters<typeof createJsonCancellation>[1],
+    ) => createJsonCancellation(security, gateway),
     provider: "json",
     sessions,
     passwordChanges: createJsonPasswordChange(security),
@@ -360,7 +380,7 @@ export async function selectStorage(
     authentication: createJsonAuthentication(store),
     internalNotes: createJsonInternalNotes(options.jsonDirectory, security),
     orderNotes: createJsonOrderNotes(security),
-    audit: createJsonAudit(options.jsonDirectory),
+    audit: createJsonAudit(options.jsonDirectory, security),
     notifications: createJsonNotifications(options.jsonDirectory),
     applications,
     fulfillment: createJsonFulfillment(security),

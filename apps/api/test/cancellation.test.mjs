@@ -700,7 +700,7 @@ test(
     );
   },
 );
-test("JSON-backed cancellation fails closed without modifying the order", async (t) => {
+test("Unconfigured cancellation service fails closed without modifying JSON state", async (t) => {
   const f = await authFixture(t, "json");
   for (let i = 0; i < f.data.users.length; i++)
     await f.setUser({ mustChangePassword: false }, i);

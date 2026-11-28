@@ -32,6 +32,7 @@ export function createJsonCatalogCache(
       ...required,
       "order_internal_notes.json",
       "audit_logs.json",
+      "order_cancellations.json",
       "notifications.json",
       "delivery_addresses.json",
       "user_sessions.json",

@@ -20,6 +20,7 @@ const allowed = new Set([
   "delivery_addresses.json",
   "order_internal_notes.json",
   "audit_logs.json",
+  "order_cancellations.json",
   "notifications.json",
   "application_reviews.json",
   "invoices.json",

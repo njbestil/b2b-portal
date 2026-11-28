@@ -2,9 +2,10 @@ import { resolve, join } from "node:path";
 import { lstat } from "node:fs/promises";
 import { SessionError } from "../../services/session-state.js";
 import { JsonFileStore } from "./store.js";
+import { recoverCancellationPublication } from "./cancellation-publication.js";
 
-/** One injected coordinator per trusted directory/process. Future credential and
- * account writers must share run(), and read current state inside the operation.
+/** One injected coordinator per trusted directory/process. All online credential,
+ * account, order and audit writers must share run() and read current state inside it.
  * Offline seed/reset/catalog swaps require the API and all writers stopped.
  */
 export class JsonSecurityCoordinator {
@@ -20,6 +21,11 @@ export class JsonSecurityCoordinator {
     reviewRecovery = false,
   ): Promise<T> {
     const result = this.queue.then(async () => {
+      try {
+        await recoverCancellationPublication(this.directory);
+      } catch {
+        throw new SessionError("unavailable");
+      }
       if (!reviewRecovery) {
         try {
           await lstat(join(this.directory, "application_review_intent.json"));

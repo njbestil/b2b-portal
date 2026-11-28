@@ -84,7 +84,7 @@ export async function authFixture(t, provider = "json") {
       await security.store.replace("users", rows);
       if (f.failUserAfter) throw new Error("PRIVATE_USER_AFTER");
     });
-    auditRepository = createJsonAudit(directory);
+    auditRepository = createJsonAudit(directory, security);
     f.user = async (index = 0) => (await security.store.read("users"))[index];
     f.setUser = (patch, index = 0) =>
       security.run(async () => {

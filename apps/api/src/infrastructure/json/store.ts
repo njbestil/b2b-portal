@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { lstat, mkdir, open, readFile, rename, unlink } from "node:fs/promises";
 import { join, resolve } from "node:path";
+import { cancellationIntentFile } from "./cancellation-publication.js";
 import {
   JsonStorageError,
   type JsonCollection,
@@ -31,9 +32,11 @@ export class JsonFileStore {
       const path = join(this.directory, collectionFiles[collection]);
       let bytes: Buffer;
       try {
+        await this.noPendingCancellation();
         const stat = await lstat(path);
         if (!stat.isFile() || stat.isSymbolicLink()) throw new Error();
         bytes = await readFile(path);
+        await this.noPendingCancellation();
       } catch {
         throw new JsonStorageError("read_failed");
       }
@@ -92,6 +95,7 @@ export class JsonFileStore {
       `.${collection}.${randomUUID()}.tmp`,
     );
     try {
+      await this.noPendingCancellation();
       await mkdir(this.directory, { recursive: true });
       const handle = await open(temporary, "wx", 0o600);
       try {
@@ -109,5 +113,14 @@ export class JsonFileStore {
       await unlink(temporary).catch(() => {});
       throw new JsonStorageError("write_failed");
     }
+  }
+  private async noPendingCancellation() {
+    try {
+      await lstat(join(this.directory, cancellationIntentFile));
+    } catch (e) {
+      if (e instanceof Error && "code" in e && e.code === "ENOENT") return;
+      throw e;
+    }
+    throw new Error("Pending cancellation publication.");
   }
 }

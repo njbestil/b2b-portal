@@ -88,7 +88,7 @@ test(
     }
   },
 );
-test("JSON cancellation status remains unavailable with authenticated safe no-store errors", async (t) => {
+test("Unconfigured cancellation status returns authenticated safe no-store errors", async (t) => {
   const f = await authFixture(t, "json");
   await f.setUser({ mustChangePassword: false }, 2);
   const proof = await f.login(2),
