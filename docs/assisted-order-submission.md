@@ -22,6 +22,8 @@ the confirmation ID, so different browser/header keys cannot create another
 submission identity. The canonical request retains the accepted token. The
 initial transition revalidates customer/session/company, confirmation, current
 Sales assignment, address, product access, MOQ/UOM, stock, minimum and prices.
+The acceptance screen displays delivery and contact details from that same fresh
+quote. Address/contact changes also invalidate its token before publication.
 Changed quote content returns 409 before publication. Refresh and explicitly
 accept a new quote; never silently substitute prices. This replaces the direct
 draft's prior price acknowledgement only for the immutable assisted-order path.

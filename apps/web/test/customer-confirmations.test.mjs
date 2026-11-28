@@ -151,6 +151,12 @@ test("assisted submission quote rejects malformed totals and client sends one ex
     token: "assisted-" + "a".repeat(64),
     currency: "AED",
     total: "27.5",
+    delivery: {
+      label: "Updated kitchen",
+      line1: "Fresh quoted delivery",
+      contactName: "Receiving team",
+      contactPhone: "+971000000000",
+    },
     items: [
       {
         itemId: item,
@@ -164,6 +170,23 @@ test("assisted submission quote rejects malformed totals and client sends one ex
     ],
   };
   assert.deepEqual(submissionQuote(q, contact), q);
+  const { SubmissionQuoteDetails } = await vite.ssrLoadModule(
+    "/src/features/customer-confirmations/AssistedSubmission.tsx",
+  );
+  const html = renderToStaticMarkup(
+    createElement(SubmissionQuoteDetails, {
+      quote: submissionQuote(q, contact),
+    }),
+  );
+  assert.match(html, /Fresh quoted delivery/);
+  assert.match(html, /Receiving team/);
+  assert.match(html, /\+971000000000/);
+  for (const delivery of [
+    null,
+    { ...q.delivery, line1: "" },
+    { ...q.delivery, contactPhone: "x".repeat(41) },
+  ])
+    assert.throws(() => submissionQuote({ ...q, delivery }, contact));
   for (const bad of [
     { ...q, token: "bad" },
     { ...q, total: "NaN" },

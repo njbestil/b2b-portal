@@ -48,23 +48,11 @@ export function AssistedSubmission({
       </Button>
       {state.data && !state.busy && !state.needsReload && !state.saved && (
         <>
-          <ul>
-            {state.data.items.map((r) => (
-              <li key={r.itemId}>
-                {r.name}: {r.quantity} {r.sellingUom} × {r.currency}{" "}
-                {r.unitPrice} = {r.lineTotal}
-              </li>
-            ))}
-          </ul>
+          <SubmissionQuoteDetails quote={state.data} />
           <p>
-            <strong>
-              Total: {state.data.currency} {state.data.total}
-            </strong>
-          </p>
-          <p>
-            Accept these prices to submit this confirmed order. Availability and
-            eligibility are checked again. Submission does not guarantee ERP
-            acceptance.
+            Accept these prices and delivery details to submit this confirmed
+            order. Availability and eligibility are checked again. Submission
+            does not guarantee ERP acceptance.
           </p>
           <Button
             onClick={() =>
@@ -80,5 +68,44 @@ export function AssistedSubmission({
         </>
       )}
     </section>
+  );
+}
+export function SubmissionQuoteDetails({ quote }: { quote: SubmissionQuote }) {
+  return (
+    <>
+      <ul>
+        {quote.items.map((r) => (
+          <li key={r.itemId}>
+            {r.name}: {r.quantity} {r.sellingUom} × {r.currency} {r.unitPrice} ={" "}
+            {r.lineTotal}
+          </li>
+        ))}
+      </ul>
+      <dl>
+        <dt>Delivery at submission</dt>
+        <dd>
+          {quote.delivery.label}
+          <br />
+          {quote.delivery.line1}
+        </dd>
+        {quote.delivery.contactName && (
+          <>
+            <dt>Delivery contact</dt>
+            <dd>{quote.delivery.contactName}</dd>
+          </>
+        )}
+        {quote.delivery.contactPhone && (
+          <>
+            <dt>Delivery phone</dt>
+            <dd>{quote.delivery.contactPhone}</dd>
+          </>
+        )}
+      </dl>
+      <p>
+        <strong>
+          Total: {quote.currency} {quote.total}
+        </strong>
+      </p>
+    </>
   );
 }

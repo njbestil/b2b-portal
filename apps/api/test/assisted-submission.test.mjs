@@ -263,3 +263,28 @@ test(
     assert.equal((await f.state()).order_status, "SUBMITTED");
   },
 );
+
+test(
+  "assisted: delivery changes invalidate the accepted quote and fresh details become the immutable snapshot",
+  opts,
+  async (t) => {
+    const f = await setup(t),
+      q = await f.quote();
+    await f.pool.query(
+      "UPDATE delivery_addresses SET address=jsonb_set(address,'{line1}',to_jsonb($1::text)) WHERE id=(SELECT delivery_address_id FROM orders WHERE id=$2)",
+      ["Fresh delivery after confirmation", f.id],
+    );
+    await assert.rejects(f.send(q), code("conflict"));
+    assert.equal(await f.count("submission_idempotency"), 0);
+    assert.equal(f.calls.length, 0);
+    const fresh = await f.quote();
+    assert.equal(fresh.delivery.line1, "Fresh delivery after confirmation");
+    assert.notEqual(fresh.token, q.token);
+    await f.send(fresh);
+    assert.equal(
+      (await f.state()).order_snapshot.delivery.line1,
+      fresh.delivery.line1,
+    );
+    assert.equal(f.calls.length, 1);
+  },
+);

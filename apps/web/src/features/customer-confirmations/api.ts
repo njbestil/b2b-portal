@@ -254,6 +254,12 @@ export class ConfirmationClient {
   }
 }
 export type SubmissionQuote = {
+  delivery: {
+    label: string;
+    line1: string;
+    contactName: string | null;
+    contactPhone: string | null;
+  };
   confirmationId: string;
   token: string;
   currency: string;
@@ -283,6 +289,17 @@ export function submissionQuote(
     typeof value.currency !== "string" ||
     !/^[A-Z]{3}$/.test(value.currency) ||
     !money(value.total) ||
+    !object(value.delivery) ||
+    !safeText(value.delivery.label, 160) ||
+    !safeText(value.delivery.line1, 500) ||
+    !(
+      value.delivery.contactName === null ||
+      safeText(value.delivery.contactName, 160)
+    ) ||
+    !(
+      value.delivery.contactPhone === null ||
+      safeText(value.delivery.contactPhone, 40)
+    ) ||
     !Array.isArray(value.items) ||
     !value.items.length ||
     value.items.length > 100
@@ -318,6 +335,12 @@ export function submissionQuote(
     token: value.token,
     currency: value.currency,
     total: value.total,
+    delivery: {
+      label: value.delivery.label as string,
+      line1: value.delivery.line1 as string,
+      contactName: value.delivery.contactName as string | null,
+      contactPhone: value.delivery.contactPhone as string | null,
+    },
     items,
   };
 }
